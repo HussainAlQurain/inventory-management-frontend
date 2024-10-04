@@ -32,3 +32,19 @@
 h4.heading {
     font-weight: 300;
 }
+
+.login p {
+    font-size: small;
+    text-decoration: underline;
+    max-width: fit-content;
+}
+.login p:hover {
+    cursor:pointer;
+}
+.login p:active {
+    transform: scale(0.98);
+}
+
+.login .submit {
+    margin-top: -30px;
+}
