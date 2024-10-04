@@ -46,4 +46,8 @@ export class LoginComponent {
     this.hide.set(!this.hide());
     event.stopPropagation();
   }
+
+  onSubmit(){
+    alert(`You tried to login with\n${this.username.value}\n${this.password.value}`);
+  }
 }
