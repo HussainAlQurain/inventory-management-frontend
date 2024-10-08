@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { Company } from '../../models/company';
 import { CompaniesService } from '../../services/companies.service';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-content',
@@ -12,12 +13,14 @@ import { CompaniesService } from '../../services/companies.service';
 export class ContentComponent {
   data: Company[] = [];
 
-  constructor(private companyService: CompaniesService){
+  constructor(private companyService: CompaniesService, private authService: AuthService){
 
   }
   ngOnInit(): void {
-    this.companyService.getCompanies().subscribe(_data => {
-      this.data = _data;
+    this.authService.login().subscribe(_ => {
+      this.companyService.getCompanies().subscribe(_data => {
+        this.data = _data;
+      })
     })
   }
 
