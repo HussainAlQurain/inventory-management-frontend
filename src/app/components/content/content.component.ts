@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { Company } from '../../models/company';
 import { CompaniesService } from '../../services/companies.service';
 import { AuthService } from '../../services/auth.service';
@@ -10,18 +10,27 @@ import { AuthService } from '../../services/auth.service';
   templateUrl: './content.component.html',
   styleUrl: './content.component.scss'
 })
-export class ContentComponent {
+export class ContentComponent implements OnInit {
   data: Company[] = [];
 
-  constructor(private companyService: CompaniesService, private authService: AuthService){
+  constructor(private companyService: CompaniesService, private authService: AuthService) {}
 
-  }
   ngOnInit(): void {
-    this.authService.login().subscribe(_ => {
-      this.companyService.getCompanies().subscribe(_data => {
-        this.data = _data;
-      })
-    })
+    // this.authService.authenticated$.subscribe(isAuthenticated => {
+    //   console.log('Authentication status:', isAuthenticated);
+    //   if (isAuthenticated) {
+    //     this.loadCompanies();
+    //   } else {
+    //     console.warn('User not authenticated. Redirecting to login.');
+    //   }
+    // });
+  }
+  
+
+  loadCompanies(): void {
+    this.companyService.getCompanies().subscribe(_data => {
+      this.data = _data;
+    });
   }
 
 }

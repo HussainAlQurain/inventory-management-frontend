@@ -1,2 +1,8 @@
-<app-login [title]="title"/>
-<app-content></app-content>
+@if (authenticated()) {
+    <!-- Show protected content if user is authenticated -->
+    <app-content></app-content>
+  } @else {
+    <!-- Show login form if user is not authenticated -->
+    <app-login [title]="title"></app-login>
+  }
+  
