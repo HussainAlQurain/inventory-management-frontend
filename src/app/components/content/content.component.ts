@@ -16,14 +16,14 @@ export class ContentComponent implements OnInit {
   constructor(private companyService: CompaniesService, private authService: AuthService) {}
 
   ngOnInit(): void {
-    // this.authService.authenticated$.subscribe(isAuthenticated => {
-    //   console.log('Authentication status:', isAuthenticated);
-    //   if (isAuthenticated) {
-    //     this.loadCompanies();
-    //   } else {
-    //     console.warn('User not authenticated. Redirecting to login.');
-    //   }
-    // });
+    this.authService.authenticated$.subscribe(isAuthenticated => {
+      console.log('Authentication status:', isAuthenticated);
+      if (isAuthenticated) {
+        this.loadCompanies();
+      } else {
+        console.warn('User not authenticated. Redirecting to login.');
+      }
+    });
   }
   
 
