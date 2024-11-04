@@ -1,0 +1,55 @@
+<mat-sidenav-container class="sidenav-container">
+    <mat-sidenav #sidenav mode="side" [opened]="true">
+      <mat-toolbar color="primary">
+        <!-- Company Logo -->
+        <img src="logos/stocksphere-logo.webp" alt="Company Logo" class="logo" />
+      </mat-toolbar>
+  
+      <!-- Sidenav Content -->
+      <mat-nav-list>
+        @for (menu of menus; track $index;) {
+
+          <ng-container>
+            <mat-expansion-panel
+              [expanded]="expandedIndex === menu.id"
+              (opened)="setExpandedIndex(menu.id)"
+              (closed)="clearExpandedIndex(menu.id)"
+            >
+              <mat-expansion-panel-header>
+                <mat-panel-title>
+                  {{ menu.title }}
+                </mat-panel-title>
+              </mat-expansion-panel-header>
+    
+              <mat-nav-list>
+                @for (submenu of menu.submenus; track $index) {
+                  <a
+                    mat-list-item
+                    [routerLink]="submenu.route"
+                    (click)="sidenav.close()"
+                  >
+                    {{ submenu.title }}
+                  </a>
+                }
+                
+              </mat-nav-list>
+            </mat-expansion-panel>
+          </ng-container>
+        }
+        
+      </mat-nav-list>
+    </mat-sidenav>
+  
+    <mat-sidenav-content>
+      <mat-toolbar color="primary">
+        <button
+          type="button"
+          aria-label="Toggle sidenav"
+          mat-icon-button
+          (click)="sidenav.toggle()">
+          <mat-icon>menu</mat-icon>
+        </button>
+      </mat-toolbar>
+  
+    </mat-sidenav-content>
+  </mat-sidenav-container>

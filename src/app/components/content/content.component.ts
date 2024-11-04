@@ -2,11 +2,12 @@ import { Component, OnInit } from '@angular/core';
 import { Company } from '../../models/company';
 import { CompaniesService } from '../../services/companies.service';
 import { AuthService } from '../../services/auth.service';
+import { SidenavBarComponent } from "../../sidenav-bar/sidenav-bar.component";
 
 @Component({
   selector: 'app-content',
   standalone: true,
-  imports: [],
+  imports: [SidenavBarComponent],
   templateUrl: './content.component.html',
   styleUrl: './content.component.scss'
 })
