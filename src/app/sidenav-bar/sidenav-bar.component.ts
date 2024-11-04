@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import {MatSidenavModule} from '@angular/material/sidenav';
+import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatNavList } from '@angular/material/list';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -64,20 +64,20 @@ export class SidenavBarComponent {
       id: 4,
       title: 'Reports',
       submenus: [
-        { id:0, title: 'COGS and Gross Profits', route: '/reports/cogs-profit' },
-        { id:1, title: 'COGS Over Time', route: '/reports/cogs-overtime' },
-        { id:2, title: 'Price report', route: '/reports/price-report' },
-        { id:3, title: 'Ordering', route: '/reports/ordering' },
-        { id:4, title: 'Spend by product', route: '/reports/spend-by-product' },
-        { id:5, title: 'Purchase by items', route: '/reports/purchase-by-items' },
-        { id:6, title: 'Purchases by supplier', route: '/reports/purchases-by-supplier' },
-        { id:7, title: 'Supplier by week', route: '/reports/supplier-by-week' },
-        { id:8, title: 'Store summary', route: '/reports/store-summary' },
-        { id:9, title: 'Open orders', route: '/reports/open-orders' },
-        { id:10, title: 'Transfers', route: '/reports/transfers' },
-        { id:11, title: 'Production events', route: '/reports/production-events' },
-        { id:12, title: 'Waste report', route: '/reports/waste-report' },
-        { id:13, title: 'Dashboard', route: '/reports/dashboard' },
+        { id: 0, title: 'COGS and Gross Profits', route: '/reports/cogs-profit' },
+        { id: 1, title: 'COGS Over Time', route: '/reports/cogs-overtime' },
+        { id: 2, title: 'Price report', route: '/reports/price-report' },
+        { id: 3, title: 'Ordering', route: '/reports/ordering' },
+        { id: 4, title: 'Spend by product', route: '/reports/spend-by-product' },
+        { id: 5, title: 'Purchase by items', route: '/reports/purchase-by-items' },
+        { id: 6, title: 'Purchases by supplier', route: '/reports/purchases-by-supplier' },
+        { id: 7, title: 'Supplier by week', route: '/reports/supplier-by-week' },
+        { id: 8, title: 'Store summary', route: '/reports/store-summary' },
+        { id: 9, title: 'Open orders', route: '/reports/open-orders' },
+        { id: 10, title: 'Transfers', route: '/reports/transfers' },
+        { id: 11, title: 'Production events', route: '/reports/production-events' },
+        { id: 12, title: 'Waste report', route: '/reports/waste-report' },
+        { id: 13, title: 'Dashboard', route: '/reports/dashboard' },
       ],
     },
     {
