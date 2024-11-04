@@ -1,19 +1,22 @@
 .sidenav-container {
   height: 100%;
 }
+.mat-sidenav {
+  width: 13.5%;
+}
+.nav-list {
+  width: 100%;
+}
 
-$logo-height: 240px;
 
 .logo-toolbar {
   margin: 0;
   padding: 0;
-  height: $logo-height;
 }
 
 
 .logo {
   width: 100%;  /* Or set a fixed width like 100px */
-  height: $logo-height; /* Maintain aspect ratio */
-  display: block;
-  object-fit: contain; /* Ensures the image fills the space */
+  height: auto; /* Maintain aspect ratio */
+  object-fit: cover; /* Ensures the image fills the space */
 }
