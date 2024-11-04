@@ -1,8 +1,8 @@
 <mat-sidenav-container class="sidenav-container">
-  <mat-sidenav #sidenav mode="side" [opened]="true">
-    <mat-toolbar color="primary">
+  <mat-sidenav mode="side" [opened]="true">
+    <mat-toolbar color="primary" class="logo-toolbar">
       <!-- Company Logo -->
-      <img src="logos/stocksphere-logo.webp" alt="Company Logo" class="logo" />
+      <img src="logos/small-logo.png" alt="Company Logo" class="logo" />
     </mat-toolbar>
 
     <!-- Sidenav Content -->
@@ -20,7 +20,7 @@
 
           <mat-nav-list>
             @for (submenu of menu.submenus; track $index) {
-            <a mat-list-item [routerLink]="submenu.route" (click)="sidenav.close()">
+            <a mat-list-item [routerLink]="submenu.route">
               {{ submenu.title }}
             </a>
             }
@@ -34,11 +34,6 @@
   </mat-sidenav>
 
   <mat-sidenav-content>
-    <mat-toolbar color="primary">
-      <button type="button" aria-label="Toggle sidenav" mat-icon-button (click)="sidenav.toggle()">
-        <mat-icon>menu</mat-icon>
-      </button>
-    </mat-toolbar>
 
   </mat-sidenav-content>
 </mat-sidenav-container>
