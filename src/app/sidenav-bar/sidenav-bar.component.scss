@@ -1,22 +1,38 @@
 .sidenav-container {
   height: 100%;
 }
+
+.sidenav-container * {
+  color: var(--sys-on-primary);
+}
+
 .mat-sidenav {
-  width: 13.5%;
+  min-width: 13.5%;
+  max-width: fit-content;
+  background-color: var(--sys-primary);
 }
 .nav-list {
   width: 100%;
+}
+
+.menu-item {
+  margin-bottom: 1px; /* Add space below each expansion panel */
+  background-color: var(--sys-primary);
 }
 
 
 .logo-toolbar {
   margin: 0;
   padding: 0;
+  height: fit-content;
+  background-color: var(--sys-primary);
 }
 
 
 .logo {
   width: 100%;  /* Or set a fixed width like 100px */
   height: auto; /* Maintain aspect ratio */
+  max-height: 280px;
+  margin: 0 auto;
   object-fit: cover; /* Ensures the image fills the space */
 }

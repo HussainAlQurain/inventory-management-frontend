@@ -11,9 +11,10 @@
 
       <ng-container>
         <mat-expansion-panel [expanded]="expandedIndex === menu.id" (opened)="setExpandedIndex(menu.id)"
-          (closed)="clearExpandedIndex(menu.id)">
+          (closed)="clearExpandedIndex(menu.id)" class="menu-item">
           <mat-expansion-panel-header>
             <mat-panel-title>
+              <mat-icon matListItemIcon>{{menu.icon}}</mat-icon>
               {{ menu.title }}
             </mat-panel-title>
           </mat-expansion-panel-header>

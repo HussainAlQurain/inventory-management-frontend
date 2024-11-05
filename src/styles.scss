@@ -9,9 +9,9 @@
 
 // Include the dark theme styles for all components
 html {
-    @include mat.core-theme(m3-theme.$dark-theme);
-    @include mat.button-theme(m3-theme.$dark-theme);
+    @include mat.all-component-themes(m3-theme.$light-theme);
+    @include mat.system-level-colors(m3-theme.$light-theme);
+    @include mat.system-level-typography(m3-theme.$light-theme);
 }
 
 html, body { height: 100%;  margin: 0; padding: 0; }
-body { font-family: Roboto, "Helvetica Neue", sans-serif; }

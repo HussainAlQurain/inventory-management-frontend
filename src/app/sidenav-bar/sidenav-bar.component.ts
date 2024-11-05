@@ -1,15 +1,16 @@
 import { Component } from '@angular/core';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatNavList } from '@angular/material/list';
+import { MatListModule, MatNavList } from '@angular/material/list';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
+import {MatButtonModule} from '@angular/material/button';
 
 @Component({
   selector: 'app-sidenav-bar',
   standalone: true,
-  imports: [MatSidenavModule, MatToolbarModule, MatNavList, MatExpansionModule, RouterLink, RouterLinkActive, MatIconModule],
+  imports: [MatSidenavModule, MatToolbarModule, MatListModule, MatExpansionModule, RouterLink, RouterLinkActive, MatIconModule, MatButtonModule],
   templateUrl: './sidenav-bar.component.html',
   styleUrl: './sidenav-bar.component.scss'
 })
@@ -20,6 +21,7 @@ export class SidenavBarComponent {
     {
       id: 0,
       title: 'Orders',
+      icon: 'shopping_cart',
       submenus: [
         { id: 0, title: 'Orders List', route: '/orders/list' },
         { id: 1, title: 'Pending Approval', route: '/orders/pending' },
@@ -28,6 +30,7 @@ export class SidenavBarComponent {
     {
       id: 1,
       title: 'Inventory',
+      icon: 'store',
       submenus: [
         { id: 0, title: 'Inventory items', route: '/inventory/invenetory-items' },
         { id: 1, title: 'Assortments', route: '/inventory/assortments' },
@@ -44,6 +47,7 @@ export class SidenavBarComponent {
     {
       id: 2,
       title: 'Suppliers',
+      icon: 'local_shipping',
       submenus: [
         { id: 0, title: 'Suppliers', route: '/suppliers/list' },
         { id: 1, title: 'Prices', route: '/suppliers/prices' },
@@ -53,6 +57,7 @@ export class SidenavBarComponent {
     {
       id: 3,
       title: 'Accounting',
+      icon: 'account_balance_wallet',
       submenus: [
         { id: 0, title: 'Invoices / Delivery Notes', route: '/accounting/invoices' },
         { id: 1, title: 'Scanned Invoices', route: '/accounting/scanned-invoices' },
@@ -63,6 +68,7 @@ export class SidenavBarComponent {
     {
       id: 4,
       title: 'Reports',
+      icon: 'assessment',
       submenus: [
         { id: 0, title: 'COGS and Gross Profits', route: '/reports/cogs-profit' },
         { id: 1, title: 'COGS Over Time', route: '/reports/cogs-overtime' },
@@ -83,6 +89,7 @@ export class SidenavBarComponent {
     {
       id: 5,
       title: 'Settings',
+      icon: 'settings',
       submenus: [
         { id: 0, title: 'Company', route: '/settings/company' },
         { id: 1, title: 'Manage Users', route: '/settings/users-management' },
