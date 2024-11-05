@@ -19,7 +19,7 @@
             </mat-panel-title>
           </mat-expansion-panel-header>
 
-          <mat-nav-list>
+          <mat-nav-list class="sub-menu">
             @for (submenu of menu.submenus; track $index) {
             <a mat-list-item [routerLink]="submenu.route">
               {{ submenu.title }}
