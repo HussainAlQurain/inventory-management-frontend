@@ -93,6 +93,7 @@ export function authInterceptor(req: HttpRequest<unknown>, next: HttpHandlerFn):
   const authToken = authService.getAuthToken();
 
   // Do not add the token to the login request
+  // This is not being handled correctly as currently im not using route
   if (req.url.includes('/login')) {
     console.log('Interceptor: Skipping token for login request');
     return next(req); // Skip adding token for login request
