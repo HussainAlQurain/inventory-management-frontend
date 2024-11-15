@@ -52,7 +52,6 @@ export class LoginComponent {
   onSubmit(event: Event) {
     event.preventDefault(); // Prevent the default form submission
   
-    alert('Login function called');
     this.authService.login(this.username.value!, this.password.value!)
       .subscribe(
         data => {
@@ -61,7 +60,6 @@ export class LoginComponent {
           }
         },
         error => {
-          alert('Error during login: ' + JSON.stringify(error));
           console.error('Login error:', error);
         }
       );
