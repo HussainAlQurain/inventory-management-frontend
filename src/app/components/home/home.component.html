@@ -1,5 +1,6 @@
 @if (authenticated()) {
     <!-- Show protected content if user is authenticated -->
+    <app-user></app-user>
     <app-content></app-content>
   } @else {
     <!-- Show login form if user is not authenticated -->

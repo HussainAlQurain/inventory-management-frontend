@@ -3,12 +3,13 @@ import { AuthService } from '../../services/auth.service';
 
 import { LoginComponent } from '../login/login.component';
 import { ContentComponent } from "../content/content.component";
+import { UserComponent } from "../../user/user.component";
 
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [LoginComponent, ContentComponent],
+  imports: [LoginComponent, ContentComponent, UserComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
 })
