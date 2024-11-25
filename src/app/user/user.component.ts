@@ -23,13 +23,10 @@ export class UserComponent implements OnInit{
 
   // Fetch username from AuthService (can be based on token or a user info API)
   fetchUsername(): void {
-    // If you have a stored username or want to parse it from a token
     const token = this.authService.getAuthToken();
     if (token) {
-      // Assuming the username is encoded in the token (JWT) or you can use an API to get it
       const payload = this.decodeToken(token);
       this.username = payload?.sub || 'Guest';  // 'Guest' if no username available
-      console.log(payload);
     } else {
       this.username = 'Guest';
     }
