@@ -1,0 +1,18 @@
+<!-- company-selector.component.html -->
+<h2 mat-dialog-title>Select a Company</h2>
+<div mat-dialog-content>
+  <mat-form-field appearance="fill" class="full-width">
+    <mat-label>Company</mat-label>
+    <mat-select [(value)]="selectedCompanyId">
+      <mat-option *ngFor="let company of companies" [value]="company.id">
+        {{ company.name }}
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+</div>
+<div mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Cancel</button>
+  <button mat-raised-button color="primary" [disabled]="!selectedCompanyId" (click)="onConfirm()">
+    OK
+  </button>
+</div>

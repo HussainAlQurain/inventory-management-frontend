@@ -3,6 +3,9 @@ import { inject, Injectable } from '@angular/core';
 import { environment } from '../../environments/environment.development';
 import { BehaviorSubject, catchError, map, Observable, tap, throwError } from 'rxjs';
 import { Router } from '@angular/router';
+import * as jwt_decode from 'jwt-decode';
+import { CompaniesService } from './companies.service';
+
 
 @Injectable({
   providedIn: 'root'
@@ -13,7 +16,7 @@ export class AuthService {
   private authenticatedSubject = new BehaviorSubject<boolean>(false);
   public authenticated$ = this.authenticatedSubject.asObservable();
 
-  constructor(private http: HttpClient, private router: Router) {
+  constructor(private http: HttpClient, private router: Router, private companiesService: CompaniesService  ) {
     // Check if the token exists in localStorage when the service is initialized
     const token = this.getAuthToken();
     if (token) {
@@ -33,6 +36,8 @@ export class AuthService {
             // Save the token immediately
             this.setAuthToken(response);
             this.authenticatedSubject.next(true);
+
+            this.setDefaultCompany(response);
             console.log('Login successful, token saved.');
             return true;
           } else {
@@ -73,6 +78,7 @@ export class AuthService {
   private clearAuthToken(): void {
     console.log('Clearing auth token');
     localStorage.removeItem(this.tokenKey);
+    localStorage.removeItem("selectedCompanyId");
   }
 
   // Check if the user is authenticated
@@ -85,6 +91,35 @@ export class AuthService {
     console.log('Token expired. Logging out...');
     this.logout();
   }
+
+    // Method to get the user ID from the JWT token
+    getUserId(): number | null {
+      const token = this.getAuthToken();
+      if (token) {
+        try {
+          const decoded: any = jwt_decode.jwtDecode(token);
+          return decoded.userId || null;
+        } catch (error) {
+          console.error('Error decoding token:', error);
+          return null;
+        }
+      }
+      return null;
+    }
+
+    private setDefaultCompany(token: string): void {
+      try {
+        const decoded: any = jwt_decode.jwtDecode(token);
+        const companyIds: number[] = decoded.companyIds || [];
+        if (companyIds.length > 0) {
+          // Set the first company as the default
+          this.companiesService.setSelectedCompanyId(companyIds[0]);
+        }
+      } catch (error) {
+        console.error('Error decoding token:', error);
+      }
+    }
+
 }
 
 

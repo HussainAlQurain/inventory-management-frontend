@@ -5,6 +5,10 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../services/auth.service';
 
+import { ModalService } from '../services/modal.service';
+import { CompaniesService } from '../services/companies.service';
+import { CompanySelectorComponent } from '../components/company-selector/company-selector.component';
+
 @Component({
   selector: 'app-user',
   standalone: true,
@@ -14,7 +18,12 @@ import { AuthService } from '../services/auth.service';
 })
 export class UserComponent implements OnInit{
   username: string | null = null;
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private modalService: ModalService,
+    private companiesService: CompaniesService
+  ) {}
+  
 
   ngOnInit(): void {
     // Fetch the username from AuthService (you can implement this based on your token or API)
@@ -44,4 +53,19 @@ export class UserComponent implements OnInit{
     this.authService.logout();
   }
 
+
+  switchCompany(): void {
+    this.modalService
+      .openModal(CompanySelectorComponent, { disableClose: false })
+      .subscribe((selectedCompanyId) => {
+        if (selectedCompanyId) {
+          this.companiesService.setSelectedCompanyId(selectedCompanyId);
+          // Optionally, refresh data or navigate as needed
+        } else {
+          console.warn('No company selected.');
+        }
+      });
+  }
+
+  
 }
