@@ -20,7 +20,7 @@ export class ContentComponent implements OnInit {
     this.authService.authenticated$.subscribe(isAuthenticated => {
       console.log('Authentication status:', isAuthenticated);
       if (isAuthenticated) {
-        this.loadCompanies();
+        // this.loadCompanies();
       } else {
         console.warn('User not authenticated. Redirecting to login.');
       }
@@ -28,10 +28,10 @@ export class ContentComponent implements OnInit {
   }
   
 
-  loadCompanies(): void {
-    this.companyService.getCompanies().subscribe(_data => {
-      this.data = _data;
-    });
-  }
+  // loadCompanies(): void {
+  //   this.companyService.getCompaniesByUserId(1).subscribe(_data => {
+  //     this.data = _data;
+  //   });
+  // }
 
 }
