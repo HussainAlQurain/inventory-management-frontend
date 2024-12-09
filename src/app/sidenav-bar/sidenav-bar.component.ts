@@ -41,7 +41,7 @@ export class SidenavBarComponent {
         { id: 6, title: 'Sales summary', route: '/inventory/sales-summary' },
         { id: 7, title: 'Actual vs. Theoretical', route: '/inventory/actual-vs-theoretical' },
         { id: 8, title: 'Menu Profitability', route: '/inventory/menu-profitability' },
-        { id: 9, title: 'Menu Profitability', route: '/inventory/count-values' },
+        { id: 9, title: 'Inventory count values', route: '/inventory/count-values' },
       ],
     },
     {
