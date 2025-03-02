@@ -3,11 +3,12 @@ import { Company } from '../../models/company';
 import { CompaniesService } from '../../services/companies.service';
 import { AuthService } from '../../services/auth.service';
 import { SidenavBarComponent } from "../../sidenav-bar/sidenav-bar.component";
+import { RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-content',
   standalone: true,
-  imports: [SidenavBarComponent],
+  imports: [SidenavBarComponent, RouterOutlet],
   templateUrl: './content.component.html',
   styleUrl: './content.component.scss'
 })

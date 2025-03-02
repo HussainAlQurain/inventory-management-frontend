@@ -1,0 +1,112 @@
+<div class="inventory-container">
+    <h1 class="page-title">Inventory Items</h1>
+    
+    <div class="table-container">
+      @if (isLoading) {
+        <div class="loading-container">
+          <mat-spinner diameter="50"></mat-spinner>
+        </div>
+      } @else if (error) {
+        <div class="error-container">
+          <p class="error-message">{{ error }}</p>
+          <button mat-raised-button color="primary" (click)="loadInventoryItems()">Retry</button>
+        </div>
+      } @else {
+        <table mat-table [dataSource]="dataSource" matSort class="inventory-table">
+          
+          <!-- Name Column -->
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header> Name </th>
+            <td mat-cell *matCellDef="let item"> {{ item.name }} </td>
+          </ng-container>
+  
+          <!-- Supplier Column -->
+          <ng-container matColumnDef="supplier">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header> Supplier </th>
+            <td mat-cell *matCellDef="let item"> {{ getMainSupplier(item) }} </td>
+          </ng-container>
+  
+          <!-- Buyer Column -->
+          <ng-container matColumnDef="buyer">
+            <th mat-header-cell *matHeaderCellDef> Buyer </th>
+            <td mat-cell *matCellDef="let item"> Company </td>
+          </ng-container>
+  
+          <!-- Category Column -->
+          <ng-container matColumnDef="category">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header> Category </th>
+            <td mat-cell *matCellDef="let item"> {{ item.category?.name || 'N/A' }} </td>
+          </ng-container>
+  
+          <!-- Price per UOM Column -->
+          <ng-container matColumnDef="pricePerUOM">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header> Price/UOM </th>
+            <td mat-cell *matCellDef="let item"> {{ item.currentPrice | currency }} </td>
+          </ng-container>
+  
+          <!-- UOM Column -->
+          <ng-container matColumnDef="uom">
+            <th mat-header-cell *matHeaderCellDef> UOM </th>
+            <td mat-cell *matCellDef="let item"> {{ item.inventoryUom?.abbreviation || 'N/A' }} </td>
+          </ng-container>
+  
+          <!-- Min On Hand Column -->
+          <ng-container matColumnDef="minOnHand">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header> Min On Hand </th>
+            <td mat-cell *matCellDef="let item"> {{ item.minOnHand || 'N/A' }} </td>
+          </ng-container>
+  
+          <!-- PAR Column -->
+          <ng-container matColumnDef="par">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header> PAR </th>
+            <td mat-cell *matCellDef="let item"> {{ item.par || 'N/A' }} </td>
+          </ng-container>
+  
+          <!-- Last Count Column -->
+          <ng-container matColumnDef="lastCount">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header> Last Count </th>
+            <td mat-cell *matCellDef="let item"> 
+              {{ item.lastCount ? (item.lastCount | date:'short') : 'N/A' }} 
+            </td>
+          </ng-container>
+  
+          <!-- On Hand Column -->
+          <ng-container matColumnDef="onHand">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header> On Hand </th>
+            <td mat-cell *matCellDef="let item"> {{ item.onHand || 0 }} </td>
+          </ng-container>
+  
+          <!-- On Hand Value Column -->
+          <ng-container matColumnDef="onHandValue">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header> On Hand Value </th>
+            <td mat-cell *matCellDef="let item"> {{ (item.onHandValue || 0) | currency }} </td>
+          </ng-container>
+  
+          <!-- Ordering Column -->
+          <ng-container matColumnDef="ordering">
+            <th mat-header-cell *matHeaderCellDef> Ordering </th>
+            <td mat-cell *matCellDef="let item">
+              @if (getOrderingStatus(item)) {
+                <mat-chip-option selected color="primary">Enabled</mat-chip-option>
+              } @else {
+                <mat-chip-option disabled>Disabled</mat-chip-option>
+              }
+            </td>
+          </ng-container>
+  
+          <!-- Tax Rate Column -->
+          <ng-container matColumnDef="taxRate">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header> Tax Rate </th>
+            <td mat-cell *matCellDef="let item"> {{ getTaxRate(item) }}% </td>
+          </ng-container>
+  
+          <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+          <tr mat-row *matRowDef="let item; columns: displayedColumns" 
+              (click)="openItemDetails(item)"
+              class="inventory-row"></tr>
+        </table>
+  
+        <mat-paginator [pageSizeOptions]="[10, 25, 50, 100]" showFirstLastButtons></mat-paginator>
+      }
+    </div>
+  </div>
