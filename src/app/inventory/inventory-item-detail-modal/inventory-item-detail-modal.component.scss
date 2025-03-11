@@ -1,81 +1,228 @@
 .modal-container {
-    padding: 0;
-    max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 70vw;
+  position: fixed;
+  top: 0;
+  right: 0;
+  background-color: white;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+  animation: slideIn 0.3s ease-out;
+  padding: 0;
+  max-width: 100%;
+  overflow: hidden;
+  
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    background-color: #f5f5f5;
     
-    .modal-header {
+    h2 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 500;
+    }
+  }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+mat-dialog-content {
+  flex: 1;
+  overflow: auto;
+  padding: 24px !important;
+  max-height: calc(100vh - 130px);
+}
+
+.details-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding: 16px 0;
+  
+  .detail-section {
+    flex: 1;
+    min-width: 400px;
+    
+    .detail-row {
       display: flex;
-      justify-content: space-between;
+      margin-bottom: 16px;
       align-items: center;
-      padding: 16px 24px 8px;
       
-      h2 {
-        margin: 0;
-        font-size: 20px;
+      .detail-label {
         font-weight: 500;
+        min-width: 150px;
+        color: rgba(0, 0, 0, 0.7);
+      }
+      
+      .detail-value {
+        flex: 1;
       }
     }
   }
+}
+
+.editable-section mat-form-field {
+  width: 250px;
+  margin-right: 8px;
+}
+
+.full-width-field {
+  width: 100% !important;
+}
+
+.purchase-options-container {
+  padding: 16px;
   
-  mat-dialog-content {
-    padding: 16px 0 0;
-    max-height: 70vh;
+  .purchase-options-table {
+    width: 100%;
+    margin-bottom: 16px;
+    
+    .main-option {
+      font-weight: 500;
+      background-color: rgba(33, 150, 243, 0.05);
+    }
+    
+    th {
+      background-color: #f5f5f5;
+      font-weight: 500;
+      color: rgba(0, 0, 0, 0.87);
+      padding: 12px 8px;
+    }
+
+    td {
+      padding: 8px;
+      vertical-align: middle;
+    }
+
+    .mat-column-actions {
+      width: 120px;
+      text-align: right;
+    }
   }
   
-  .details-container {
+  .add-option-container {
+    margin-top: 24px;
+    display: flex;
+    justify-content: center;
+  }
+  
+  .no-data-message {
+    text-align: center;
+    padding: 32px;
+    color: rgba(0, 0, 0, 0.6);
+  }
+}
+
+.editing-row {
+  background-color: rgba(63, 81, 181, 0.05);
+}
+
+mat-dialog-actions {
+  padding: 16px 24px;
+  border-top: 1px solid #e0e0e0;
+  
+  button {
+    margin-left: 8px;
+  }
+}
+
+// Price history modal styles
+.price-history-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.price-history-container {
+  background-color: white;
+  width: 80%;
+  max-width: 800px;
+  height: 70%;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.price-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.price-history-content {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.price-chart-placeholder {
+  height: 300px;
+  border: 1px dashed #ccc;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #666;
+}
+
+// On Hand tab styles
+.on-hand-table {
+  width: 100%;
+  
+  th {
+    background-color: #f5f5f5;
+    font-weight: 500;
+    padding: 12px;
+  }
+  
+  .location-total {
+    font-weight: 500;
+    background-color: #f9f9f9;
+  }
+}
+
+// Form field styles
+.po-editing-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  
+  .form-row {
     display: flex;
     flex-wrap: wrap;
-    padding: 16px;
-    gap: 24px;
+    gap: 16px;
+    width: 100%;
     
-    .detail-section {
+    mat-form-field {
       flex: 1;
-      min-width: 300px;
-      
-      .detail-row {
-        display: flex;
-        margin-bottom: 12px;
-        
-        .detail-label {
-          min-width: 120px;
-          font-weight: 500;
-          color: rgba(0, 0, 0, 0.6);
-        }
-        
-        .detail-value {
-          flex: 1;
-        }
-      }
+      min-width: 200px;
     }
   }
+}
+
+// Supplier selection styles
+.supplier-selection {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   
-  .purchase-options-container {
-    padding: 16px;
-    
-    .purchase-options-table {
-      width: 100%;
-      
-      .main-option {
-        background-color: rgba(33, 150, 243, 0.05);
-      }
-      
-      th {
-        background-color: #f5f5f5;
-        font-weight: 500;
-        color: rgba(0, 0, 0, 0.87);
-      }
-    }
-    
-    .no-data-message {
-      text-align: center;
-      padding: 40px;
-      color: rgba(0, 0, 0, 0.6);
-    }
+  mat-form-field {
+    flex: 1;
   }
-  
-  mat-dialog-actions {
-    padding: 16px 24px;
-    
-    button {
-      margin-left: 8px;
-    }
-  }
+}

@@ -1,23 +1,32 @@
-import { Supplier } from "./Supplier";
-import { UnitOfMeasure } from "./UnitOfMeasure";
+import { Supplier } from './Supplier';
+import { UnitOfMeasure } from './UnitOfMeasure';
 
 export interface PurchaseOption {
-    id: number;
-    price: number;
-    taxRate: number;
-    innerPackQuantity: number;
-    packsPerCase: number;
-    minOrderQuantity: number;
+    id?: number;
+    inventoryItemId?: number;
+    supplier?: Supplier;
+    supplierId?: number;
+    price?: number;
+    taxRate?: number;
+    orderingUom?: UnitOfMeasure;
+    orderingUomId?: number;
+    innerPackQuantity?: number;
+    packsPerCase?: number;
+    minOrderQuantity?: number;
     mainPurchaseOption: boolean;
     orderingEnabled: boolean;
-    supplierProductCode: string;
-    nickname: string;
-    scanBarcode: string;
-    supplierId: number | null;
-    supplierName: string | null;
-    orderingUom: UnitOfMeasure;
-    supplier: Supplier;
-    orderingUomId: number | null;
-    orderingUomName: string | null;
-    orderingUomAbbreviation: string | null;
-  }
+    supplierProductCode?: string;
+    nickname?: string;
+    scanBarcode?: string;
+    productName?: string;
+    productCode?: string;
+    priceChanges?: PriceChange[];
+}
+
+export interface PriceChange {
+    id: number;
+    purchaseOptionId: number;
+    oldPrice: number;
+    newPrice: number;
+    changeDate: Date;
+}
