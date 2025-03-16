@@ -287,6 +287,7 @@ export class InventoryItemDetailModalComponent implements OnInit {
     // build partial update fields
     // e.g. if item.category is chosen, use item.category.id for categoryId
     const partialDto: any = {
+      name: this.item.name,
       sku: this.item.sku,
       productCode: this.item.productCode,
       description: this.item.description,
@@ -301,6 +302,7 @@ export class InventoryItemDetailModalComponent implements OnInit {
     this.inventoryItemsService.partialUpdateItem(this.item.id, partialDto, companyId).subscribe({
       next: updatedItem => {
         // Merge changes into local item
+        this.item.name = updatedItem.name;
         this.item.sku = updatedItem.sku;
         this.item.productCode = updatedItem.productCode;
         this.item.description = updatedItem.description;
