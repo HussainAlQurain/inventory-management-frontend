@@ -19,6 +19,9 @@ import { CategoriesService } from '../../services/categories.service';
 import { PurchaseOptionService } from '../../services/purchase-option.service';
 import { InventoryItemLocationService } from '../../services/inventory-item-location.service';
 
+// Import the service for partial update of the item
+import { InventoryItemsService } from '../../services/inventory-items-service.service';
+
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -28,8 +31,9 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTableModule } from '@angular/material/table';
 import { CommonModule } from '@angular/common'; 
-import {MatDividerModule} from '@angular/material/divider';
-import {MatRadioModule} from '@angular/material/radio';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatRadioModule } from '@angular/material/radio';
+import { CompaniesService } from '../../services/companies.service';
 
 interface LocationInventory {
   location: Location;
@@ -63,27 +67,31 @@ interface LocationInventory {
   ],
 })
 export class InventoryItemDetailModalComponent implements OnInit {
-  // Type the FormControl to a non-nullable string
+  /** For category searching & creation */
   categoryCtrl = new FormControl<string>('', { nonNullable: true });
   filteredCategories: Category[] = [];
   canCreateNewCategory = false;
 
+  /** Display table of on-hand by location. */
   locationInventory: LocationInventory[] = [];
 
   constructor(
     public dialogRef: MatDialogRef<InventoryItemDetailModalComponent>,
     @Inject(MAT_DIALOG_DATA) public item: InventoryItem,
+
     private categoriesService: CategoriesService,
     private purchaseOptionService: PurchaseOptionService,
     private inventoryItemLocationService: InventoryItemLocationService,
     private inventoryService: InventoryService,
+    private inventoryItemsService: InventoryItemsService, // service for partial update item
     private supplierService: SupplierService,
     private uomService: UomService,
-    private locationService: LocationService
+    private locationService: LocationService,
+    private companiesService: CompaniesService
   ) {}
 
   ngOnInit(): void {
-    // Initialize category search control
+    // If item.category is set, reflect in the form control
     if (this.item.category) {
       this.categoryCtrl.setValue(this.item.category.name);
     }
@@ -95,14 +103,13 @@ export class InventoryItemDetailModalComponent implements OnInit {
       switchMap((term: string) => this.onCategorySearchChange(term))
     ).subscribe();
 
-    // Load location inventory info
+    // Load location-based on-hand info
     this.loadLocationInventory();
   }
 
+  /** For Category searching */
   onCategorySearchChange(term: string): Observable<void> {
-    if (!term) {
-      term = '';
-    }
+    if (!term) term = '';
     return this.categoriesService.getAllCategories(term).pipe(
       switchMap((cats: Category[]) => {
         this.filteredCategories = cats;
@@ -113,14 +120,15 @@ export class InventoryItemDetailModalComponent implements OnInit {
     );
   }
 
+  /** Called when user selects a category from mat-autocomplete */
   onCategorySelected(name: string) {
-    // find the Category from filteredCategories
     const cat = this.filteredCategories.find(c => c.name === name);
     if (cat) {
       this.item.category = cat;
     }
   }
 
+  /** Create a new Category if user typed something that isn't in the list */
   createNewCategory(name: string) {
     const newCat: Partial<Category> = { name };
     this.categoriesService.createCategory(newCat).subscribe(created => {
@@ -131,6 +139,7 @@ export class InventoryItemDetailModalComponent implements OnInit {
     });
   }
 
+  /** Bulk update bridging for minOnHand / par across all stores */
   updateAllStores() {
     if (!this.item.id) return;
     const payload = {
@@ -144,6 +153,7 @@ export class InventoryItemDetailModalComponent implements OnInit {
       });
   }
 
+  /** Load table of on-hand by location (for the 3rd tab) */
   loadLocationInventory() {
     const itemId = this.item.id || 0;
     this.inventoryService.getInventoryByItemAndLocation(itemId).subscribe({
@@ -159,7 +169,16 @@ export class InventoryItemDetailModalComponent implements OnInit {
     });
   }
 
+  // -------------------------------
+  // PurchaseOption immediate actions
+  // -------------------------------
+  
+  /** Create a new PurchaseOption in memory, then call the backend to persist it. */
   addNewPurchaseOption() {
+    if (!this.item.id) {
+      alert('Cannot add purchase options until item is saved or has an ID.');
+      return;
+    }
     const newOption: PurchaseOption = {
       inventoryItemId: this.item.id,
       price: 0,
@@ -170,42 +189,69 @@ export class InventoryItemDetailModalComponent implements OnInit {
       packsPerCase: 1,
       minOrderQuantity: 1
     };
-    if (!this.item.purchaseOptions) {
-      this.item.purchaseOptions = [];
-    }
-    this.item.purchaseOptions.push(newOption);
+    // Call backend to create
+    this.purchaseOptionService.createPurchaseOption(newOption, this.item.id).subscribe({
+      next: created => {
+        // push to local array
+        if (!this.item.purchaseOptions) {
+          this.item.purchaseOptions = [];
+        }
+        this.item.purchaseOptions.push(created);
+      },
+      error: err => console.error(err)
+    });
   }
 
+  /** Remove purchase option from DB and local array */
   deletePurchaseOption(option: PurchaseOption) {
-    if (!this.item.purchaseOptions) return;
-    const idx = this.item.purchaseOptions.indexOf(option);
-    if (idx !== -1) {
-      this.item.purchaseOptions.splice(idx, 1);
+    if (!option.id) {
+      // It's never persisted, just remove from array
+      const idx = this.item.purchaseOptions?.indexOf(option);
+      if (idx !== undefined && idx >= 0) {
+        this.item.purchaseOptions?.splice(idx, 1);
+      }
+      return;
     }
-    // optionally call a backend endpoint to delete
-    // e.g. purchaseOptionService.deleteOption(option.id!)...
+    this.purchaseOptionService.deleteOption(option.id).subscribe({
+      next: () => {
+        const idx = this.item.purchaseOptions?.indexOf(option);
+        if (idx !== undefined && idx >= 0) {
+          this.item.purchaseOptions?.splice(idx, 1);
+        }
+      },
+      error: err => console.error(err)
+    });
   }
 
+  /** Called when user toggles 'orderingEnabled' checkbox */
   onOrderingToggled(option: PurchaseOption) {
     if (!option.id) return;
     this.purchaseOptionService.partialUpdateEnabled(option.id, option.orderingEnabled)
       .subscribe({
-        next: updated => console.log('Updated orderingEnabled to ', updated.orderingEnabled),
+        next: updated => {
+          // update local
+          option.orderingEnabled = updated.orderingEnabled;
+        },
         error: (err: any) => console.error(err)
       });
   }
 
+  /** Called when user sets an option as main purchase option */
   onSetAsMain(option: PurchaseOption) {
     if (!option.id) return;
-    if (!this.item.purchaseOptions) return;
-    this.item.purchaseOptions.forEach(po => po.mainPurchaseOption = (po === option));
-    this.purchaseOptionService.setAsMainOption(option.id)
-      .subscribe({
-        next: updated => console.log('Set as main', updated),
-        error: (err: any) => console.error(err)
-      });
+    // Mark local array
+    if (this.item.purchaseOptions) {
+      this.item.purchaseOptions.forEach(po => po.mainPurchaseOption = (po === option));
+    }
+    this.purchaseOptionService.setAsMainOption(option.id).subscribe({
+      next: updated => {
+        // updated => mainPurchaseOption = true
+      },
+      error: err => console.error(err)
+    });
   }
 
+  /** Called when user clicks the 'edit price' icon to change the price. */
   editPrice(option: PurchaseOption) {
     const newPrice = prompt('Enter new price:', option.price?.toString() || '0');
     if (newPrice === null) return; // user cancelled
@@ -225,14 +271,52 @@ export class InventoryItemDetailModalComponent implements OnInit {
       });
   }
 
-  close() {
-    this.dialogRef.close();
+  // -------------------------------
+  // Save item changes
+  // -------------------------------
+  
+  /** On final “Save,” we do a partial update of the item itself (sku, productCode, desc, category, etc.) */
+  saveChanges() {
+    if (!this.item.id) {
+      // If the item is new, you'd do a "create" flow. For demonstration,
+      // we'll do partialUpdate if we have an ID, or skip if there's no ID.
+      alert('Item has no ID. Typically you would do a create flow here.');
+      return this.close();
+    }
+
+    // build partial update fields
+    // e.g. if item.category is chosen, use item.category.id for categoryId
+    const partialDto: any = {
+      sku: this.item.sku,
+      productCode: this.item.productCode,
+      description: this.item.description,
+    };
+    if (this.item.category?.id != null) {
+      partialDto.categoryId = this.item.category.id;
+    }
+    // etc., if you have name or other fields
+
+    const companyId = this.companiesService.getSelectedCompanyId() || -1;
+
+    this.inventoryItemsService.partialUpdateItem(this.item.id, partialDto, companyId).subscribe({
+      next: updatedItem => {
+        // Merge changes into local item
+        this.item.sku = updatedItem.sku;
+        this.item.productCode = updatedItem.productCode;
+        this.item.description = updatedItem.description;
+        this.item.category = updatedItem.category;
+        // Possibly merge other fields from updatedItem
+        alert('Item updated!');
+        this.dialogRef.close(this.item);
+      },
+      error: (err: any) => {
+        console.error(err);
+        alert('Failed to save item changes');
+      }
+    });
   }
 
-  saveChanges() {
-    // If needed, call an update item method in your service
-    // e.g. inventoryItemsService.updateItem(this.item)...
-
-    this.dialogRef.close(this.item);
+  close() {
+    this.dialogRef.close();
   }
 }

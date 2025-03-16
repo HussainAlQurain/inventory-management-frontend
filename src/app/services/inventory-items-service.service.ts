@@ -38,4 +38,12 @@ export class InventoryItemsService {
       })
     );
   }
+
+  partialUpdateItem(itemId: number, partialDto: any, companyId: number): Observable<InventoryItem> {
+    // or get companyId from this.companiesService if you prefer
+    return this.http.patch<InventoryItem>(
+      `${this.baseUrl}/${itemId}/company/${companyId}`,
+      partialDto
+    );
+  }
 }

@@ -42,5 +42,34 @@ export class PurchaseOptionService {
     );
   }
 
+  createPurchaseOption(purchaseOption: PurchaseOption, itemId: number): Observable<PurchaseOption> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    // The shape of your create endpoint is:
+    // POST /purchase-options/company/{companyId}/inventory-items/{itemId}
+    // with a request body => PurchaseOptionCreateDTO
+    const createDto = {
+      price: purchaseOption.price ?? 0,
+      taxRate: purchaseOption.taxRate ?? 0,
+      innerPackQuantity: purchaseOption.innerPackQuantity ?? 1,
+      packsPerCase: purchaseOption.packsPerCase ?? 1,
+      minOrderQuantity: purchaseOption.minOrderQuantity ?? 1,
+      mainPurchaseOption: purchaseOption.mainPurchaseOption ?? false,
+      orderingEnabled: purchaseOption.orderingEnabled ?? true,
+      supplierProductCode: purchaseOption.supplierProductCode,
+      nickname: purchaseOption.nickname,
+      scanBarcode: purchaseOption.scanBarcode,
+      // etc.
+    };
+    return this.http.post<PurchaseOption>(
+      `${this.baseUrl}/company/${companyId}/inventory-items/${itemId}`,
+      createDto
+    );
+  }
+  
+  deleteOption(poId: number): Observable<void> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    return this.http.delete<void>(`${this.baseUrl}/${poId}/company/${companyId}`);
+  }
+
   // etc. for partial updates
 }
