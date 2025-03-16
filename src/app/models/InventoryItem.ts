@@ -15,6 +15,12 @@ export interface InventoryItem {
   category?: Category;
   inventoryUom?: UnitOfMeasure;
   purchaseOptions?: PurchaseOption[];
+  
+  // Add these properties to match what's used in template
+  minOnHand?: number;
+  par?: number;
+  onHand?: number;
+  onHandValue?: number;
 }
 
 export interface InventoryItemLocation {

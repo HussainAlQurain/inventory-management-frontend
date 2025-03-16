@@ -16,7 +16,7 @@
           <div class="detail-section">
             <div class="detail-row">
               <span class="detail-label">Category:</span>
-              <span class="detail-value">{{item.category.name || 'N/A'}}</span>
+              <span class="detail-value">{{item.category?.name || 'N/A'}}</span>
             </div>
             <div class="detail-row">
               <span class="detail-label">SKU:</span>
@@ -36,9 +36,9 @@
             <div class="detail-row editable">
               <span class="detail-label">Inventory UOM:</span>
               <mat-form-field appearance="outline">
-                <input matInput [(ngModel)]="item.inventoryUom.name" placeholder="UOM">
+                <input matInput [(ngModel)]="item.name" placeholder="UOM">
               </mat-form-field>
-              <span>({{item.inventoryUom.abbreviation}})</span>
+              <span>({{item.inventoryUom?.abbreviation}})</span>
             </div>
             <div class="detail-row editable">
               <span class="detail-label">Min On Hand:</span>
@@ -67,7 +67,7 @@
       <!-- Purchase Options Tab -->
       <mat-tab label="Purchase Options">
         <div class="purchase-options-container">
-          @if (item.purchaseOptions.length) {
+          @if (item.purchaseOptions && item.purchaseOptions.length) {
             <table mat-table [dataSource]="item.purchaseOptions" class="purchase-options-table">
               
               <!-- Product Name Column -->

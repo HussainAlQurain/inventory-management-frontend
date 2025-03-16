@@ -117,6 +117,11 @@ export class InventoryItemDetailModalComponent implements OnInit {
     // Create a deep copy of the item to enable cancellation of changes
     this.originalItem = JSON.parse(JSON.stringify(item));
     
+    // Ensure purchaseOptions is initialized to prevent undefined errors
+    if (!this.item.purchaseOptions) {
+      this.item.purchaseOptions = [];
+    }
+    
     // Initialize filtered suppliers observable
     this.filteredSuppliers$ = this.supplierSearch.pipe(
       debounceTime(300),
@@ -155,6 +160,14 @@ export class InventoryItemDetailModalComponent implements OnInit {
     this.inventoryService.getInventoryByItemAndLocation(this.item.id || 0).subscribe(inventory => {
       this.locationInventory = inventory;
       this.calculateTotals();
+      
+      // Assign location-specific values to the inventory item for the UI
+      if (this.locationInventory.length > 0) {
+        const mainLocation = this.locationInventory[0]; // Use first location or preferred location
+        this.item.minOnHand = mainLocation.quantity;
+        this.item.onHand = this.totalOnHand;
+        this.item.onHandValue = this.totalValue;
+      }
     });
     
     // For demonstration, create sample data
