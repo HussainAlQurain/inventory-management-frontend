@@ -1,6 +1,6 @@
 <div class="modal-container">
   <div class="modal-header">
-    <h2 mat-dialog-title>{{item.name}}</h2>
+    <h2 mat-dialog-title>{{ item.name }}</h2>
     <button mat-icon-button (click)="close()" aria-label="Close dialog">
       <mat-icon>close</mat-icon>
     </button>
@@ -10,170 +10,172 @@
 
   <mat-dialog-content class="mat-typography">
     <mat-tab-group>
-      <!-- Item Details Tab -->
+
+      <!-- 1) Item Details Tab -->
       <mat-tab label="Item Details">
         <div class="details-container">
-          <div class="detail-section">
-            <div class="detail-row">
-              <span class="detail-label">Category:</span>
-              <span class="detail-value">{{item.category?.name || 'N/A'}}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">SKU:</span>
-              <span class="detail-value">{{item.sku}}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">Product Code:</span>
-              <span class="detail-value">{{item.productCode}}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">Description:</span>
-              <span class="detail-value">{{item.description || 'N/A'}}</span>
-            </div>
+          <!-- CATEGORY (dropdown + search) -->
+          <div class="detail-row">
+            <span class="detail-label">Category:</span>
+            <mat-form-field appearance="outline" style="width:300px;">
+              <mat-label>Search / Create Category</mat-label>
+              <input
+                type="text"
+                matInput
+                [formControl]="categoryCtrl"
+                [matAutocomplete]="autoCat"
+                placeholder="Type to search categories"
+              >
+              <mat-autocomplete #autoCat="matAutocomplete" (optionSelected)="onCategorySelected($event.option.value)">
+                <mat-option *ngFor="let cat of filteredCategories" [value]="cat.name">
+                  {{ cat.name }}
+                </mat-option>
+                <!-- Option to create new if none found -->
+                <mat-option *ngIf="canCreateNewCategory" (click)="createNewCategory(categoryCtrl.value)">
+                  Create "<b>{{ categoryCtrl.value }}</b>" as new category
+                </mat-option>
+              </mat-autocomplete>
+            </mat-form-field>
           </div>
 
-          <div class="detail-section editable-section">
-            <div class="detail-row editable">
-              <span class="detail-label">Inventory UOM:</span>
-              <mat-form-field appearance="outline">
-                <input matInput [(ngModel)]="item.name" placeholder="UOM">
-              </mat-form-field>
-              <span>({{item.inventoryUom?.abbreviation}})</span>
-            </div>
-            <div class="detail-row editable">
-              <span class="detail-label">Min On Hand:</span>
-              <mat-form-field appearance="outline">
-                <input matInput [(ngModel)]="item.minOnHand" type="number" placeholder="Min On Hand">
-              </mat-form-field>
-            </div>
-            <div class="detail-row editable">
-              <span class="detail-label">PAR Level:</span>
-              <mat-form-field appearance="outline">
-                <input matInput [(ngModel)]="item.par" type="number" placeholder="PAR Level">
-              </mat-form-field>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">On Hand:</span>
-              <span class="detail-value">{{item.onHand || '0'}}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">On Hand Value:</span>
-              <span class="detail-value">{{(item.onHandValue || 0) | currency}}</span>
-            </div>
+          <div class="detail-row">
+            <span class="detail-label">SKU:</span>
+            <mat-form-field appearance="outline" style="width:200px;">
+              <input matInput [(ngModel)]="item.sku" placeholder="SKU">
+            </mat-form-field>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Product Code:</span>
+            <mat-form-field appearance="outline" style="width:200px;">
+              <input matInput [(ngModel)]="item.productCode" placeholder="Product Code">
+            </mat-form-field>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Description:</span>
+            <mat-form-field appearance="outline" style="width:400px;">
+              <textarea matInput rows="2" [(ngModel)]="item.description" placeholder="Description"></textarea>
+            </mat-form-field>
+          </div>
+
+          <!-- Min / Par + OnHand snapshot -->
+          <div class="detail-row">
+            <span class="detail-label">Min On Hand:</span>
+            <mat-form-field appearance="outline" style="width:150px;">
+              <input matInput type="number" [(ngModel)]="item.minOnHand" placeholder="Min On Hand">
+            </mat-form-field>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Par Level:</span>
+            <mat-form-field appearance="outline" style="width:150px;">
+              <input matInput type="number" [(ngModel)]="item.par" placeholder="Par Level">
+            </mat-form-field>
+          </div>
+          <button mat-raised-button color="accent" (click)="updateAllStores()">
+            Update All Stores
+          </button>
+
+          <div class="detail-row">
+            <span class="detail-label">On Hand (total):</span>
+            <span class="detail-value">{{ item.onHand || 0 }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">On Hand Value:</span>
+            <span class="detail-value">{{ (item.onHandValue || 0) | currency }}</span>
           </div>
         </div>
       </mat-tab>
 
-      <!-- Purchase Options Tab -->
+      <!-- 2) Purchase Options Tab -->
       <mat-tab label="Purchase Options">
-        <div class="purchase-options-container">
-          @if (item.purchaseOptions && item.purchaseOptions.length) {
-            <table mat-table [dataSource]="item.purchaseOptions" class="purchase-options-table">
-              
-              <!-- Product Name Column -->
-              <ng-container matColumnDef="productName">
-                <th mat-header-cell *matHeaderCellDef>Product Name</th>
-                <td mat-cell *matCellDef="let option">{{item.name}}</td>
-              </ng-container>
+        <div class="purchase-options-container" style="margin-top:10px;">
+          <ng-container *ngIf="item.purchaseOptions?.length; else noPO">
+            <table mat-table [dataSource]="item.purchaseOptions || []" class="purchase-options-table">
 
-              <!-- Supplier Column -->
+              <!-- Supplier, Price, etc. columns... -->
               <ng-container matColumnDef="supplier">
                 <th mat-header-cell *matHeaderCellDef>Supplier</th>
-                <td mat-cell *matCellDef="let option">{{option.supplier?.name || 'N/A'}}</td>
-              </ng-container>
-
-              <!-- Product Code Column -->
-              <ng-container matColumnDef="productCode">
-                <th mat-header-cell *matHeaderCellDef>Product Code</th>
-                <td mat-cell *matCellDef="let option">{{option.supplierProductCode || 'N/A'}}</td>
-              </ng-container>
-
-              <!-- Unit of Ordering Column -->
-              <ng-container matColumnDef="orderingUnit">
-                <th mat-header-cell *matHeaderCellDef>Unit of Ordering</th>
                 <td mat-cell *matCellDef="let option">
-                  {{option.orderingUom?.name || option.orderingUomName || 'N/A'}}
+                  {{ option.supplier?.name || 'N/A' }}
                 </td>
               </ng-container>
-
-              <!-- Price Column -->
               <ng-container matColumnDef="price">
                 <th mat-header-cell *matHeaderCellDef>Price</th>
-                <td mat-cell *matCellDef="let option">{{option.price | currency}}</td>
-              </ng-container>
-
-              <!-- Price Changes Column -->
-              <ng-container matColumnDef="priceChanges">
-                <th mat-header-cell *matHeaderCellDef>Price Changes</th>
                 <td mat-cell *matCellDef="let option">
-                  <button mat-icon-button color="primary" (click)="showPriceHistory(option, $event)">
-                    <mat-icon>show_chart</mat-icon>
+                  {{ option.price | currency }}
+                  <button mat-icon-button color="primary" (click)="editPrice(option)">
+                    <mat-icon>edit</mat-icon>
                   </button>
                 </td>
               </ng-container>
 
-              <!-- Ordering Enabled Column -->
+              <!-- orderingEnabled -->
               <ng-container matColumnDef="orderingEnabled">
                 <th mat-header-cell *matHeaderCellDef>Ordering</th>
                 <td mat-cell *matCellDef="let option">
-                  <mat-checkbox [checked]="option.orderingEnabled" [disabled]="!editingOption || editingOption !== option.id"
-                    (change)="option.orderingEnabled = $event.checked">
+                  <mat-checkbox [(ngModel)]="option.orderingEnabled" (change)="onOrderingToggled(option)">
                   </mat-checkbox>
                 </td>
               </ng-container>
 
-              <!-- Main Purchase Option Column -->
-              <ng-container matColumnDef="mainOption">
+              <!-- mainPurchaseOption -->
+              <ng-container matColumnDef="mainPurchaseOption">
                 <th mat-header-cell *matHeaderCellDef>Main</th>
                 <td mat-cell *matCellDef="let option">
-                  <mat-checkbox [checked]="option.mainPurchaseOption" [disabled]="!editingOption || editingOption !== option.id"
-                    (change)="setAsMainOption(option)">
-                  </mat-checkbox>
+                  <mat-radio-button 
+                    [checked]="option.mainPurchaseOption"
+                    (change)="onSetAsMain(option)">
+                  </mat-radio-button>
                 </td>
               </ng-container>
 
-              <!-- Actions Column -->
+              <!-- actions -->
               <ng-container matColumnDef="actions">
                 <th mat-header-cell *matHeaderCellDef></th>
                 <td mat-cell *matCellDef="let option">
-                  @if (editingOption === option.id) {
-                    <button mat-icon-button color="warn" (click)="deletePurchaseOption(option)">
-                      <mat-icon>delete</mat-icon>
-                    </button>
-                    <button mat-icon-button (click)="cancelEdit()">
-                      <mat-icon>close</mat-icon>
-                    </button>
-                    <button mat-icon-button color="primary" (click)="savePurchaseOption(option)">
-                      <mat-icon>check</mat-icon>
-                    </button>
-                  } @else {
-                    <button mat-icon-button color="primary" (click)="editPurchaseOption(option)">
-                      <mat-icon>edit</mat-icon>
-                    </button>
-                  }
+                  <button mat-icon-button color="warn" (click)="deletePurchaseOption(option)">
+                    <mat-icon>delete</mat-icon>
+                  </button>
                 </td>
               </ng-container>
 
-              <tr mat-header-row *matHeaderRowDef="displayedPurchaseColumns"></tr>
-              <tr mat-row *matRowDef="let row; columns: displayedPurchaseColumns;"
-                  [class.editing-row]="editingOption === row.id"
-                  [class.main-option]="row.mainPurchaseOption"></tr>
+              <tr mat-header-row *matHeaderRowDef="['supplier','price','orderingEnabled','mainPurchaseOption','actions']"></tr>
+              <tr mat-row *matRowDef="let row; columns: ['supplier','price','orderingEnabled','mainPurchaseOption','actions']"></tr>
             </table>
 
-            <div class="add-option-container">
-              <button mat-raised-button color="primary" (click)="addNewPurchaseOption()">
-                <mat-icon>add</mat-icon> Add New Purchase Option
-              </button>
-            </div>
-          } @else {
-            <div class="no-data-message">
-              <p>No purchase options available for this item.</p>
-              <button mat-raised-button color="primary" (click)="addNewPurchaseOption()">
-                <mat-icon>add</mat-icon> Add Purchase Option
-              </button>
-            </div>
-          }
+            <button mat-raised-button color="primary" (click)="addNewPurchaseOption()">
+              <mat-icon>add</mat-icon> Add Purchase Option
+            </button>
+          </ng-container>
+          <ng-template #noPO>
+            <p>No purchase options found</p>
+            <button mat-raised-button color="primary" (click)="addNewPurchaseOption()">
+              <mat-icon>add</mat-icon> Add Purchase Option
+            </button>
+          </ng-template>
         </div>
+      </mat-tab>
+
+      <!-- 3) On-Hand Tab -->
+      <mat-tab label="On Hand">
+        <table mat-table [dataSource]="locationInventory" class="location-inventory-table">
+          <ng-container matColumnDef="location">
+            <th mat-header-cell *matHeaderCellDef>Location</th>
+            <td mat-cell *matCellDef="let row">{{ row.location?.name }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="quantity">
+            <th mat-header-cell *matHeaderCellDef>On Hand</th>
+            <td mat-cell *matCellDef="let row">{{ row.quantity }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="value">
+            <th mat-header-cell *matHeaderCellDef>Value</th>
+            <td mat-cell *matCellDef="let row">{{ row.value | currency }}</td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="['location','quantity','value']"></tr>
+          <tr mat-row *matRowDef="let row; columns: ['location','quantity','value']"></tr>
+        </table>
       </mat-tab>
     </mat-tab-group>
   </mat-dialog-content>
@@ -182,22 +184,4 @@
     <button mat-button (click)="close()">Cancel</button>
     <button mat-raised-button color="primary" (click)="saveChanges()">Save</button>
   </mat-dialog-actions>
-
-  <!-- Price History Modal -->
-  <div *ngIf="showingPriceHistory" class="price-history-overlay">
-    <div class="price-history-container">
-      <div class="price-history-header">
-        <h2>Price History for {{selectedOption?.supplier?.name}} - {{item.name}}</h2>
-        <button mat-icon-button (click)="closePriceHistory()">
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
-      <div class="price-history-content">
-        <!-- Price history chart would go here -->
-        <div class="price-chart-placeholder">
-          <p>Price history chart will be implemented here</p>
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
