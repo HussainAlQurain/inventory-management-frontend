@@ -1,0 +1,31 @@
+<h2 mat-dialog-title>Create New Unit of Measure</h2>
+<form [formGroup]="uomForm" (ngSubmit)="onSubmit()">
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>Name</mat-label>
+    <input matInput formControlName="name" />
+  </mat-form-field>
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>Abbreviation</mat-label>
+    <input matInput formControlName="abbreviation" />
+  </mat-form-field>
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>Conversion Factor</mat-label>
+    <input matInput type="number" formControlName="conversionFactor" />
+  </mat-form-field>
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>UOM Category</mat-label>
+    <input matInput formControlName="categoryName" [matAutocomplete]="autoCat" />
+    <mat-autocomplete #autoCat="matAutocomplete">
+      <mat-option *ngFor="let cat of filteredCategories" [value]="cat.name">
+        {{ cat.name }}
+      </mat-option>
+      <mat-option *ngIf="canCreateNewCategory" [value]="categoryCtrl.value">
+        Create new category: "{{ categoryCtrl.value }}"
+      </mat-option>
+    </mat-autocomplete>
+  </mat-form-field>
+  <div class="dialog-actions">
+    <button mat-button (click)="onCancel()">Cancel</button>
+    <button mat-raised-button color="primary" type="submit" [disabled]="uomForm.invalid">Save</button>
+  </div>
+</form>

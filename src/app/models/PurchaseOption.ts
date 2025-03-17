@@ -26,6 +26,10 @@ export interface PurchaseOption {
     supplierCtrl?: FormControl<string>;
     filteredSuppliers?: Supplier[];
     canCreateNewSupplier?: boolean;
+
+    uomCtrl?: FormControl<string>;
+    filteredUoms?: UnitOfMeasure[];
+  
   
 }
 

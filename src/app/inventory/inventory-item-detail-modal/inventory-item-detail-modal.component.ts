@@ -37,6 +37,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { CompaniesService } from '../../services/companies.service';
 import { PriceHistoryDialogComponent } from '../price-history-dialog/price-history-dialog.component';
+import { UomDialogComponent } from '../uom-dialog/uom-dialog.component';
 
 interface LocationInventory {
   location: Location;
@@ -113,6 +114,9 @@ export class InventoryItemDetailModalComponent implements OnInit {
     this.loadAllUoms();
 
     this.setupPurchaseOptionSupplierControls();
+
+    this.setupPurchaseOptionUomControls();
+
     // Load location-based on-hand info
     this.loadLocationInventory();
   }
@@ -432,4 +436,67 @@ export class InventoryItemDetailModalComponent implements OnInit {
   close() {
     this.dialogRef.close();
   }
+
+  openNewUomDialog(option: PurchaseOption): void {
+    const dialogRef = this.dialog.open(UomDialogComponent, {
+      width: '400px'
+    });
+    dialogRef.afterClosed().subscribe((newUom: UnitOfMeasure) => {
+      if (newUom) {
+        // Add the new UOM to the local allUoms array so it appears in the dropdown.
+        this.allUoms.push(newUom);
+        // Set the purchase option's orderingUom and orderingUomId
+        option.orderingUom = newUom;
+        option.orderingUomId = newUom.id;
+        // Also update the uom control so the text displays correctly.
+        option.uomCtrl!.setValue(newUom.name);
+      }
+    });
+  }
+  
+
+  private setupPurchaseOptionUomControls(): void {
+    if (!this.item.purchaseOptions) return;
+    this.item.purchaseOptions.forEach(opt => {
+      // Initialize the control and filtered list for UOM
+      opt.uomCtrl = new FormControl<string>('', { nonNullable: true });
+      opt.filteredUoms = [];
+      if (opt.orderingUom && opt.orderingUom.name) {
+        opt.uomCtrl.setValue(opt.orderingUom.name);
+      }
+      opt.uomCtrl.valueChanges
+        .pipe(
+          debounceTime(300),
+          distinctUntilChanged(),
+          switchMap((term: string) => this.filterUoms(term))
+        )
+        .subscribe(filtered => {
+          opt.filteredUoms = filtered;
+        });
+    });
+  }
+  
+  private filterUoms(term: string): Observable<UnitOfMeasure[]> {
+    if (!term) {
+      // If no term, show all UOMs
+      return of(this.allUoms);
+    }
+    const lowerTerm = term.toLowerCase();
+    const filtered = this.allUoms.filter(uom =>
+      uom.name.toLowerCase().includes(lowerTerm) ||
+      (uom.abbreviation && uom.abbreviation.toLowerCase().includes(lowerTerm))
+    );
+    return of(filtered);
+  }
+  
+  onUomSelected(selectedName: string, option: PurchaseOption): void {
+    // Find the matching UOM from allUoms
+    const found = this.allUoms.find(uom => uom.name.toLowerCase() === selectedName.toLowerCase());
+    if (found) {
+      option.orderingUom = found;
+      option.orderingUomId = found.id;
+    }
+  }
+  
+  
 }
