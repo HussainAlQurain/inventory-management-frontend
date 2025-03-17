@@ -1,5 +1,5 @@
 import { Component, Inject, OnInit } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogRef, MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { Observable, of } from 'rxjs';
@@ -33,7 +33,10 @@ import { MatTableModule } from '@angular/material/table';
 import { CommonModule } from '@angular/common';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatRadioModule } from '@angular/material/radio';
+import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { CompaniesService } from '../../services/companies.service';
+import { PriceHistoryDialogComponent } from '../price-history-dialog/price-history-dialog.component';
 
 interface LocationInventory {
   location: Location;
@@ -63,7 +66,9 @@ interface LocationInventory {
     MatTabsModule,
     MatTableModule,
     MatDividerModule,
-    MatRadioModule
+    MatRadioModule,
+    MatSelectModule,
+    MatTooltipModule
   ],
 })
 export class InventoryItemDetailModalComponent implements OnInit {
@@ -71,6 +76,7 @@ export class InventoryItemDetailModalComponent implements OnInit {
   categoryCtrl = new FormControl<string>('', { nonNullable: true });
   filteredCategories: Category[] = [];
   canCreateNewCategory = false;
+  allUoms: UnitOfMeasure[] = [];
 
   /** Display table of on-hand by location. */
   locationInventory: LocationInventory[] = [];
@@ -87,7 +93,8 @@ export class InventoryItemDetailModalComponent implements OnInit {
     private supplierService: SupplierService,
     private uomService: UomService,
     private locationService: LocationService,
-    private companiesService: CompaniesService
+    private companiesService: CompaniesService,
+    private dialog: MatDialog
   ) { }
 
   ngOnInit(): void {
@@ -103,9 +110,87 @@ export class InventoryItemDetailModalComponent implements OnInit {
       switchMap((term: string) => this.onCategorySearchChange(term))
     ).subscribe();
 
+    this.loadAllUoms();
+
+    this.setupPurchaseOptionSupplierControls();
     // Load location-based on-hand info
     this.loadLocationInventory();
   }
+
+  private loadAllUoms() {
+    this.uomService.getAllUoms().subscribe({
+      next: (uoms) => {
+        this.allUoms = uoms;
+      },
+      error: (err) => console.error(err)
+    });
+  }
+
+
+    private setupPurchaseOptionSupplierControls(): void {
+    if (!this.item.purchaseOptions) return;
+    this.item.purchaseOptions.forEach(opt => {
+      opt.supplierCtrl = new FormControl<string>('', { nonNullable: true });
+      opt.filteredSuppliers = [];
+      opt.canCreateNewSupplier = false;
+
+      if (opt.supplier?.name) {
+        opt.supplierCtrl.setValue(opt.supplier.name);
+      }
+
+      opt.supplierCtrl.valueChanges
+        .pipe(
+          debounceTime(300),
+          distinctUntilChanged(),
+          switchMap(term => this.searchSuppliers(term))
+        )
+        .subscribe({
+          next: (list) => {
+            opt.filteredSuppliers = list;
+            const exact = list.some(s => s.name.toLowerCase() === opt.supplierCtrl?.value.toLowerCase());
+            opt.canCreateNewSupplier = !!opt.supplierCtrl?.value && !exact;
+          },
+          error: (err) => console.error(err)
+        });
+    });
+  }
+
+  // The search method:
+  private searchSuppliers(term: string): Observable<Supplier[]> {
+    if (!term.trim()) {
+      return of([]);
+    }
+    return this.supplierService.searchSuppliers(term);
+  }
+
+  onSupplierSelected(value: string, opt: PurchaseOption) {
+    const match = opt.filteredSuppliers?.find(s => s.name === value);
+    if (match) {
+      opt.supplier = match;
+      opt.supplierId = match.id;
+    } else {
+      this.createNewSupplier(value, opt);
+    }
+  }
+
+  private createNewSupplier(name: string, opt: PurchaseOption) {
+    const sup: Supplier = { name };
+    this.supplierService.createSupplier(sup).subscribe({
+      next: created => {
+        opt.supplier = created;
+        opt.supplierId = created.id;
+        opt.supplierCtrl?.setValue(created.name);
+      },
+      error: err => console.error('Failed to create new supplier', err)
+    });
+  }
+
+  showPriceHistory(opt: PurchaseOption) {
+    this.dialog.open(PriceHistoryDialogComponent, {
+      data: { purchaseOptionId: opt.id }
+    });
+  }
+
 
   /** For Category searching */
   onCategorySearchChange(term: string): Observable<void> {

@@ -1,3 +1,4 @@
+import { FormControl } from '@angular/forms';
 import { Supplier } from './Supplier';
 import { UnitOfMeasure } from './UnitOfMeasure';
 
@@ -21,6 +22,11 @@ export interface PurchaseOption {
     productName?: string;
     productCode?: string;
     priceChanges?: PriceChange[];
+
+    supplierCtrl?: FormControl<string>;
+    filteredSuppliers?: Supplier[];
+    canCreateNewSupplier?: boolean;
+  
 }
 
 export interface PriceChange {
