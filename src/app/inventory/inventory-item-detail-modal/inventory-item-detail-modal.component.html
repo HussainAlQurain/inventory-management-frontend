@@ -21,19 +21,39 @@
               <input matInput [(ngModel)]="item.name">
             </mat-form-field>
 
-            <mat-form-field appearance="outline" class="grid-col">
+            <mat-form-field appearance="outline" style="width:300px;">
               <mat-label>Category</mat-label>
-              <input type="text" matInput [formControl]="categoryCtrl" [matAutocomplete]="autoCat"
-                placeholder="Category">
-              <mat-autocomplete #autoCat="matAutocomplete" (optionSelected)="onCategorySelected($event.option.value)">
-                <mat-option *ngFor="let cat of filteredCategories" [value]="cat.name">
+            
+              <input
+                type="text"
+                matInput
+                [formControl]="categoryCtrl"
+                [matAutocomplete]="autoCat"
+                placeholder="Category"
+              />
+            
+              <mat-autocomplete
+                #autoCat="matAutocomplete"
+                (optionSelected)="onOptionSelected($event.option.value)"
+              >
+                <!-- Normal category options -->
+                <mat-option
+                  *ngFor="let cat of filteredCategories"
+                  [value]="cat.name"
+                >
                   {{ cat.name }}
                 </mat-option>
-                <mat-option *ngIf="canCreateNewCategory" (click)="createNewCategory(categoryCtrl.value)">
+            
+                <!-- CREATE NEW category -->
+                <mat-option
+                  *ngIf="canCreateNewCategory"
+                  [value]="categoryCtrl.value"
+                >
                   Create "<b>{{ categoryCtrl.value }}</b>" as new category
                 </mat-option>
               </mat-autocomplete>
-            </mat-form-field>
+            </mat-form-field>            
+            
           </div>
 
           <!-- SECOND ROW: SKU + ProductCode -->

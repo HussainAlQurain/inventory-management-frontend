@@ -11,7 +11,7 @@ import { Location } from '../../models/Location';
 import { Supplier } from '../../models/Supplier';
 import { UnitOfMeasure } from '../../models/UnitOfMeasure';
 
-import { InventoryService } from '../../services/inventory.service';
+// import { InventoryService } from '../../services/inventory.service';
 import { SupplierService } from '../../services/supplier.service';
 import { UomService } from '../../services/uom.service';
 import { LocationService } from '../../services/location.service';
@@ -30,7 +30,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTableModule } from '@angular/material/table';
-import { CommonModule } from '@angular/common'; 
+import { CommonModule } from '@angular/common';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatRadioModule } from '@angular/material/radio';
 import { CompaniesService } from '../../services/companies.service';
@@ -82,13 +82,13 @@ export class InventoryItemDetailModalComponent implements OnInit {
     private categoriesService: CategoriesService,
     private purchaseOptionService: PurchaseOptionService,
     private inventoryItemLocationService: InventoryItemLocationService,
-    private inventoryService: InventoryService,
+    // private inventoryService: InventoryService,
     private inventoryItemsService: InventoryItemsService, // service for partial update item
     private supplierService: SupplierService,
     private uomService: UomService,
     private locationService: LocationService,
     private companiesService: CompaniesService
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     // If item.category is set, reflect in the form control
@@ -128,16 +128,36 @@ export class InventoryItemDetailModalComponent implements OnInit {
     }
   }
 
-  /** Create a new Category if user typed something that isn't in the list */
+  /** Called when the user picks any option (existing or “create new”). */
+  onOptionSelected(fullValue: string) {
+    console.log('optionSelected =>', fullValue);
+
+    // 1) If user selected an existing category, `fullValue` equals cat.name
+    const existing = this.filteredCategories.find(c => c.name === fullValue);
+    if (existing) {
+      // they picked a real category
+      this.item.category = existing;
+      return;
+    }
+
+    // 2) Otherwise, user must have clicked the "Create <xxx>" line
+    //    so we do:
+    this.createNewCategory(fullValue);
+  }
+
+  /** Actually create the new category */
   createNewCategory(name: string) {
+    console.log('Creating new category with name:', name);
     const newCat: Partial<Category> = { name };
     this.categoriesService.createCategory(newCat).subscribe(created => {
       this.item.category = created;
+      // update the control with the newly created category name
       this.categoryCtrl.setValue(created.name);
       this.filteredCategories.push(created);
       this.canCreateNewCategory = false;
     });
   }
+
 
   /** Bulk update bridging for minOnHand / par across all stores */
   updateAllStores() {
@@ -156,23 +176,27 @@ export class InventoryItemDetailModalComponent implements OnInit {
   /** Load table of on-hand by location (for the 3rd tab) */
   loadLocationInventory() {
     const itemId = this.item.id || 0;
-    this.inventoryService.getInventoryByItemAndLocation(itemId).subscribe({
+    this.inventoryItemLocationService.getItemLocations(itemId).subscribe({
       next: (list) => {
-        this.locationInventory = list;
+        this.locationInventory = list.map(dto => ({
+          location: { id: dto.location.id, name: dto.location.name },
+          quantity: dto.quantity,
+          value: dto.value
+        }));
         // compute total
-        const totalQty = list.reduce((sum, row) => sum + row.quantity, 0);
-        const totalVal = list.reduce((sum, row) => sum + row.value, 0);
+        const totalQty = this.locationInventory.reduce((sum, row) => sum + row.quantity, 0);
+        const totalVal = this.locationInventory.reduce((sum, row) => sum + row.value, 0);
         this.item.onHand = totalQty;
         this.item.onHandValue = totalVal;
       },
-      error: (err: any) => console.error(err)
+      error: err => console.error(err)
     });
   }
 
   // -------------------------------
   // PurchaseOption immediate actions
   // -------------------------------
-  
+
   /** Create a new PurchaseOption in memory, then call the backend to persist it. */
   addNewPurchaseOption() {
     if (!this.item.id) {
@@ -274,7 +298,7 @@ export class InventoryItemDetailModalComponent implements OnInit {
   // -------------------------------
   // Save item changes
   // -------------------------------
-  
+
   /** On final “Save,” we do a partial update of the item itself (sku, productCode, desc, category, etc.) */
   saveChanges() {
     if (!this.item.id) {
