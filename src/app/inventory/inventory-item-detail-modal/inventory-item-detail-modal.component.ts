@@ -312,6 +312,7 @@ export class InventoryItemDetailModalComponent implements OnInit {
     // e.g. if item.category is chosen, use item.category.id for categoryId
     const partialDto: any = {
       name: this.item.name,
+      calories: this.item.calories,
       sku: this.item.sku,
       productCode: this.item.productCode,
       description: this.item.description,
@@ -327,6 +328,7 @@ export class InventoryItemDetailModalComponent implements OnInit {
       next: updatedItem => {
         // Merge changes into local item
         this.item.name = updatedItem.name;
+        this.item.calories = updatedItem.calories;
         this.item.sku = updatedItem.sku;
         this.item.productCode = updatedItem.productCode;
         this.item.description = updatedItem.description;
