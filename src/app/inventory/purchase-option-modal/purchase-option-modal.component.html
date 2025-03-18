@@ -1,0 +1,198 @@
+<h2 mat-dialog-title>{{ data.existingOption ? 'Edit' : 'Add' }} Purchase Option</h2>
+
+<mat-dialog-content class="mat-typography">
+  <form [formGroup]="purchaseOptionForm">
+    <div class="form-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Nickname</mat-label>
+        <input matInput formControlName="nickname" placeholder="Nickname">
+      </mat-form-field>
+    </div>
+
+    <!-- Supplier Selection -->
+    <div class="form-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Supplier</mat-label>
+        <input type="text" matInput [formControl]="supplierCtrl" [matAutocomplete]="supplierAuto">
+        <mat-autocomplete #supplierAuto="matAutocomplete" (optionSelected)="onSupplierSelected($event.option.value)">
+          <mat-option *ngFor="let supplier of filteredSuppliers" [value]="supplier.name">
+            {{ supplier.name }}
+          </mat-option>
+        </mat-autocomplete>
+      </mat-form-field>
+      <button mat-icon-button color="primary" (click)="toggleSupplierCreation()" *ngIf="!showSupplierCreation">
+        <mat-icon>add</mat-icon>
+      </button>
+    </div>
+
+    <!-- Supplier Creation Form -->
+    <div *ngIf="showSupplierCreation" class="supplier-creation-form">
+      <h3>Create New Supplier</h3>
+      <form [formGroup]="supplierForm">
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Name</mat-label>
+            <input matInput formControlName="name" required>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Customer Number</mat-label>
+            <input matInput formControlName="customerNumber">
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Tax ID</mat-label>
+            <input matInput formControlName="taxId">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Tax Rate</mat-label>
+            <input matInput formControlName="taxRate" type="number">
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Minimum Order</mat-label>
+            <input matInput formControlName="minimumOrder" type="number">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Payment Terms</mat-label>
+            <input matInput formControlName="paymentTerms">
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Address</mat-label>
+            <input matInput formControlName="address">
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>City</mat-label>
+            <input matInput formControlName="city">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>State</mat-label>
+            <input matInput formControlName="state">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>ZIP</mat-label>
+            <input matInput formControlName="zip">
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>CC Emails</mat-label>
+            <input matInput formControlName="ccEmails">
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Default Category</mat-label>
+            <input type="text" matInput [formControl]="categoryCtrl" [matAutocomplete]="categoryAuto">
+            <mat-autocomplete #categoryAuto="matAutocomplete" (optionSelected)="onCategorySelected($event.option.value)">
+              <mat-option *ngFor="let category of filteredCategories" [value]="category.name">
+                {{ category.name }}
+              </mat-option>
+              <mat-option *ngIf="canCreateNewCategory" (click)="createNewCategory()">
+                Create new category: "{{ categoryCtrl.value }}"
+              </mat-option>
+            </mat-autocomplete>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Comments</mat-label>
+            <textarea matInput formControlName="comments" rows="3"></textarea>
+          </mat-form-field>
+        </div>
+
+        <div class="button-row">
+          <button mat-button color="warn" (click)="toggleSupplierCreation()">Cancel</button>
+          <button mat-raised-button color="primary" (click)="saveSupplier()">Save Supplier</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- UOM Selection -->
+    <div class="form-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Ordering UOM</mat-label>
+        <input type="text" matInput [formControl]="uomCtrl" [matAutocomplete]="uomAuto">
+        <mat-autocomplete #uomAuto="matAutocomplete" (optionSelected)="onUomSelected($event.option.value)">
+          <mat-option *ngFor="let uom of filteredUoms" [value]="uom.name">
+            {{ uom.name }} ({{ uom.abbreviation }})
+          </mat-option>
+        </mat-autocomplete>
+      </mat-form-field>
+      <button mat-icon-button color="primary" (click)="openNewUomDialog()">
+        <mat-icon>add</mat-icon>
+      </button>
+    </div>
+
+    <!-- Price Information -->
+    <div class="form-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Price</mat-label>
+        <input matInput formControlName="price" type="number" required>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Tax Rate (%)</mat-label>
+        <input matInput formControlName="taxRate" type="number" required>
+      </mat-form-field>
+    </div>
+
+    <div class="form-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Supplier Product Code</mat-label>
+        <input matInput formControlName="supplierProductCode">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Scan Barcode</mat-label>
+        <input matInput formControlName="scanBarcode">
+      </mat-form-field>
+    </div>
+
+    <!-- Quantity Information -->
+    <div class="form-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Inner Pack Quantity</mat-label>
+        <input matInput formControlName="innerPackQuantity" type="number" required>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Packs Per Case</mat-label>
+        <input matInput formControlName="packsPerCase" type="number" required>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Min Order Quantity</mat-label>
+        <input matInput formControlName="minOrderQuantity" type="number" required>
+      </mat-form-field>
+    </div>
+
+    <!-- Checkboxes -->
+    <div class="form-row checkbox-row">
+      <mat-checkbox formControlName="orderingEnabled">Ordering Enabled</mat-checkbox>
+      <mat-checkbox formControlName="mainPurchaseOption">Main Purchase Option</mat-checkbox>
+    </div>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()">Cancel</button>
+  <button mat-raised-button color="primary" (click)="savePurchaseOption()">Save</button>
+</mat-dialog-actions>

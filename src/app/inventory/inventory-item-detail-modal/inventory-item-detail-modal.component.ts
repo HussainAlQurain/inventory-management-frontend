@@ -39,6 +39,9 @@ import { CompaniesService } from '../../services/companies.service';
 import { PriceHistoryDialogComponent } from '../price-history-dialog/price-history-dialog.component';
 import { UomDialogComponent } from '../uom-dialog/uom-dialog.component';
 
+// Import the PurchaseOptionModal component
+import { PurchaseOptionModalComponent } from '../purchase-option-modal/purchase-option-modal.component';
+
 interface LocationInventory {
   location: Location;
   quantity: number;
@@ -292,26 +295,34 @@ export class InventoryItemDetailModalComponent implements OnInit {
       alert('Cannot add purchase options until item is saved or has an ID.');
       return;
     }
-    const newOption: PurchaseOption = {
-      inventoryItemId: this.item.id,
-      price: 0,
-      taxRate: 0,
-      orderingEnabled: true,
-      mainPurchaseOption: false,
-      innerPackQuantity: 1,
-      packsPerCase: 1,
-      minOrderQuantity: 1
-    };
-    // Call backend to create
-    this.purchaseOptionService.createPurchaseOption(newOption, this.item.id).subscribe({
-      next: created => {
-        // push to local array
-        if (!this.item.purchaseOptions) {
-          this.item.purchaseOptions = [];
-        }
-        this.item.purchaseOptions.push(created);
-      },
-      error: err => console.error(err)
+    
+    // Open the Purchase Option modal dialog
+    const dialogRef = this.dialog.open(PurchaseOptionModalComponent, {
+      width: '700px',
+      data: {
+        inventoryItemId: this.item.id
+      }
+    });
+    
+    dialogRef.afterClosed().subscribe(purchaseOptionData => {
+      if (purchaseOptionData) {
+        // Call backend to create
+        // Using non-null assertion (!) since we've already checked this.item.id is not falsy above
+        this.purchaseOptionService.createPurchaseOption(purchaseOptionData, this.item.id!).subscribe({
+          next: created => {
+            // push to local array
+            if (!this.item.purchaseOptions) {
+              this.item.purchaseOptions = [];
+            }
+            this.item.purchaseOptions.push(created);
+            
+            // Set up the new purchase option's controls
+            this.setupPurchaseOptionSupplierControls();
+            this.setupPurchaseOptionUomControls();
+          },
+          error: err => console.error(err)
+        });
+      }
     });
   }
 

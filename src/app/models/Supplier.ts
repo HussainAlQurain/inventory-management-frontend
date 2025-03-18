@@ -14,6 +14,8 @@ export interface Supplier {
   ccEmails?: string;
   emails?: SupplierEmail[];
   phones?: SupplierPhone[];
+  defaultCategoryId?: number;
+  authorizedBuyerIds?: number[];
 }
 
 export interface SupplierEmail {

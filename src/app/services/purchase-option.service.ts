@@ -44,12 +44,12 @@ export class PurchaseOptionService {
 
   createPurchaseOption(purchaseOption: PurchaseOption, itemId: number): Observable<PurchaseOption> {
     const companyId = this.companiesService.getSelectedCompanyId();
-    // The shape of your create endpoint is:
-    // POST /purchase-options/company/{companyId}/inventory-items/{itemId}
-    // with a request body => PurchaseOptionCreateDTO
+    // Create DTO with all required fields from the API
     const createDto = {
+      supplierId: purchaseOption.supplierId,
       price: purchaseOption.price ?? 0,
-      taxRate: purchaseOption.taxRate ?? 0,
+      taxRate: purchaseOption.taxRate ?? 15,
+      orderingUomId: purchaseOption.orderingUomId,
       innerPackQuantity: purchaseOption.innerPackQuantity ?? 1,
       packsPerCase: purchaseOption.packsPerCase ?? 1,
       minOrderQuantity: purchaseOption.minOrderQuantity ?? 1,
@@ -57,9 +57,9 @@ export class PurchaseOptionService {
       orderingEnabled: purchaseOption.orderingEnabled ?? true,
       supplierProductCode: purchaseOption.supplierProductCode,
       nickname: purchaseOption.nickname,
-      scanBarcode: purchaseOption.scanBarcode,
-      // etc.
+      scanBarcode: purchaseOption.scanBarcode
     };
+    
     return this.http.post<PurchaseOption>(
       `${this.baseUrl}/company/${companyId}/inventory-items/${itemId}`,
       createDto
