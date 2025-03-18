@@ -12,4 +12,5 @@ export interface UnitOfMeasure {
 export interface UnitOfMeasureCategory {
   id?: number;
   name: string;
+  description?: string;
 }

@@ -490,8 +490,13 @@ export class InventoryItemDetailModalComponent implements OnInit {
   }
   
   onUomSelected(selectedName: string, option: PurchaseOption): void {
-    // Find the matching UOM from allUoms
-    const found = this.allUoms.find(uom => uom.name.toLowerCase() === selectedName.toLowerCase());
+    if (!selectedName) return;
+    
+    // Find the matching UOM from allUoms - add null check for uom.name
+    const found = this.allUoms.find(uom => 
+      uom.name && uom.name.toLowerCase() === selectedName.toLowerCase()
+    );
+    
     if (found) {
       option.orderingUom = found;
       option.orderingUomId = found.id;
