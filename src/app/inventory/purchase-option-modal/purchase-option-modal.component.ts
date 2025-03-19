@@ -253,33 +253,41 @@ export class PurchaseOptionModalComponent implements OnInit {
     this.categoryCtrl.valueChanges.pipe(
       debounceTime(300),
       distinctUntilChanged(),
-      switchMap(term => this.categoriesService.getAllCategories(term))
+      switchMap(term => this.categoriesService.getAllCategories(term || ''))
     ).subscribe({
       next: (categories) => {
-        this.filteredCategories = categories;
-        const exact = categories.some(c => c.name.toLowerCase() === this.categoryCtrl.value.toLowerCase());
-        this.canCreateNewCategory = !!this.categoryCtrl.value && !exact;
+        this.filteredCategories = categories || [];
+        const ctrlValue = this.categoryCtrl.value || '';
+        const exact = this.filteredCategories.some(c => 
+          c?.name && c.name.toLowerCase() === ctrlValue.toLowerCase()
+        );
+        this.canCreateNewCategory = !!ctrlValue && !exact;
       },
       error: (err) => console.error('Error loading categories:', err)
     });
   }
   
   onCategorySelected(value: string): void {
-    const match = this.filteredCategories.find(c => c.name === value);
-    if (match) {
+    if (!value) return;
+    
+    const match = this.filteredCategories.find(c => c?.name === value);
+    if (match?.id) {
       this.supplierForm.get('defaultCategoryId')?.setValue(match.id);
     }
   }
   
   createNewCategory(): void {
-    if (!this.categoryCtrl.value) return;
+    const categoryName = this.categoryCtrl.value;
+    if (!categoryName) return;
     
-    const newCategory = { name: this.categoryCtrl.value };
+    const newCategory = { name: categoryName };
     this.categoriesService.createCategory(newCategory).subscribe({
       next: (createdCategory) => {
-        this.filteredCategories.push(createdCategory);
-        this.supplierForm.get('defaultCategoryId')?.setValue(createdCategory.id);
-        this.canCreateNewCategory = false;
+        if (createdCategory) {
+          this.filteredCategories.push(createdCategory);
+          this.supplierForm.get('defaultCategoryId')?.setValue(createdCategory.id);
+          this.canCreateNewCategory = false;
+        }
       },
       error: (err) => console.error('Error creating category:', err)
     });
