@@ -239,7 +239,6 @@ export class InventoryItemDetailModalComponent implements OnInit {
 
   /** Actually create the new category */
   createNewCategory(name: string) {
-    console.log('Creating new category with name:', name);
     const newCat: Partial<Category> = { name };
     this.categoriesService.createCategory(newCat).subscribe(created => {
       this.item.category = created;

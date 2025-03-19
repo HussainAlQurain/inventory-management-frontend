@@ -100,14 +100,14 @@
           <mat-form-field appearance="outline">
             <mat-label>Default Category</mat-label>
             <input type="text" matInput [formControl]="categoryCtrl" [matAutocomplete]="categoryAuto">
-            <mat-autocomplete #categoryAuto="matAutocomplete" (optionSelected)="onCategorySelected($event.option.value)">
+            <mat-autocomplete #categoryAuto="matAutocomplete" (optionSelected)="onCategoryOptionSelected($event)">
               <mat-option *ngFor="let category of filteredCategories" [value]="category.name">
                 {{ category.name }}
               </mat-option>
-              <mat-option *ngIf="canCreateNewCategory" (click)="createNewCategory()">
+              <mat-option *ngIf="canCreateNewCategory" [value]="categoryCtrl.value">
                 Create new category: "{{ categoryCtrl.value }}"
               </mat-option>
-            </mat-autocomplete>
+            </mat-autocomplete>            
           </mat-form-field>
         </div>
 

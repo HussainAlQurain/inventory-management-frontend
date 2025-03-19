@@ -13,6 +13,7 @@ import { SupplierService } from '../../services/supplier.service';
 import { UomService } from '../../services/uom.service';
 import { CategoriesService } from '../../services/categories.service';
 import { LocationService } from '../../services/location.service';
+import { CompaniesService } from '../../services/companies.service';
 import { UomDialogComponent } from '../uom-dialog/uom-dialog.component';
 
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -70,6 +71,7 @@ export class PurchaseOptionModalComponent implements OnInit {
   canCreateNewCategory = false;
   categoryCtrl = new FormControl<string>('', { nonNullable: true });
   allLocations: any[] = [];
+  companyId!: number;
 
   constructor(
     public dialogRef: MatDialogRef<PurchaseOptionModalComponent>,
@@ -79,6 +81,7 @@ export class PurchaseOptionModalComponent implements OnInit {
     private uomService: UomService,
     private categoriesService: CategoriesService,
     private locationService: LocationService,
+    private companiesService: CompaniesService,
     private dialog: MatDialog
   ) {
     // Initialize the purchase option form
@@ -114,6 +117,9 @@ export class PurchaseOptionModalComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Get the company ID
+    this.companyId = this.companiesService.getSelectedCompanyId() || 0;
+    
     // Pre-fill form if editing an existing option
     if (this.data.existingOption) {
       const option = this.data.existingOption;
@@ -275,23 +281,46 @@ export class PurchaseOptionModalComponent implements OnInit {
       this.supplierForm.get('defaultCategoryId')?.setValue(match.id);
     }
   }
+  onCategoryOptionSelected(event: any): void {
+    const selectedValue = event.option.value;
+    const existing = this.filteredCategories.find(
+      c => c.name.toLowerCase() === selectedValue.toLowerCase()
+    );
+    if (existing) {
+      // Existing category selected – assign its ID and update the control
+      this.supplierForm.get('defaultCategoryId')?.setValue(existing.id);
+      this.categoryCtrl.setValue(existing.name);
+    } else {
+      // No existing category: create a new one using the selected value.
+      this.createNewCategory(selectedValue);
+    }
+  }
   
-  createNewCategory(): void {
-    const categoryName = this.categoryCtrl.value;
+  createNewCategory(categoryName: string): void {
+    console.log('Creating new category:', categoryName);
     if (!categoryName) return;
     
-    const newCategory = { name: categoryName };
+    const newCategory = { 
+      name: categoryName,
+      description: '' // Optionally add a description
+    };
+    
     this.categoriesService.createCategory(newCategory).subscribe({
       next: (createdCategory) => {
         if (createdCategory) {
+          // Add the new category to the filtered list,
+          // update the supplier form with the new category ID,
+          // and set the control to the new category name.
           this.filteredCategories.push(createdCategory);
           this.supplierForm.get('defaultCategoryId')?.setValue(createdCategory.id);
+          this.categoryCtrl.setValue(createdCategory.name);
           this.canCreateNewCategory = false;
         }
       },
       error: (err) => console.error('Error creating category:', err)
     });
   }
+  
   
   private loadLocations(): void {
     this.locationService.getAllLocations().subscribe({
