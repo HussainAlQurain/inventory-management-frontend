@@ -42,6 +42,17 @@ export class PurchaseOptionService {
     );
   }
 
+  /**
+   * Partially update a purchase option with any combination of fields
+   */
+  partialUpdatePurchaseOption(purchaseOptionId: number, updateData: Partial<PurchaseOption>): Observable<PurchaseOption> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    return this.http.patch<PurchaseOption>(
+      `${this.baseUrl}/${purchaseOptionId}/company/${companyId}`,
+      updateData
+    );
+  }
+
   createPurchaseOption(purchaseOption: PurchaseOption, itemId: number): Observable<PurchaseOption> {
     const companyId = this.companiesService.getSelectedCompanyId();
     // Create DTO with all required fields from the API

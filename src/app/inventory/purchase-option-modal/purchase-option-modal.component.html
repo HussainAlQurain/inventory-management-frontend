@@ -20,109 +20,25 @@
           </mat-option>
         </mat-autocomplete>
       </mat-form-field>
-      <button mat-icon-button color="primary" (click)="toggleSupplierCreation()" *ngIf="!showSupplierCreation">
+      <!-- Add button for creating new supplier -->
+      <button mat-icon-button color="primary" (click)="toggleSupplierCreation()" *ngIf="!showSupplierCreation && !selectedSupplier">
         <mat-icon>add</mat-icon>
+      </button>
+      <!-- Add button for editing existing supplier -->
+      <button mat-icon-button color="primary" (click)="editSupplier()" *ngIf="!showSupplierCreation && selectedSupplier">
+        <mat-icon>edit</mat-icon>
       </button>
     </div>
 
-    <!-- Supplier Creation Form -->
-    <div *ngIf="showSupplierCreation" class="supplier-creation-form">
-      <h3>Create New Supplier</h3>
-      <form [formGroup]="supplierForm">
-        <div class="form-row">
-          <mat-form-field appearance="outline">
-            <mat-label>Name</mat-label>
-            <input matInput formControlName="name" required>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Customer Number</mat-label>
-            <input matInput formControlName="customerNumber">
-          </mat-form-field>
-        </div>
-
-        <div class="form-row">
-          <mat-form-field appearance="outline">
-            <mat-label>Tax ID</mat-label>
-            <input matInput formControlName="taxId">
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Tax Rate</mat-label>
-            <input matInput formControlName="taxRate" type="number">
-          </mat-form-field>
-        </div>
-
-        <div class="form-row">
-          <mat-form-field appearance="outline">
-            <mat-label>Minimum Order</mat-label>
-            <input matInput formControlName="minimumOrder" type="number">
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Payment Terms</mat-label>
-            <input matInput formControlName="paymentTerms">
-          </mat-form-field>
-        </div>
-
-        <div class="form-row">
-          <mat-form-field appearance="outline">
-            <mat-label>Address</mat-label>
-            <input matInput formControlName="address">
-          </mat-form-field>
-        </div>
-
-        <div class="form-row">
-          <mat-form-field appearance="outline">
-            <mat-label>City</mat-label>
-            <input matInput formControlName="city">
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>State</mat-label>
-            <input matInput formControlName="state">
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>ZIP</mat-label>
-            <input matInput formControlName="zip">
-          </mat-form-field>
-        </div>
-
-        <div class="form-row">
-          <mat-form-field appearance="outline">
-            <mat-label>CC Emails</mat-label>
-            <input matInput formControlName="ccEmails">
-          </mat-form-field>
-        </div>
-
-        <div class="form-row">
-          <mat-form-field appearance="outline">
-            <mat-label>Default Category</mat-label>
-            <input type="text" matInput [formControl]="categoryCtrl" [matAutocomplete]="categoryAuto">
-            <mat-autocomplete #categoryAuto="matAutocomplete" (optionSelected)="onCategoryOptionSelected($event)">
-              <mat-option *ngFor="let category of filteredCategories" [value]="category.name">
-                {{ category.name }}
-              </mat-option>
-              <mat-option *ngIf="canCreateNewCategory" [value]="categoryCtrl.value">
-                Create new category: "{{ categoryCtrl.value }}"
-              </mat-option>
-            </mat-autocomplete>            
-          </mat-form-field>
-        </div>
-
-        <div class="form-row">
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Comments</mat-label>
-            <textarea matInput formControlName="comments" rows="3"></textarea>
-          </mat-form-field>
-        </div>
-
-        <div class="button-row">
-          <button mat-button color="warn" (click)="toggleSupplierCreation()">Cancel</button>
-          <button mat-raised-button color="primary" (click)="saveSupplier()">Save Supplier</button>
-        </div>
-      </form>
+    <!-- Supplier Creation/Edit Form -->
+    <div *ngIf="showSupplierCreation">
+      <app-supplier-form
+        [initialSupplierName]="supplierCtrl.value"
+        [supplier]="isEditingSupplier ? selectedSupplier : null"
+        (supplierCreated)="onSupplierCreated($event)"
+        (supplierUpdated)="onSupplierUpdated($event)"
+        (cancel)="onSupplierFormCancel()">
+      </app-supplier-form>
     </div>
 
     <!-- UOM Selection -->

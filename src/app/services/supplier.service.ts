@@ -89,7 +89,7 @@ export class SupplierService {
       return this.getAllSuppliers();
     }
     const companyId = this.companiesService.getSelectedCompanyId();
-    // Implement a search endpoint or filter the existing list
-    return this.http.get<Supplier[]>(`${this.baseUrl}/company/${companyId}?search=${term}`);
+    // Update the endpoint to match the backend controller method
+    return this.http.get<Supplier[]>(`${this.baseUrl}/company/${companyId}/search?search=${term}`);
   }
 }

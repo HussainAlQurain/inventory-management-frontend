@@ -5,7 +5,7 @@ import { Observable, of } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 
 import { PurchaseOption } from '../../models/PurchaseOption';
-import { Supplier } from '../../models/Supplier';
+import { Supplier, SupplierEmail, SupplierPhone } from '../../models/Supplier';
 import { UnitOfMeasure } from '../../models/UnitOfMeasure';
 import { Category } from '../../models/Category';
 
@@ -27,9 +27,14 @@ import { MatSelectModule } from '@angular/material/select';
 import { CommonModule } from '@angular/common';
 import { MatDialog } from '@angular/material/dialog';
 
+// Import the new supplier form component
+import { SupplierFormComponent } from '../../suppliers/supplier-form/supplier-form.component';
+
 export interface PurchaseOptionModalData {
   inventoryItemId: number;
   existingOption?: PurchaseOption; // For editing mode
+  initialSupplierName?: string; // For creating supplier from inventory item detail
+  supplierCreationMode?: boolean; // If true, only use for supplier creation
 }
 
 @Component({
@@ -46,7 +51,8 @@ export interface PurchaseOptionModalData {
     MatButtonModule,
     MatIconModule,
     MatTabsModule,
-    MatSelectModule
+    MatSelectModule,
+    SupplierFormComponent
   ],
   templateUrl: './purchase-option-modal.component.html',
   styleUrls: ['./purchase-option-modal.component.scss']
@@ -72,6 +78,18 @@ export class PurchaseOptionModalComponent implements OnInit {
   categoryCtrl = new FormControl<string>('', { nonNullable: true });
   allLocations: any[] = [];
   companyId!: number;
+
+  // Add new properties for supplier editing
+  selectedSupplier: Supplier | null = null;
+  isEditingSupplier = false;
+
+  // Add arrays to store supplier emails and phones
+  supplierEmails: SupplierEmail[] = [];
+  supplierPhones: SupplierPhone[] = [];
+  
+  // Add declarations for email and phone forms
+  emailForm: FormGroup;
+  phoneForm: FormGroup;
 
   constructor(
     public dialogRef: MatDialogRef<PurchaseOptionModalComponent>,
@@ -114,11 +132,28 @@ export class PurchaseOptionModalComponent implements OnInit {
       ccEmails: [''],
       defaultCategoryId: [null]
     });
+
+    // Initialize email and phone forms
+    this.emailForm = this.fb.group({
+      email: ['', [Validators.required, Validators.email]],
+      isDefault: [false]
+    });
+
+    this.phoneForm = this.fb.group({
+      phoneNumber: ['', Validators.required],
+      isDefault: [false]
+    });
   }
 
   ngOnInit(): void {
     // Get the company ID
     this.companyId = this.companiesService.getSelectedCompanyId() || 0;
+    
+    // If used for supplier creation, initialize supplier name
+    if (this.data.supplierCreationMode && this.data.initialSupplierName) {
+      this.supplierCtrl.setValue(this.data.initialSupplierName);
+      this.toggleSupplierCreation();
+    }
     
     // Pre-fill form if editing an existing option
     if (this.data.existingOption) {
@@ -138,6 +173,10 @@ export class PurchaseOptionModalComponent implements OnInit {
       
       if (option.supplier) {
         this.supplierCtrl.setValue(option.supplier.name);
+        // Load full supplier details when editing
+        if (option.supplier.id) {
+          this.loadSupplierDetails(option.supplier.id);
+        }
       }
       
       if (option.orderingUom) {
@@ -157,8 +196,28 @@ export class PurchaseOptionModalComponent implements OnInit {
     // Load locations
     this.loadLocations();
   }
+
+  // Add method to load full supplier details
+  private loadSupplierDetails(supplierId: number): void {
+    this.supplierService.getSupplierById(supplierId).subscribe({
+      next: (supplier) => {
+        this.selectedSupplier = supplier;
+        // Copy emails and phones from the supplier
+        this.supplierEmails = supplier.emails ? [...supplier.emails] : [];
+        this.supplierPhones = supplier.phones ? [...supplier.phones] : [];
+      },
+      error: (err) => console.error('Error loading supplier details:', err)
+    });
+  }
   
   private setupSupplierAutocomplete(): void {
+    // Initialize with a search if we have a value
+    if (this.supplierCtrl.value) {
+      this.searchSuppliers(this.supplierCtrl.value).subscribe(suppliers => {
+        this.filteredSuppliers = suppliers;
+      });
+    }
+    
     this.supplierCtrl.valueChanges.pipe(
       debounceTime(300),
       distinctUntilChanged(),
@@ -174,27 +233,158 @@ export class PurchaseOptionModalComponent implements OnInit {
   }
   
   private searchSuppliers(term: string): Observable<Supplier[]> {
-    if (!term.trim()) {
+    if (!term || !term.trim()) {
       return of([]);
     }
+    console.log('Searching suppliers with term:', term);
     return this.supplierService.searchSuppliers(term);
   }
   
   onSupplierSelected(value: string): void {
     const match = this.filteredSuppliers.find(s => s.name === value);
     if (match) {
-      // Store supplier ID for form submission
-      this.supplierForm.get('name')?.setValue(match.name);
+      // Store the selected supplier
+      this.selectedSupplier = match;
+      // Load full supplier details
+      if (match.id) {
+        this.loadSupplierDetails(match.id);
+      }
     }
   }
   
   toggleSupplierCreation(): void {
     this.showSupplierCreation = !this.showSupplierCreation;
+    this.isEditingSupplier = false;
     
     if (this.showSupplierCreation) {
       // Pre-fill the supplier name from the search field
       this.supplierForm.get('name')?.setValue(this.supplierCtrl.value);
     }
+  }
+
+  // Add handler for supplier creation/update from the form component
+  onSupplierCreated(supplier: Supplier): void {
+    this.showSupplierCreation = false;
+    this.selectedSupplier = supplier;
+    this.supplierCtrl.setValue(supplier.name);
+    this.filteredSuppliers = [supplier];
+    
+    // If in supplier creation mode, return the created supplier
+    if (this.data.supplierCreationMode) {
+      this.dialogRef.close({ supplier });
+    }
+  }
+
+  onSupplierUpdated(supplier: Supplier): void {
+    this.showSupplierCreation = false;
+    this.selectedSupplier = supplier;
+    this.supplierCtrl.setValue(supplier.name);
+    
+    // Update the supplier in the filtered list
+    const index = this.filteredSuppliers.findIndex(s => s.id === supplier.id);
+    if (index >= 0) {
+      this.filteredSuppliers[index] = supplier;
+    }
+  }
+
+  onSupplierFormCancel(): void {
+    this.showSupplierCreation = false;
+  }
+
+  // Add new method to edit existing supplier
+  editSupplier(): void {
+    if (!this.selectedSupplier) return;
+    
+    this.showSupplierCreation = true;
+    this.isEditingSupplier = true;
+    
+    // Populate the form with the current supplier data
+    this.supplierForm.patchValue({
+      name: this.selectedSupplier.name,
+      customerNumber: this.selectedSupplier.customerNumber || '',
+      minimumOrder: this.selectedSupplier.minimumOrder || 0,
+      taxId: this.selectedSupplier.taxId || '',
+      taxRate: this.selectedSupplier.taxRate || 15,
+      paymentTerms: this.selectedSupplier.paymentTerms || '',
+      comments: this.selectedSupplier.comments || '',
+      address: this.selectedSupplier.address || '',
+      city: this.selectedSupplier.city || '',
+      state: this.selectedSupplier.state || '',
+      zip: this.selectedSupplier.zip || '',
+      ccEmails: this.selectedSupplier.ccEmails || '',
+      defaultCategoryId: this.selectedSupplier.defaultCategoryId || null
+    });
+    
+    // Set the category control value if a category exists
+    if (this.selectedSupplier.defaultCategory) {
+      this.categoryCtrl.setValue(this.selectedSupplier.defaultCategory.name);
+    }
+    
+    // Copy emails and phones
+    this.supplierEmails = this.selectedSupplier.emails ? [...this.selectedSupplier.emails] : [];
+    this.supplierPhones = this.selectedSupplier.phones ? [...this.selectedSupplier.phones] : [];
+  }
+
+  // Add methods for managing emails
+  addEmail(): void {
+    if (this.emailForm.valid) {
+      const newEmail: SupplierEmail = {
+        email: this.emailForm.get('email')?.value,
+        isDefault: this.emailForm.get('isDefault')?.value || false
+      };
+      
+      // If this is set as default, update all others to not default
+      if (newEmail.isDefault) {
+        this.supplierEmails.forEach(email => email.isDefault = false);
+      }
+      
+      this.supplierEmails.push(newEmail);
+      this.emailForm.reset({
+        email: '',
+        isDefault: false
+      });
+    }
+  }
+  
+  removeEmail(index: number): void {
+    this.supplierEmails.splice(index, 1);
+  }
+  
+  setDefaultEmail(index: number): void {
+    this.supplierEmails.forEach((email, i) => {
+      email.isDefault = (i === index);
+    });
+  }
+  
+  // Add methods for managing phones
+  addPhone(): void {
+    if (this.phoneForm.valid) {
+      const newPhone: SupplierPhone = {
+        phoneNumber: this.phoneForm.get('phoneNumber')?.value,
+        isDefault: this.phoneForm.get('isDefault')?.value || false
+      };
+      
+      // If this is set as default, update all others to not default
+      if (newPhone.isDefault) {
+        this.supplierPhones.forEach(phone => phone.isDefault = false);
+      }
+      
+      this.supplierPhones.push(newPhone);
+      this.phoneForm.reset({
+        phoneNumber: '',
+        isDefault: false
+      });
+    }
+  }
+  
+  removePhone(index: number): void {
+    this.supplierPhones.splice(index, 1);
+  }
+  
+  setDefaultPhone(index: number): void {
+    this.supplierPhones.forEach((phone, i) => {
+      phone.isDefault = (i === index);
+    });
   }
   
   private setupUomAutocomplete(): void {
@@ -281,6 +471,7 @@ export class PurchaseOptionModalComponent implements OnInit {
       this.supplierForm.get('defaultCategoryId')?.setValue(match.id);
     }
   }
+  
   onCategoryOptionSelected(event: any): void {
     const selectedValue = event.option.value;
     const existing = this.filteredCategories.find(
@@ -321,7 +512,6 @@ export class PurchaseOptionModalComponent implements OnInit {
     });
   }
   
-  
   private loadLocations(): void {
     this.locationService.getAllLocations().subscribe({
       next: (locations) => {
@@ -339,18 +529,43 @@ export class PurchaseOptionModalComponent implements OnInit {
     
     const supplierData: Supplier = {
       ...this.supplierForm.value,
-      emails: [],
-      phones: []
+      emails: this.supplierEmails,
+      phones: this.supplierPhones
     };
     
-    this.supplierService.createSupplier(supplierData).subscribe({
-      next: (createdSupplier) => {
-        this.showSupplierCreation = false;
-        this.supplierCtrl.setValue(createdSupplier.name);
-        this.filteredSuppliers = [createdSupplier];
-      },
-      error: (err) => console.error('Error creating supplier:', err)
-    });
+    if (this.isEditingSupplier && this.selectedSupplier?.id) {
+      // Update existing supplier
+      supplierData.id = this.selectedSupplier.id;
+      this.supplierService.updateSupplier(supplierData).subscribe({
+        next: (updatedSupplier) => {
+          this.showSupplierCreation = false;
+          this.selectedSupplier = updatedSupplier;
+          this.supplierCtrl.setValue(updatedSupplier.name);
+          // Update the supplier in the filtered list
+          const index = this.filteredSuppliers.findIndex(s => s.id === updatedSupplier.id);
+          if (index >= 0) {
+            this.filteredSuppliers[index] = updatedSupplier;
+          }
+        },
+        error: (err) => console.error('Error updating supplier:', err)
+      });
+    } else {
+      // Create new supplier
+      this.supplierService.createSupplier(supplierData).subscribe({
+        next: (createdSupplier) => {
+          this.showSupplierCreation = false;
+          this.selectedSupplier = createdSupplier;
+          this.supplierCtrl.setValue(createdSupplier.name);
+          this.filteredSuppliers = [createdSupplier];
+          
+          // If in supplier creation mode, return the created supplier
+          if (this.data.supplierCreationMode) {
+            this.dialogRef.close({ supplier: createdSupplier });
+          }
+        },
+        error: (err) => console.error('Error creating supplier:', err)
+      });
+    }
   }
   
   savePurchaseOption(): void {

@@ -1,0 +1,171 @@
+<div class="supplier-form-container">
+  <h3>{{ isEditMode ? 'Edit' : 'Create New' }} Supplier</h3>
+  <form [formGroup]="supplierForm" (ngSubmit)="onSubmit()">
+    <div class="form-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Name</mat-label>
+        <input matInput formControlName="name" required>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Customer Number</mat-label>
+        <input matInput formControlName="customerNumber">
+      </mat-form-field>
+    </div>
+
+    <div class="form-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Tax ID</mat-label>
+        <input matInput formControlName="taxId">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Tax Rate</mat-label>
+        <input matInput formControlName="taxRate" type="number">
+      </mat-form-field>
+    </div>
+
+    <div class="form-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Minimum Order</mat-label>
+        <input matInput formControlName="minimumOrder" type="number">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Payment Terms</mat-label>
+        <input matInput formControlName="paymentTerms">
+      </mat-form-field>
+    </div>
+
+    <div class="form-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Address</mat-label>
+        <input matInput formControlName="address">
+      </mat-form-field>
+    </div>
+
+    <div class="form-row">
+      <mat-form-field appearance="outline">
+        <mat-label>City</mat-label>
+        <input matInput formControlName="city">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>State</mat-label>
+        <input matInput formControlName="state">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>ZIP</mat-label>
+        <input matInput formControlName="zip">
+      </mat-form-field>
+    </div>
+
+    <div class="form-row">
+      <mat-form-field appearance="outline">
+        <mat-label>CC Emails</mat-label>
+        <input matInput formControlName="ccEmails">
+      </mat-form-field>
+    </div>
+
+    <div class="form-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Default Category</mat-label>
+        <input type="text" matInput [formControl]="categoryCtrl" [matAutocomplete]="categoryAuto">
+        <mat-autocomplete #categoryAuto="matAutocomplete" (optionSelected)="onCategoryOptionSelected($event)">
+          <mat-option *ngFor="let category of filteredCategories" [value]="category.name">
+            {{ category.name }}
+          </mat-option>
+          <mat-option *ngIf="canCreateNewCategory" [value]="categoryCtrl.value">
+            Create new category: "{{ categoryCtrl.value }}"
+          </mat-option>
+        </mat-autocomplete>            
+      </mat-form-field>
+    </div>
+
+    <div class="form-row">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Comments</mat-label>
+        <textarea matInput formControlName="comments" rows="3"></textarea>
+      </mat-form-field>
+    </div>
+
+    <!-- Email section -->
+    <div class="section-header">
+      <h4>Email Addresses</h4>
+    </div>
+    
+    <div class="email-list">
+      <div *ngFor="let email of supplierEmails; let i = index" class="contact-item">
+        <span [class.default-contact]="email.isDefault">{{ email.email }}</span>
+        <div class="contact-actions">
+          <button type="button" mat-icon-button color="primary" (click)="setDefaultEmail(i)" [disabled]="email.isDefault">
+            <mat-icon>star{{ email.isDefault ? '' : '_border' }}</mat-icon>
+          </button>
+          <button type="button" mat-icon-button color="warn" (click)="removeEmail(i)">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <form [formGroup]="emailForm" class="contact-form">
+      <div class="form-row">
+        <mat-form-field appearance="outline">
+          <mat-label>Email</mat-label>
+          <input matInput formControlName="email" type="email" placeholder="email@example.com">
+          <mat-error *ngIf="emailForm.get('email')?.hasError('email')">
+            Please enter a valid email address
+          </mat-error>
+        </mat-form-field>
+        
+        <mat-checkbox formControlName="isDefault">Default</mat-checkbox>
+        
+        <button type="button" mat-icon-button color="primary" (click)="addEmail()" [disabled]="!emailForm.valid">
+          <mat-icon>add_circle</mat-icon>
+        </button>
+      </div>
+    </form>
+    
+    <!-- Phone section -->
+    <div class="section-header">
+      <h4>Phone Numbers</h4>
+    </div>
+    
+    <div class="phone-list">
+      <div *ngFor="let phone of supplierPhones; let i = index" class="contact-item">
+        <span [class.default-contact]="phone.isDefault">{{ phone.phoneNumber }}</span>
+        <div class="contact-actions">
+          <button type="button" mat-icon-button color="primary" (click)="setDefaultPhone(i)" [disabled]="phone.isDefault">
+            <mat-icon>star{{ phone.isDefault ? '' : '_border' }}</mat-icon>
+          </button>
+          <button type="button" mat-icon-button color="warn" (click)="removePhone(i)">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <form [formGroup]="phoneForm" class="contact-form">
+      <div class="form-row">
+        <mat-form-field appearance="outline">
+          <mat-label>Phone Number</mat-label>
+          <input matInput formControlName="phoneNumber" placeholder="(123) 456-7890">
+        </mat-form-field>
+        
+        <mat-checkbox formControlName="isDefault">Default</mat-checkbox>
+        
+        <button type="button" mat-icon-button color="primary" (click)="addPhone()" [disabled]="!phoneForm.valid">
+          <mat-icon>add_circle</mat-icon>
+        </button>
+      </div>
+    </form>
+
+    <div class="button-row">
+      <button type="button" mat-button color="warn" (click)="onCancel()">Cancel</button>
+      <button type="submit" mat-raised-button color="primary">
+        {{ isEditMode ? 'Update' : 'Save' }} Supplier
+      </button>
+    </div>
+  </form>
+</div>

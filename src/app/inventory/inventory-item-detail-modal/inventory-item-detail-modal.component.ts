@@ -42,6 +42,9 @@ import { UomDialogComponent } from '../uom-dialog/uom-dialog.component';
 // Import the PurchaseOptionModal component
 import { PurchaseOptionModalComponent } from '../purchase-option-modal/purchase-option-modal.component';
 
+// Add import for the new supplier dialog
+import { SupplierDialogComponent } from '../../suppliers/supplier-dialog/supplier-dialog.component';
+
 interface LocationInventory {
   location: Location;
   quantity: number;
@@ -122,6 +125,13 @@ export class InventoryItemDetailModalComponent implements OnInit {
 
     // Load location-based on-hand info
     this.loadLocationInventory();
+
+    // Load supplier from PurchaseOptionModal component if available
+    if (window.history.state && window.history.state.newSupplier) {
+      const newSupplier = window.history.state.newSupplier;
+      console.log('New supplier received:', newSupplier);
+      // Use the new supplier
+    }
   }
 
   private loadAllUoms() {
@@ -134,7 +144,7 @@ export class InventoryItemDetailModalComponent implements OnInit {
   }
 
 
-    private setupPurchaseOptionSupplierControls(): void {
+  private setupPurchaseOptionSupplierControls(): void {
     if (!this.item.purchaseOptions) return;
     this.item.purchaseOptions.forEach(opt => {
       opt.supplierCtrl = new FormControl<string>('', { nonNullable: true });
@@ -164,9 +174,10 @@ export class InventoryItemDetailModalComponent implements OnInit {
 
   // The search method:
   private searchSuppliers(term: string): Observable<Supplier[]> {
-    if (!term.trim()) {
+    if (!term || !term.trim()) {
       return of([]);
     }
+    console.log('Searching suppliers with term:', term);
     return this.supplierService.searchSuppliers(term);
   }
 
@@ -175,20 +186,38 @@ export class InventoryItemDetailModalComponent implements OnInit {
     if (match) {
       opt.supplier = match;
       opt.supplierId = match.id;
-    } else {
-      this.createNewSupplier(value, opt);
+      this.savePurchaseOptionChanges(opt);
+    } else if (opt.canCreateNewSupplier) {
+      // Open supplier creation dialog with the new component
+      this.openSupplierCreationDialog(value);
     }
   }
 
-  private createNewSupplier(name: string, opt: PurchaseOption) {
-    const sup: Supplier = { name };
-    this.supplierService.createSupplier(sup).subscribe({
-      next: created => {
-        opt.supplier = created;
-        opt.supplierId = created.id;
-        opt.supplierCtrl?.setValue(created.name);
-      },
-      error: err => console.error('Failed to create new supplier', err)
+  // Replace openSupplierCreationDialog with the new implementation
+  openSupplierCreationDialog(initialName: string = ''): void {
+    const dialogRef = this.dialog.open(SupplierDialogComponent, {
+      width: '800px',
+      data: {
+        initialSupplierName: initialName
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(supplier => {
+      if (supplier) {
+        // Refresh supplier lists with the newly created supplier
+        this.item.purchaseOptions?.forEach(po => {
+          if (po.filteredSuppliers) {
+            po.filteredSuppliers = [supplier, ...po.filteredSuppliers];
+          }
+          // If the supplier creation was triggered from this purchase option, select it
+          if (po.supplierCtrl?.value === initialName) {
+            po.supplier = supplier;
+            po.supplierId = supplier.id;
+            po.supplierCtrl.setValue(supplier.name);
+            this.savePurchaseOptionChanges(po);
+          }
+        });
+      }
     });
   }
 
@@ -220,7 +249,7 @@ export class InventoryItemDetailModalComponent implements OnInit {
     }
   }
 
-  /** Called when the user picks any option (existing or “create new”). */
+  /** Called when the user picks any option (existing or "create new"). */
   onOptionSelected(fullValue: string) {
     console.log('optionSelected =>', fullValue);
 
@@ -359,6 +388,50 @@ export class InventoryItemDetailModalComponent implements OnInit {
       });
   }
 
+  /** Save changes to purchase option fields */
+  savePurchaseOptionChanges(option: PurchaseOption) {
+    if (!option.id) return;
+    
+    // Create update payload
+    const updateData: Partial<PurchaseOption> = {
+      nickname: option.nickname,
+      supplierProductCode: option.supplierProductCode,
+      // Remove price from here as it needs special handling
+      supplierId: option.supplierId,
+      orderingUomId: option.orderingUomId,
+      // Include other fields as needed
+      innerPackQuantity: option.innerPackQuantity,
+      packsPerCase: option.packsPerCase,
+      minOrderQuantity: option.minOrderQuantity,
+      taxRate: option.taxRate,
+      scanBarcode: option.scanBarcode
+    };
+    
+    this.purchaseOptionService.partialUpdatePurchaseOption(option.id, updateData)
+      .subscribe({
+        next: updated => {
+          // Update local option with values from server
+          Object.assign(option, updated);
+          console.log('Purchase option updated successfully');
+        },
+        error: err => console.error('Failed to update purchase option', err)
+      });
+  }
+
+  /** Handle price changes specifically using the dedicated price update endpoint */
+  onPriceChange(option: PurchaseOption) {
+    if (!option.id || option.price === undefined || option.price === null) return;
+    
+    this.purchaseOptionService.updatePriceManually(option.id, option.price)
+      .subscribe({
+        next: updated => {
+          option.price = updated.price;
+          console.log('Price updated successfully');
+        },
+        error: err => console.error('Failed to update price', err)
+      });
+  }
+
   /** Called when user sets an option as main purchase option */
   onSetAsMain(option: PurchaseOption) {
     if (!option.id) return;
@@ -398,7 +471,7 @@ export class InventoryItemDetailModalComponent implements OnInit {
   // Save item changes
   // -------------------------------
 
-  /** On final “Save,” we do a partial update of the item itself (sku, productCode, desc, category, etc.) */
+  /** On final "Save," we do a partial update of the item itself (sku, productCode, desc, category, etc.) */
   saveChanges() {
     if (!this.item.id) {
       // If the item is new, you'd do a "create" flow. For demonstration,
@@ -460,10 +533,11 @@ export class InventoryItemDetailModalComponent implements OnInit {
         option.orderingUomId = newUom.id;
         // Also update the uom control so the text displays correctly.
         option.uomCtrl!.setValue(newUom.name);
+        // Save the changes to the backend
+        this.savePurchaseOptionChanges(option);
       }
     });
   }
-  
 
   private setupPurchaseOptionUomControls(): void {
     if (!this.item.purchaseOptions) return;
@@ -512,6 +586,4 @@ export class InventoryItemDetailModalComponent implements OnInit {
       option.orderingUomId = found.id;
     }
   }
-  
-  
 }

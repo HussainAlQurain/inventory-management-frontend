@@ -1,3 +1,5 @@
+import { Category } from './Category';
+
 export interface Supplier {
   id?: number;
   name: string;
@@ -15,6 +17,7 @@ export interface Supplier {
   emails?: SupplierEmail[];
   phones?: SupplierPhone[];
   defaultCategoryId?: number;
+  defaultCategory?: Category; // Add this property for the category object
   authorizedBuyerIds?: number[];
 }
 

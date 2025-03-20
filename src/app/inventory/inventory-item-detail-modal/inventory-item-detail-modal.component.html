@@ -106,7 +106,8 @@
 
                 <mat-form-field appearance="outline" style="width:150px;">
                   <mat-label>Nickname</mat-label>
-                  <input matInput [(ngModel)]="option.nickname" placeholder="Nickname" />
+                  <input matInput [(ngModel)]="option.nickname" placeholder="Nickname" 
+                    (blur)="savePurchaseOptionChanges(option)" />
                 </mat-form-field>
               </td>
             </ng-container>
@@ -143,7 +144,8 @@
               <th mat-header-cell *matHeaderCellDef>Product Code</th>
               <td mat-cell *matCellDef="let option">
                 <mat-form-field appearance="outline" style="width:140px;">
-                  <input matInput [(ngModel)]="option.supplierProductCode" placeholder="Code" />
+                  <input matInput [(ngModel)]="option.supplierProductCode" placeholder="Code" 
+                    (blur)="savePurchaseOptionChanges(option)" />
                 </mat-form-field>
               </td>
             </ng-container>
@@ -157,7 +159,7 @@
                   <input type="text" matInput [formControl]="option.uomCtrl" [matAutocomplete]="autoUom"
                     placeholder="UOM">
                   <mat-autocomplete #autoUom="matAutocomplete"
-                    (optionSelected)="onUomSelected($event.option.value, option)">
+                    (optionSelected)="onUomSelected($event.option.value, option); savePurchaseOptionChanges(option)">
                     <mat-option *ngFor="let uom of option.filteredUoms" [value]="uom.name">
                       {{ uom.name }} ({{ uom.abbreviation }})
                     </mat-option>
@@ -177,7 +179,8 @@
               <th mat-header-cell *matHeaderCellDef>Price</th>
               <td mat-cell *matCellDef="let option">
                 <mat-form-field appearance="outline" style="width:100px;">
-                  <input matInput type="number" [(ngModel)]="option.price" placeholder="Price" />
+                  <input matInput type="number" [(ngModel)]="option.price" placeholder="Price" 
+                    (blur)="onPriceChange(option)" />
                 </mat-form-field>
 
                 <button mat-icon-button color="primary" (click)="showPriceHistory(option)"
