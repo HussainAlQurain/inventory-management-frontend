@@ -338,17 +338,32 @@ export class InventoryItemDetailModalComponent implements OnInit {
         // Using non-null assertion (!) since we've already checked this.item.id is not falsy above
         this.purchaseOptionService.createPurchaseOption(purchaseOptionData, this.item.id!).subscribe({
           next: created => {
-            // push to local array
-            if (!this.item.purchaseOptions) {
-              this.item.purchaseOptions = [];
-            }
-            this.item.purchaseOptions.push(created);
-            
-            // Set up the new purchase option's controls
-            this.setupPurchaseOptionSupplierControls();
-            this.setupPurchaseOptionUomControls();
+            // Fetch the updated item data from the server to ensure all purchase options are up-to-date
+            this.inventoryItemsService.getInventoryItemById(this.item.id!).subscribe({
+              next: (updatedItem) => {
+                // Update the item with the refreshed data
+                this.item = updatedItem;
+                
+                // Set up controls for all purchase options
+                this.setupPurchaseOptionSupplierControls();
+                this.setupPurchaseOptionUomControls();
+              },
+              error: (err) => {
+                console.error('Error refreshing item data:', err);
+                
+                // Fallback: if we can't refresh the whole item, at least add the new purchase option
+                if (!this.item.purchaseOptions) {
+                  this.item.purchaseOptions = [];
+                }
+                this.item.purchaseOptions.push(created);
+                
+                // Setup controls for just the new purchase option
+                this.setupPurchaseOptionSupplierControls();
+                this.setupPurchaseOptionUomControls();
+              }
+            });
           },
-          error: err => console.error(err)
+          error: err => console.error('Error creating purchase option:', err)
         });
       }
     });

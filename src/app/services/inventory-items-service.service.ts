@@ -31,7 +31,12 @@ export class InventoryItemsService {
   }
 
   getInventoryItemById(id: number): Observable<InventoryItem> {
-    return this.http.get<InventoryItem>(`${this.baseUrl}/${id}`).pipe(
+    const companyId = this.companiesService.getSelectedCompanyId();
+    if (!companyId) {
+      return throwError(() => new Error('No company selected'));
+    }
+    
+    return this.http.get<InventoryItem>(`${this.baseUrl}/${id}/company/${companyId}`).pipe(
       catchError(error => {
         console.error(`Error fetching inventory item with ID ${id}:`, error);
         return throwError(() => new Error(`Error fetching inventory item with ID ${id}.`));
