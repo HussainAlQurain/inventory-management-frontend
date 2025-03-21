@@ -1,6 +1,11 @@
 <div class="layout-container">
     <app-sidenav-bar />
-    <div class="content-area">
-      <router-outlet></router-outlet>
+    <div class="main-content">
+      <header class="app-header">
+        <!-- User component removed from here to prevent duplication -->
+      </header>
+      <div class="content-area">
+        <router-outlet></router-outlet>
+      </div>
     </div>
   </div>

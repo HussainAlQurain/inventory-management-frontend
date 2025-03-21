@@ -9,16 +9,31 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatFormFieldModule } from '@angular/material/form-field'; 
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { FormsModule } from '@angular/forms';
 
 import { InventoryItemsService } from '../../services/inventory-items-service.service';
 import { InventoryItem } from '../../models/InventoryItem';
 import { InventoryItemDetailModalComponent } from '../inventory-item-detail-modal/inventory-item-detail-modal.component';
+import { Category } from '../../models/Category';
+import { Supplier } from '../../models/Supplier';
+import { CategoriesService } from '../../services/categories.service';
+import { SupplierService } from '../../services/supplier.service';
+
+interface Buyer {
+  id: number;
+  name: string;
+}
 
 @Component({
   selector: 'app-inventory-items',
   standalone: true,
   imports: [
     CommonModule, 
+    FormsModule,
     MatTableModule,
     MatPaginatorModule,
     MatSortModule,
@@ -27,7 +42,11 @@ import { InventoryItemDetailModalComponent } from '../inventory-item-detail-moda
     MatButtonModule,
     MatIconModule,
     MatChipsModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatMenuModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule
   ],
   templateUrl: './inventory-items.component.html',
   styleUrl: './inventory-items.component.scss'
@@ -49,9 +68,28 @@ export class InventoryItemsComponent implements OnInit {
     'taxRate'
   ];
   
+  // Original and filtered data sources
   dataSource: InventoryItem[] = [];
+  filteredItems: InventoryItem[] = [];
+  
+  // Loading and error states
   isLoading = true;
   error: string | null = null;
+  
+  // Filter properties
+  nameFilter: string = '';
+  categoryFilter: number | null = null;
+  supplierFilter: number | null = null;
+  buyerFilter: number | null = null;
+  
+  // Filter options
+  categories: Category[] = [];
+  suppliers: Supplier[] = [];
+  buyers: Buyer[] = [
+    { id: 1, name: 'Company' },
+    { id: 2, name: 'Store Manager' },
+    { id: 3, name: 'Purchasing Agent' }
+  ];
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -59,11 +97,15 @@ export class InventoryItemsComponent implements OnInit {
 
   constructor(
     private inventoryService: InventoryItemsService,
+    private categoriesService: CategoriesService,
+    private supplierService: SupplierService,
     private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
     this.loadInventoryItems();
+    this.loadCategories();
+    this.loadSuppliers();
   }
 
   loadInventoryItems(): void {
@@ -71,6 +113,7 @@ export class InventoryItemsComponent implements OnInit {
     this.inventoryService.getInventoryItemsByCompany().subscribe({
       next: (items) => {
         this.dataSource = items;
+        this.filteredItems = items; // Initialize filtered items with all items
         this.isLoading = false;
       },
       error: (error) => {
@@ -79,6 +122,101 @@ export class InventoryItemsComponent implements OnInit {
         console.error('Error loading inventory items:', error);
       }
     });
+  }
+
+  loadCategories(): void {
+    this.categoriesService.getAllCategories('').subscribe({
+      next: (categories) => {
+        this.categories = categories;
+      },
+      error: (error) => {
+        console.error('Error loading categories:', error);
+      }
+    });
+  }
+
+  loadSuppliers(): void {
+    this.supplierService.searchSuppliers('').subscribe({
+      next: (suppliers) => {
+        this.suppliers = suppliers;
+      },
+      error: (error) => {
+        console.error('Error loading suppliers:', error);
+      }
+    });
+  }
+
+  // Filtering methods
+  applyFilters(): void {
+    this.filteredItems = this.dataSource.filter(item => {
+      // Filter by name
+      const nameMatch = !this.nameFilter || 
+        item.name.toLowerCase().includes(this.nameFilter.toLowerCase());
+      
+      // Filter by category
+      const categoryMatch = !this.categoryFilter || 
+        item.category?.id === this.categoryFilter;
+      
+      // Filter by supplier - check all purchase options for any supplier match
+      const supplierMatch = !this.supplierFilter || 
+        item.purchaseOptions?.some(po => po.supplier?.id === this.supplierFilter);
+      
+      // Filter by buyer - example filter (using placeholder data)
+      const buyerMatch = !this.buyerFilter || this.buyerFilter === 1; // Always match Company buyer for now
+      
+      // Return true only if all filters match
+      return nameMatch && categoryMatch && supplierMatch && buyerMatch;
+    });
+  }
+
+  clearAllFilters(): void {
+    this.nameFilter = '';
+    this.categoryFilter = null;
+    this.supplierFilter = null;
+    this.buyerFilter = null;
+    this.applyFilters();
+  }
+
+  hasActiveFilters(): boolean {
+    return !!(this.nameFilter || this.categoryFilter || this.supplierFilter || this.buyerFilter);
+  }
+
+  // Helper methods to get names for display
+  getCategoryName(id: number): string {
+    return this.categories.find(c => c.id === id)?.name || 'Unknown';
+  }
+
+  getSupplierName(id: number): string {
+    return this.suppliers.find(s => s.id === id)?.name || 'Unknown';
+  }
+
+  getBuyerName(id: number): string {
+    return this.buyers.find(b => b.id === id)?.name || 'Unknown';
+  }
+
+  // Add and download methods - placeholders for now
+  addInventoryItem(): void {
+    // To be implemented
+    console.log('Add inventory item clicked');
+    alert('Add inventory item functionality will be implemented later');
+  }
+
+  importFromExcel(): void {
+    // To be implemented
+    console.log('Import from Excel clicked');
+    alert('Import from Excel functionality will be implemented later');
+  }
+
+  downloadInventoryItems(): void {
+    // To be implemented
+    console.log('Download inventory items clicked');
+    alert('Download inventory items functionality will be implemented later');
+  }
+
+  downloadPurchaseOptions(): void {
+    // To be implemented
+    console.log('Download purchase options clicked');
+    alert('Download purchase options functionality will be implemented later');
   }
 
   openItemDetails(item: InventoryItem): void {

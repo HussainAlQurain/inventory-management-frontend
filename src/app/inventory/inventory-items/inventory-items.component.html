@@ -1,5 +1,102 @@
 <div class="inventory-container">
-    <h1 class="page-title">Inventory Items</h1>
+    <div class="page-header">
+      <h1 class="page-title">Inventory Items</h1>
+      <div class="header-actions">
+        <button mat-raised-button [matMenuTriggerFor]="addMenu" color="primary">
+          <mat-icon>add</mat-icon> Add Item
+        </button>
+        <mat-menu #addMenu="matMenu">
+          <button mat-menu-item (click)="addInventoryItem()">
+            <mat-icon>add_circle</mat-icon> Add Manually
+          </button>
+          <button mat-menu-item (click)="importFromExcel()">
+            <mat-icon>upload_file</mat-icon> Import from Excel
+          </button>
+        </mat-menu>
+        
+        <button mat-raised-button [matMenuTriggerFor]="downloadMenu" color="accent">
+          <mat-icon>download</mat-icon> Download
+        </button>
+        <mat-menu #downloadMenu="matMenu">
+          <button mat-menu-item (click)="downloadInventoryItems()">
+            <mat-icon>inventory_2</mat-icon> Inventory Items
+          </button>
+          <button mat-menu-item (click)="downloadPurchaseOptions()">
+            <mat-icon>shopping_cart</mat-icon> Purchase Options
+          </button>
+        </mat-menu>
+      </div>
+    </div>
+    
+    <div class="filters-panel mat-elevation-z1">
+      <div class="filter-row">
+        <mat-form-field appearance="outline">
+          <mat-label>Search by name</mat-label>
+          <input matInput [(ngModel)]="nameFilter" (keyup)="applyFilters()" placeholder="Search items...">
+          <button *ngIf="nameFilter" matSuffix mat-icon-button aria-label="Clear" (click)="nameFilter=''; applyFilters()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Category</mat-label>
+          <mat-select [(ngModel)]="categoryFilter" (selectionChange)="applyFilters()">
+            <mat-option>All Categories</mat-option>
+            <mat-option *ngFor="let category of categories" [value]="category.id">
+              {{category.name}}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Supplier</mat-label>
+          <mat-select [(ngModel)]="supplierFilter" (selectionChange)="applyFilters()">
+            <mat-option>All Suppliers</mat-option>
+            <mat-option *ngFor="let supplier of suppliers" [value]="supplier.id">
+              {{supplier.name}}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Buyer</mat-label>
+          <mat-select [(ngModel)]="buyerFilter" (selectionChange)="applyFilters()">
+            <mat-option>All Buyers</mat-option>
+            <mat-option *ngFor="let buyer of buyers" [value]="buyer.id">
+              {{buyer.name}}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+      
+      <div class="active-filters" *ngIf="hasActiveFilters()">
+        <span class="filter-chip" *ngIf="nameFilter">
+          Name: {{nameFilter}}
+          <button mat-icon-button (click)="nameFilter=''; applyFilters()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </span>
+        <span class="filter-chip" *ngIf="categoryFilter">
+          Category: {{getCategoryName(categoryFilter)}}
+          <button mat-icon-button (click)="categoryFilter=null; applyFilters()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </span>
+        <span class="filter-chip" *ngIf="supplierFilter">
+          Supplier: {{getSupplierName(supplierFilter)}}
+          <button mat-icon-button (click)="supplierFilter=null; applyFilters()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </span>
+        <span class="filter-chip" *ngIf="buyerFilter">
+          Buyer: {{getBuyerName(buyerFilter)}}
+          <button mat-icon-button (click)="buyerFilter=null; applyFilters()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </span>
+        <button mat-button color="warn" (click)="clearAllFilters()">Clear All</button>
+      </div>
+    </div>
     
     <div class="table-container">
       @if (isLoading) {
@@ -11,8 +108,13 @@
           <p class="error-message">{{ error }}</p>
           <button mat-raised-button color="primary" (click)="loadInventoryItems()">Retry</button>
         </div>
+      } @else if (filteredItems.length === 0) {
+        <div class="no-data-container">
+          <p>No inventory items match your filters</p>
+          <button mat-raised-button color="primary" (click)="clearAllFilters()">Clear Filters</button>
+        </div>
       } @else {
-        <table mat-table [dataSource]="dataSource" matSort class="inventory-table">
+        <table mat-table [dataSource]="filteredItems" matSort class="inventory-table">
           
           <!-- Name Column -->
           <ng-container matColumnDef="name">
