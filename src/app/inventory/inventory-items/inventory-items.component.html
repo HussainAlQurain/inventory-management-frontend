@@ -211,4 +211,5 @@
         <mat-paginator [pageSizeOptions]="[10, 25, 50, 100]" showFirstLastButtons></mat-paginator>
       }
     </div>
+    <app-add-inventory-item *ngIf="showAddItemPanel" (closePanel)="handleClosePanel($event)"></app-add-inventory-item>
   </div>

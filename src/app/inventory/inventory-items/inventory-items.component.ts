@@ -22,6 +22,7 @@ import { Category } from '../../models/Category';
 import { Supplier } from '../../models/Supplier';
 import { CategoriesService } from '../../services/categories.service';
 import { SupplierService } from '../../services/supplier.service';
+import { AddInventoryItemComponent } from '../add-inventory-item/add-inventory-item.component';
 
 interface Buyer {
   id: number;
@@ -46,7 +47,8 @@ interface Buyer {
     MatMenuModule,
     MatFormFieldModule,
     MatInputModule,
-    MatSelectModule
+    MatSelectModule,
+    AddInventoryItemComponent
   ],
   templateUrl: './inventory-items.component.html',
   styleUrl: './inventory-items.component.scss'
@@ -90,6 +92,9 @@ export class InventoryItemsComponent implements OnInit {
     { id: 2, name: 'Store Manager' },
     { id: 3, name: 'Purchasing Agent' }
   ];
+
+  // Add inventory item panel flag
+  showAddItemPanel = false;
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -194,11 +199,18 @@ export class InventoryItemsComponent implements OnInit {
     return this.buyers.find(b => b.id === id)?.name || 'Unknown';
   }
 
-  // Add and download methods - placeholders for now
+  // Add and download methods
   addInventoryItem(): void {
-    // To be implemented
-    console.log('Add inventory item clicked');
-    alert('Add inventory item functionality will be implemented later');
+    this.showAddItemPanel = true;
+  }
+
+  // Handle closing the add item panel
+  handleClosePanel(createdItem: InventoryItem | null): void {
+    this.showAddItemPanel = false;
+    if (createdItem) {
+      // Refresh the inventory items list
+      this.loadInventoryItems();
+    }
   }
 
   importFromExcel(): void {

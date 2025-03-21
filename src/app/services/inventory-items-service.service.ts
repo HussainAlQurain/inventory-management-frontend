@@ -46,4 +46,18 @@ export class InventoryItemsService {
       partialDto
     );
   }
+
+  createInventoryItem(itemData: any): Observable<InventoryItem> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    if (!companyId) {
+      return throwError(() => new Error('No company selected'));
+    }
+    
+    return this.http.post<InventoryItem>(`${this.baseUrl}/company/${companyId}`, itemData).pipe(
+      catchError(error => {
+        console.error('Error creating inventory item:', error);
+        return throwError(() => new Error('Error creating inventory item.'));
+      })
+    );
+  }
 }

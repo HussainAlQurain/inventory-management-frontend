@@ -1,0 +1,145 @@
+<div class="slide-panel">
+  <div class="panel-header">
+    <h2>Add Inventory Item</h2>
+    <button mat-icon-button (click)="cancel()" aria-label="Close panel">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <mat-divider></mat-divider>
+
+  <div class="panel-content">
+    <form [formGroup]="itemForm">
+      <mat-tab-group>
+        <!-- Basic Details Tab -->
+        <mat-tab label="Basic Details">
+          <div class="form-section">
+            <!-- Name Field -->
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Item Name</mat-label>
+              <input matInput formControlName="name" required>
+              <mat-error *ngIf="itemForm.get('name')?.hasError('required')">
+                Name is required
+              </mat-error>
+            </mat-form-field>
+
+            <!-- SKU and Product Code -->
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>SKU</mat-label>
+                <input matInput formControlName="sku">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Product Code</mat-label>
+                <input matInput formControlName="productCode">
+              </mat-form-field>
+            </div>
+
+            <!-- Current Price and Calories -->
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Current Price</mat-label>
+                <input matInput type="number" formControlName="currentPrice">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Calories</mat-label>
+                <input matInput type="number" formControlName="calories">
+              </mat-form-field>
+            </div>
+
+            <!-- Description -->
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Description</mat-label>
+              <textarea matInput formControlName="description" rows="3"></textarea>
+            </mat-form-field>
+
+            <!-- Category Selection -->
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Category</mat-label>
+              <input type="text" matInput [formControl]="categoryCtrl" [matAutocomplete]="autoCat">
+              <mat-autocomplete #autoCat="matAutocomplete" (optionSelected)="onCategoryOptionSelected($event.option.value)">
+                <!-- Existing categories -->
+                <mat-option *ngFor="let cat of filteredCategories" [value]="cat.name">
+                  {{ cat.name }}
+                </mat-option>
+                <!-- Create new category option -->
+                <mat-option *ngIf="canCreateNewCategory" [value]="categoryCtrl.value">
+                  Create "<b>{{ categoryCtrl.value }}</b>" as new category
+                </mat-option>
+              </mat-autocomplete>
+            </mat-form-field>
+
+            <!-- UOM Selection -->
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Inventory UOM</mat-label>
+              <input type="text" matInput [formControl]="uomCtrl" [matAutocomplete]="autoUom">
+              <mat-autocomplete #autoUom="matAutocomplete" (optionSelected)="onUomSelected($event.option.value)">
+                <mat-option *ngFor="let uom of filteredUoms" [value]="uom.name">
+                  {{ uom.name }} ({{ uom.abbreviation }})
+                </mat-option>
+                <!-- Create new UOM option -->
+                <mat-option *ngIf="uomCtrl.value && filteredUoms.length === 0" (click)="openNewUomDialog()">
+                  Create new UOM: "{{ uomCtrl.value }}"
+                </mat-option>
+              </mat-autocomplete>
+            </mat-form-field>
+          </div>
+        </mat-tab>
+
+        <!-- Purchase Options Tab -->
+        <mat-tab label="Purchase Options">
+          <div class="form-section">
+            <div *ngIf="purchaseOptions.length === 0" class="no-data">
+              <p>No purchase options added yet.</p>
+            </div>
+
+            <div *ngIf="purchaseOptions.length > 0" class="purchase-options-list">
+              <div *ngFor="let option of purchaseOptions; let i = index" class="purchase-option-card">
+                <div class="card-header">
+                  <h3>{{ option.nickname || 'Purchase Option ' + (i + 1) }}</h3>
+                  <button mat-icon-button color="warn" (click)="removePurchaseOption(i)">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
+                <div class="card-content">
+                  <div class="info-row">
+                    <span class="label">Supplier:</span>
+                    <span class="value">{{ option.supplier?.name || 'N/A' }}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="label">Price:</span>
+                    <span class="value">{{ option.price | currency }}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="label">UOM:</span>
+                    <span class="value">{{ option.orderingUom?.name || 'N/A' }}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="label">Main Option:</span>
+                    <span class="value">{{ option.mainPurchaseOption ? 'Yes' : 'No' }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="add-option-button">
+              <button mat-raised-button color="primary" (click)="addPurchaseOption()">
+                <mat-icon>add</mat-icon> Add Purchase Option
+              </button>
+            </div>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    </form>
+  </div>
+
+  <div class="panel-footer">
+    <button mat-button (click)="cancel()">Cancel</button>
+    <button mat-raised-button color="primary" (click)="submitForm()" [disabled]="isSubmitting">
+      <span *ngIf="isSubmitting">Saving...</span>
+      <span *ngIf="!isSubmitting">Save</span>
+    </button>
+  </div>
+</div>
