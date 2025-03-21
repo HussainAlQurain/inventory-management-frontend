@@ -577,16 +577,18 @@ export class PurchaseOptionModalComponent implements OnInit {
     // Get purchase option data
     const purchaseOptionData = this.purchaseOptionForm.value;
     
-    // Get supplier ID
+    // Get supplier ID and object
     const supplier = this.filteredSuppliers.find(s => s.name === this.supplierCtrl.value);
     if (supplier) {
       purchaseOptionData.supplierId = supplier.id;
+      purchaseOptionData.supplier = supplier; // Add full supplier object
     }
     
-    // Get UOM ID
+    // Get UOM ID and object
     const uom = this.allUoms.find(u => u.name === this.uomCtrl.value);
     if (uom) {
       purchaseOptionData.orderingUomId = uom.id;
+      purchaseOptionData.orderingUom = uom; // Add full UOM object
     }
     
     // Close dialog and return data
