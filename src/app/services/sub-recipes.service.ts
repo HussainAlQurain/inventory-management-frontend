@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { HttpClient } from '@angular/common/http';
 import { CompaniesService } from './companies.service';
-import { SubRecipe } from '../models/SubRecipe';
+import { SubRecipe, SubRecipeLine } from '../models/SubRecipe';
 import { catchError, Observable, throwError } from 'rxjs';
 
 @Injectable({
@@ -107,5 +107,90 @@ export class SubRecipesService {
         return throwError(() => new Error('Error searching sub recipes.'));
       })
     );
+  }
+
+  // Methods for managing sub-recipe lines
+  getSubRecipeLines(subRecipeId: number): Observable<SubRecipeLine[]> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    if (!companyId) {
+      return throwError(() => new Error('No company selected'));
+    }
+    
+    return this.http.get<SubRecipeLine[]>(`${this.baseUrl}/${subRecipeId}/lines/company/${companyId}`)
+      .pipe(
+        catchError(err => {
+          console.error(`Error fetching lines for sub recipe ID=${subRecipeId}`, err);
+          return throwError(() => new Error(`Error fetching lines for sub recipe ${subRecipeId}`));
+        })
+      );
+  }
+
+  getSubRecipeLine(subRecipeId: number, lineId: number): Observable<SubRecipeLine> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    if (!companyId) {
+      return throwError(() => new Error('No company selected'));
+    }
+    
+    return this.http.get<SubRecipeLine>(`${this.baseUrl}/${subRecipeId}/lines/${lineId}/company/${companyId}`)
+      .pipe(
+        catchError(err => {
+          console.error(`Error fetching line ID=${lineId} for sub recipe ID=${subRecipeId}`, err);
+          return throwError(() => new Error(`Error fetching line ${lineId} for sub recipe ${subRecipeId}`));
+        })
+      );
+  }
+
+  createSubRecipeLine(subRecipeId: number, line: Partial<SubRecipeLine>): Observable<SubRecipeLine> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    if (!companyId) {
+      return throwError(() => new Error('No company selected'));
+    }
+    
+    return this.http.post<SubRecipeLine>(`${this.baseUrl}/${subRecipeId}/lines/company/${companyId}`, line)
+      .pipe(
+        catchError(err => {
+          console.error(`Error creating line for sub recipe ID=${subRecipeId}`, err);
+          return throwError(() => new Error(`Error creating line for sub recipe ${subRecipeId}`));
+        })
+      );
+  }
+
+  updateSubRecipeLine(subRecipeId: number, lineId: number, line: Partial<SubRecipeLine>): Observable<SubRecipeLine> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    if (!companyId) {
+      return throwError(() => new Error('No company selected'));
+    }
+    
+    return this.http.patch<SubRecipeLine>(`${this.baseUrl}/${subRecipeId}/lines/${lineId}/company/${companyId}`, line)
+      .pipe(
+        catchError(err => {
+          console.error(`Error updating line ID=${lineId} for sub recipe ID=${subRecipeId}`, err);
+          return throwError(() => new Error(`Error updating line ${lineId} for sub recipe ${subRecipeId}`));
+        })
+      );
+  }
+
+  deleteSubRecipeLine(subRecipeId: number, lineId: number): Observable<void> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    if (!companyId) {
+      return throwError(() => new Error('No company selected'));
+    }
+    
+    return this.http.delete<void>(`${this.baseUrl}/${subRecipeId}/lines/${lineId}/company/${companyId}`)
+      .pipe(
+        catchError(err => {
+          console.error(`Error deleting line ID=${lineId} for sub recipe ID=${subRecipeId}`, err);
+          return throwError(() => new Error(`Error deleting line ${lineId} for sub recipe ${subRecipeId}`));
+        })
+      );
+  }
+
+  // Calculate the total cost of a sub-recipe based on its lines
+  calculateSubRecipeCost(subRecipe: SubRecipe): number {
+    if (!subRecipe.lines || subRecipe.lines.length === 0) {
+      return 0;
+    }
+    
+    return subRecipe.lines.reduce((total, line) => total + (line.lineCost || 0), 0);
   }
 }

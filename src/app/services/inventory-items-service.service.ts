@@ -66,7 +66,7 @@ export class InventoryItemsService {
     );
   }
 
-  searchInventoryItemsByName(name: string): Observable<InventoryItem[]> {
+  searchInventoryItems(name: string): Observable<InventoryItem[]> {
     const companyId = this.companiesService.getSelectedCompanyId();
     if (!companyId) {
       return throwError(() => new Error('No company selected'));

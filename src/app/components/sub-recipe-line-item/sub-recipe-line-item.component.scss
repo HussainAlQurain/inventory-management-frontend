@@ -1,0 +1,60 @@
+.line-item-form {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.line-type-selector {
+  display: flex;
+  margin-bottom: 16px;
+  
+  button {
+    flex: 1;
+    margin-right: 8px;
+    border: 1px solid #ccc;
+    
+    &:last-child {
+      margin-right: 0;
+    }
+    
+    &.active {
+      background-color: #e0e0e0;
+      font-weight: bold;
+    }
+  }
+}
+
+.item-selector {
+  margin-bottom: 16px;
+}
+
+.quantity-section {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  
+  mat-form-field {
+    flex: 1;
+  }
+}
+
+.cost-section {
+  margin-bottom: 16px;
+  
+  mat-form-field {
+    width: 100%;
+  }
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.full-width {
+  width: 100%;
+}

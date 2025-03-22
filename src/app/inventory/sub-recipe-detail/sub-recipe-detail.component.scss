@@ -1,0 +1,334 @@
+.sub-recipe-container {
+  padding: 20px;
+  position: relative;
+  
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    
+    .page-title {
+      font-size: 24px;
+      font-weight: 500;
+      margin: 0;
+    }
+    
+    .header-actions {
+      display: flex;
+      gap: 10px;
+    }
+  }
+  
+  .filters-panel {
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    padding: 16px;
+    margin-bottom: 20px;
+    
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      
+      mat-form-field {
+        flex: 1;
+        min-width: 200px;
+      }
+    }
+    
+    .active-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+      align-items: center;
+      
+      .filter-chip {
+        display: flex;
+        align-items: center;
+        background-color: #e0e0e0;
+        padding: 4px 8px;
+        border-radius: 16px;
+        font-size: 14px;
+        
+        button {
+          width: 24px;
+          height: 24px;
+          line-height: 24px;
+          
+          mat-icon {
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+            line-height: 18px;
+          }
+        }
+      }
+    }
+  }
+  
+  .sub-recipe-content {
+    display: flex;
+    gap: 20px;
+    
+    .recipe-list-container {
+      width: 300px;
+      
+      .recipe-list {
+        max-height: calc(100vh - 220px);
+        overflow-y: auto;
+        
+        .recipe-item {
+          padding: 12px;
+          border-bottom: 1px solid #eee;
+          cursor: pointer;
+          transition: background-color 0.2s;
+          
+          &:hover {
+            background-color: #f5f5f5;
+          }
+          
+          &.selected {
+            background-color: #e3f2fd;
+          }
+          
+          .recipe-name {
+            font-weight: 500;
+          }
+          
+          .recipe-type {
+            font-size: 12px;
+            color: #666;
+          }
+        }
+      }
+    }
+    
+    .recipe-detail-container {
+      flex: 1;
+      
+      .details-section {
+        padding: 16px;
+        
+        .detail-row {
+          margin-bottom: 12px;
+          
+          .detail-label {
+            font-weight: 500;
+            min-width: 150px;
+            display: inline-block;
+          }
+          
+          .instructions {
+            white-space: pre-line;
+          }
+        }
+      }
+      
+      .ingredients-section {
+        padding: 16px;
+        
+        .lines-table {
+          width: 100%;
+          margin-top: 16px;
+        }
+      }
+      
+      .no-selection {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 300px;
+        background-color: #f9f9f9;
+        border-radius: 4px;
+        font-size: 16px;
+        color: #666;
+      }
+    }
+  }
+  
+  .table-container {
+    position: relative;
+    min-height: 400px;
+    overflow: auto;
+    
+    .sub-recipe-table {
+      width: 100%;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      
+      th {
+        background-color: #f5f5f5;
+        font-weight: 500;
+        color: rgba(0, 0, 0, 0.87);
+      }
+      
+      .recipe-row {
+        cursor: pointer;
+        transition: background-color 0.2s;
+        
+        &:hover {
+          background-color: rgba(0, 0, 0, 0.04);
+        }
+      }
+    }
+    
+    .loading-container, .error-container, .no-data-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 400px;
+      gap: 16px;
+    }
+    
+    .error-message {
+      color: #f44336;
+      margin-bottom: 16px;
+      font-size: 16px;
+    }
+  }
+  
+  mat-paginator {
+    margin-top: 16px;
+  }
+  
+  // Detail panel styles
+  .detail-panel {
+    position: fixed;
+    top: 0;
+    right: -800px; // Start off-screen
+    width: 800px;
+    height: 100vh;
+    background-color: white;
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+    transition: right 0.3s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    
+    &.open {
+      right: 0;
+    }
+    
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 24px;
+      background-color: #f5f5f5;
+      
+      h2 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 500;
+      }
+    }
+    
+    .panel-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      
+      .details-section, .lines-section {
+        padding: 16px 0;
+        
+        .detail-row {
+          display: flex;
+          margin-bottom: 16px;
+          align-items: flex-start;
+          
+          &.full-width {
+            flex-direction: column;
+          }
+          
+          .field-label {
+            font-weight: 500;
+            min-width: 150px;
+            color: rgba(0, 0, 0, 0.7);
+            padding-top: 20px;
+          }
+          
+          .field-value {
+            flex: 1;
+            
+            mat-form-field {
+              width: 100%;
+            }
+          }
+        }
+        
+        .actions {
+          display: flex;
+          justify-content: flex-end;
+          margin-top: 24px;
+        }
+        
+        .section-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 16px;
+          
+          h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 500;
+          }
+        }
+        
+        .lines-table {
+          width: 100%;
+          margin-bottom: 24px;
+          
+          th {
+            background-color: #f5f5f5;
+            font-weight: 500;
+          }
+        }
+        
+        .no-lines {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 32px;
+          background-color: #f9f9f9;
+          border-radius: 4px;
+          text-align: center;
+          
+          p {
+            margin-bottom: 16px;
+            color: rgba(0, 0, 0, 0.6);
+          }
+        }
+        
+        .total-cost {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          font-weight: 500;
+          margin-top: 16px;
+          padding: 16px;
+          background-color: #f9f9f9;
+          border-radius: 4px;
+        }
+      }
+    }
+  }
+  
+  .loading-spinner {
+    display: flex;
+    justify-content: center;
+    padding: 24px;
+  }
+  
+  .no-data {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+  }
+  
+  .full-width {
+    width: 100%;
+  }
+}

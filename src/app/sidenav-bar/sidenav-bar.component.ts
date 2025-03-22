@@ -32,7 +32,7 @@ export class SidenavBarComponent {
       title: 'Inventory',
       icon: 'store',
       submenus: [
-        { id: 0, title: 'Inventory items', route: '/inventory/invenetory-items' },
+        { id: 0, title: 'Inventory items', route: '/inventory/inventory-items' },
         { id: 1, title: 'Assortments', route: '/inventory/assortments' },
         { id: 2, title: 'Allergens', route: '/inventory/allergens' },
         { id: 3, title: 'Sub-recipes / Preparations', route: '/inventory/sub-recipes' },
