@@ -227,6 +227,13 @@ export class SubRecipeDetailComponent implements OnInit {
     return this.recipeTypes.find(t => t.value === type)?.label || type;
   }
 
+  // Add this new helper method to get UOM information
+  getUomInfo(uomId: number | undefined): string {
+    if (!uomId) return 'N/A';
+    const uom = this.allUoms.find(u => u.id === uomId);
+    return uom ? `${uom.name} (${uom.abbreviation})` : 'Unknown';
+  }
+
   // Action methods
   closeDetailPanel(): void {
     this.showDetailPanel = false;

@@ -120,8 +120,7 @@
       <ng-container matColumnDef="uom">
         <th mat-header-cell *matHeaderCellDef> UOM </th>
         <td mat-cell *matCellDef="let recipe"> 
-          <!-- We'll need to fetch UOM details or pass them from backend -->
-          {{ recipe.uomId ? 'UOM-' + recipe.uomId : 'N/A' }} 
+          {{ getUomInfo(recipe.uomId) }}
         </td>
       </ng-container>
 
