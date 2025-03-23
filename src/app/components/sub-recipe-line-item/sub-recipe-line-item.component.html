@@ -1,96 +1,101 @@
-<form [formGroup]="lineForm" class="line-item-form">
-  <div class="line-type-selector">
-    <button mat-button type="button" 
-            [class.active]="lineType === 'inventory'"
-            (click)="setLineType('inventory')">
-      Inventory Item
-    </button>
-    <button mat-button type="button" 
-            [class.active]="lineType === 'subrecipe'"
-            (click)="setLineType('subrecipe')">
-      Sub-Recipe / Prep
-    </button>
-  </div>
+<div class="line-item-form">
+  <form [formGroup]="lineForm">
+    <div class="form-header">
+      <h3>{{ line?.id ? 'Edit Line' : 'Add New Line' }}</h3>
+      <div class="type-selector">
+        <label>Line Type:</label>
+        <div class="type-buttons">
+          <button type="button" mat-raised-button [color]="lineType === 'inventory' ? 'primary' : ''" 
+                  (click)="setLineType('inventory')">Inventory Item</button>
+          <button type="button" mat-raised-button [color]="lineType === 'subrecipe' ? 'primary' : ''" 
+                  (click)="setLineType('subrecipe')">Sub-Recipe</button>
+        </div>
+      </div>
+    </div>
 
-  <div *ngIf="lineType === 'inventory'" class="item-selector">
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Inventory Item</mat-label>
-      <input type="text" matInput [formControl]="inventoryItemCtrl" 
-             [matAutocomplete]="inventoryAuto" placeholder="Search for inventory item">
-      <mat-autocomplete #inventoryAuto="matAutocomplete">
-        <mat-option *ngFor="let item of filteredInventoryItems" 
-                   [value]="item.name"
-                   (click)="onInventoryItemSelected(item.id!)">
-          {{item.name}}
-        </mat-option>
-      </mat-autocomplete>
-    </mat-form-field>
-  </div>
+    <div class="form-row">
+      <mat-form-field appearance="outline" class="form-field-large">
+        <mat-label>{{ lineType === 'inventory' ? 'Inventory Item' : 'Sub-Recipe' }}</mat-label>
+        
+        <!-- Inventory Item Autocomplete -->
+        <input *ngIf="lineType === 'inventory'" 
+              type="text" 
+              matInput 
+              [formControl]="inventoryItemCtrl" 
+              [matAutocomplete]="autoInventory"
+              placeholder="Search for inventory items...">
+        <mat-autocomplete #autoInventory="matAutocomplete" 
+                         [displayWith]="displayInventoryFn">
+          <mat-option *ngFor="let item of filteredInventoryItems" 
+                     [value]="item"
+                     (click)="onInventoryItemSelected(item)">
+            {{ item.name }}
+          </mat-option>
+          <mat-option *ngIf="filteredInventoryItems.length === 0 && (inventoryItemCtrl.value ?? '').length > 0">
+            No matching inventory items found
+          </mat-option>
+        </mat-autocomplete>
+        
+        <!-- Sub-Recipe Autocomplete -->
+        <input *ngIf="lineType === 'subrecipe'" 
+              type="text" 
+              matInput 
+              [formControl]="subRecipeCtrl" 
+              [matAutocomplete]="autoSubRecipe"
+              placeholder="Search for sub-recipes...">
+        <mat-autocomplete #autoSubRecipe="matAutocomplete" 
+                         [displayWith]="displaySubRecipeFn">
+          <mat-option *ngFor="let recipe of filteredSubRecipes" 
+                     [value]="recipe"
+                     (click)="onSubRecipeSelected(recipe)">
+            {{ recipe.name }}
+          </mat-option>
+          <mat-option *ngIf="filteredSubRecipes.length === 0 && (subRecipeCtrl.value ?? '').length > 0">
+            No matching sub-recipes found
+          </mat-option>
+        </mat-autocomplete>
+      </mat-form-field>
+    </div>
 
-  <div *ngIf="lineType === 'subrecipe'" class="item-selector">
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Sub-Recipe / Preparation</mat-label>
-      <input type="text" matInput [formControl]="subRecipeCtrl" 
-             [matAutocomplete]="subRecipeAuto" placeholder="Search for sub-recipe">
-      <mat-autocomplete #subRecipeAuto="matAutocomplete">
-        <mat-option *ngFor="let recipe of filteredSubRecipes" 
-                   [value]="recipe.name"
-                   (click)="onSubRecipeSelected(recipe.id!)">
-          {{recipe.name}} ({{recipe.type}})
-        </mat-option>
-      </mat-autocomplete>
-    </mat-form-field>
-  </div>
+    <div class="form-row">
+      <mat-form-field appearance="outline" class="form-field-medium">
+        <mat-label>Quantity</mat-label>
+        <input matInput type="number" formControlName="quantity" min="0.001" step="0.001" (change)="onQuantityChange()">
+        <mat-error *ngIf="lineForm.get('quantity')?.hasError('required')">Quantity is required</mat-error>
+        <mat-error *ngIf="lineForm.get('quantity')?.hasError('min')">Quantity must be greater than 0</mat-error>
+      </mat-form-field>
 
-  <div class="quantity-section">
-    <mat-form-field appearance="outline">
-      <mat-label>Quantity</mat-label>
-      <input type="number" matInput formControlName="quantity" min="0.001" step="0.001"
-             (change)="onQuantityChange()">
-      <mat-error *ngIf="lineForm.get('quantity')?.invalid">
-        Quantity must be greater than zero
-      </mat-error>
-    </mat-form-field>
+      <mat-form-field appearance="outline" class="form-field-small">
+        <mat-label>Wastage %</mat-label>
+        <input matInput type="number" formControlName="wastagePercent" min="0" max="100" (change)="onWastageChange()">
+        <mat-error *ngIf="lineForm.get('wastagePercent')?.hasError('min')">Cannot be negative</mat-error>
+        <mat-error *ngIf="lineForm.get('wastagePercent')?.hasError('max')">Cannot exceed 100%</mat-error>
+      </mat-form-field>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Unit of Measure</mat-label>
-      <mat-select formControlName="unitOfMeasureId">
-        <mat-option *ngFor="let uom of allUoms" [value]="uom.id">
-          {{uom.name}} ({{uom.abbreviation}})
-        </mat-option>
-      </mat-select>
-      <mat-error *ngIf="lineForm.get('unitOfMeasureId')?.invalid">
-        Unit of measure is required
-      </mat-error>
-    </mat-form-field>
+      <mat-form-field appearance="outline" class="form-field-medium">
+        <mat-label>Unit of Measure</mat-label>
+        <mat-select formControlName="unitOfMeasureId">
+          <mat-option *ngFor="let uom of allUoms" [value]="uom.id">
+            {{ uom.name }} ({{ uom.abbreviation }})
+          </mat-option>
+        </mat-select>
+        <mat-error *ngIf="lineForm.get('unitOfMeasureId')?.hasError('required')">UOM is required</mat-error>
+      </mat-form-field>
+    </div>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Wastage %</mat-label>
-      <input type="number" matInput formControlName="wastagePercent" min="0" max="100" step="0.1"
-             (change)="onWastageChange()">
-      <mat-error *ngIf="lineForm.get('wastagePercent')?.invalid">
-        Wastage must be between 0 and 100%
-      </mat-error>
-    </mat-form-field>
-  </div>
+    <div class="form-row">
+      <mat-form-field appearance="outline" class="form-field-medium">
+        <mat-label>Line Cost</mat-label>
+        <input matInput type="number" formControlName="lineCost" readonly>
+      </mat-form-field>
+    </div>
 
-  <div class="cost-section">
-    <mat-form-field appearance="outline">
-      <mat-label>Line Cost</mat-label>
-      <input type="number" matInput formControlName="lineCost" readonly>
-    </mat-form-field>
-  </div>
-
-  <div class="action-buttons">
-    <button mat-button color="primary" type="button" (click)="onSave()" 
-            [disabled]="lineForm.invalid">
-      <mat-icon>save</mat-icon> Save
-    </button>
-    <button mat-button type="button" (click)="onCancel()">
-      <mat-icon>cancel</mat-icon> Cancel
-    </button>
-    <button *ngIf="line?.id" mat-button color="warn" type="button" (click)="onDelete()">
-      <mat-icon>delete</mat-icon> Delete
-    </button>
-  </div>
-</form>
+    <div class="form-actions">
+      <button mat-button type="button" (click)="onCancel()">Cancel</button>
+      <button mat-raised-button type="button" color="warn" *ngIf="line?.id" (click)="onDelete()">Delete</button>
+      <button mat-raised-button type="button" color="primary" (click)="onSave()" [disabled]="lineForm.invalid">
+        {{ line?.id ? 'Update' : 'Add' }}
+      </button>
+    </div>
+  </form>
+</div>

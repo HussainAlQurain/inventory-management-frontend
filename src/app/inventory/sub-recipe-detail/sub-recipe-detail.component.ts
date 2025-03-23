@@ -28,6 +28,7 @@ import { UomService } from '../../services/uom.service';
 import { CategoriesService } from '../../services/categories.service';
 
 import { SubRecipeLineItemComponent } from '../../components/sub-recipe-line-item/sub-recipe-line-item.component';
+import { AddSubRecipeComponent } from '../add-sub-recipe/add-sub-recipe.component';
 
 @Component({
   selector: 'app-sub-recipe-detail',
@@ -53,7 +54,8 @@ import { SubRecipeLineItemComponent } from '../../components/sub-recipe-line-ite
     MatChipsModule,
     MatTooltipModule,
     MatDialogModule,
-    SubRecipeLineItemComponent
+    SubRecipeLineItemComponent,
+    AddSubRecipeComponent
   ],
   templateUrl: './sub-recipe-detail.component.html',
   styleUrls: ['./sub-recipe-detail.component.scss']
@@ -93,7 +95,7 @@ export class SubRecipeDetailComponent implements OnInit {
   categories: Category[] = [];
   recipeTypes: {value: SubRecipeType, label: string}[] = [
     { value: 'PREPARATION', label: 'Preparation' },
-    { value: 'RECIPE', label: 'Recipe' }
+    { value: 'SUB_RECIPE', label: 'Recipe' }
   ];
   
   // Loading state
@@ -102,6 +104,7 @@ export class SubRecipeDetailComponent implements OnInit {
   
   // For adding new subrecipe
   showAddForm = false;
+  showAddSubRecipePanel = false;
   
   // For pagination and sorting
   @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -241,8 +244,19 @@ export class SubRecipeDetailComponent implements OnInit {
   }
 
   addManually(): void {
-    this.showAddForm = true;
-    // Implement a form to add a new sub-recipe
+    this.showAddSubRecipePanel = true;
+  }
+
+  // Add method to handle closing the add sub-recipe panel
+  handleCloseAddPanel(createdSubRecipe: SubRecipe | null): void {
+    this.showAddSubRecipePanel = false;
+    if (createdSubRecipe) {
+      this.subRecipes.push(createdSubRecipe);
+      this.applyFilters();
+      
+      // Optionally select the newly created sub-recipe
+      this.selectSubRecipe(createdSubRecipe);
+    }
   }
 
   importFromExcel(): void {

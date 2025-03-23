@@ -36,13 +36,15 @@ export class SubRecipeService {
     return this.http.get<SubRecipe>(`${this.apiUrl}/${id}/company/${companyId}`);
   }
 
-  createSubRecipe(subRecipe: Partial<SubRecipe>): Observable<SubRecipe> {
+  createSubRecipe(subRecipe: SubRecipe): Observable<SubRecipe> {
     const companyId = this.companiesService.getSelectedCompanyId();
-    if (!companyId) {
-      return throwError(() => new Error('No company selected'));
-    }
-    
-    return this.http.post<SubRecipe>(`${this.apiUrl}/company/${companyId}`, subRecipe);
+    return this.http.post<SubRecipe>(`${this.apiUrl}/company/${companyId}`, subRecipe)
+      .pipe(
+        catchError(err => {
+          console.error('Error creating sub recipe', err);
+          return throwError(() => new Error('Error creating sub recipe.'));
+        })
+      );
   }
 
   updateSubRecipe(subRecipe: Partial<SubRecipe>): Observable<SubRecipe> {
@@ -109,7 +111,12 @@ export class SubRecipeService {
     
     return this.http.get<SubRecipe[]>(`${this.apiUrl}/company/${companyId}`, {
       params: { search: term }
-    });
+    }).pipe(
+      catchError(err => {
+        console.error('Error searching sub recipes', err);
+        return throwError(() => new Error('Error searching sub recipes.'));
+      })
+    );
   }
 
   // Calculate the total cost of a sub-recipe based on its lines

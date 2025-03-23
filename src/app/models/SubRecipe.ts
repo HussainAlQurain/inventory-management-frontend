@@ -1,4 +1,4 @@
-export type SubRecipeType = 'PREPARATION' | 'RECIPE';
+export type SubRecipeType = 'PREPARATION' | 'SUB_RECIPE';
 
 export interface SubRecipe {
   id?: number;

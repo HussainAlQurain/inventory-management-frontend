@@ -373,4 +373,5 @@
       </mat-tab-group>
     </div>
   </div>
+  <app-add-sub-recipe *ngIf="showAddSubRecipePanel" (closePanel)="handleCloseAddPanel($event)"></app-add-sub-recipe>
 </div>

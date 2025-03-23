@@ -103,7 +103,8 @@ export class SubRecipeLineItemComponent implements OnInit {
       debounceTime(300),
       distinctUntilChanged(),
       switchMap(term => {
-        if (!term || term.length < 2) return of([]);
+        // Change minimum character requirement from 2 to 1
+        if (!term || typeof term !== 'string' || term.length < 1) return of([]);
         return this.inventoryItemsService.searchInventoryItems(term);
       })
     ).subscribe({
@@ -119,7 +120,8 @@ export class SubRecipeLineItemComponent implements OnInit {
       debounceTime(300),
       distinctUntilChanged(),
       switchMap(term => {
-        if (!term || term.length < 2) return of([]);
+        // Change minimum character requirement from 2 to 1
+        if (!term || typeof term !== 'string' || term.length < 1) return of([]);
         return this.subRecipeService.searchSubRecipes(term);
       })
     ).subscribe({
@@ -184,38 +186,44 @@ export class SubRecipeLineItemComponent implements OnInit {
     }
   }
 
-  onInventoryItemSelected(itemId: number): void {
-    this.lineForm.get('inventoryItemId')?.setValue(itemId);
+  onInventoryItemSelected(item: InventoryItem): void {
+    this.lineForm.get('inventoryItemId')?.setValue(item.id);
+    this.inventoryItemCtrl.setValue(item.name);
     
-    // Look up the item to get its default UOM and cost
-    this.inventoryItemsService.getInventoryItemById(itemId).subscribe(item => {
-      if (item) {
-        // Set the UOM if not already set
-        if (!this.lineForm.get('unitOfMeasureId')?.value) {
-          this.lineForm.get('unitOfMeasureId')?.setValue(item.inventoryUom?.id);
-        }
-        
-        // Calculate line cost
-        this.calculateLineCost();
-      }
-    });
+    // Set the UOM if not already set
+    if (!this.lineForm.get('unitOfMeasureId')?.value && item.inventoryUom?.id) {
+      this.lineForm.get('unitOfMeasureId')?.setValue(item.inventoryUom.id);
+    }
+    
+    // Set line cost based on current price
+    const quantity = this.lineForm.get('quantity')?.value || 0;
+    const wastage = this.lineForm.get('wastagePercent')?.value || 0;
+    const effectiveQuantity = quantity * (1 + wastage / 100);
+    const cost = effectiveQuantity * (item.currentPrice || 0);
+    this.lineForm.get('lineCost')?.setValue(cost);
   }
 
-  onSubRecipeSelected(subRecipeId: number): void {
-    this.lineForm.get('childSubRecipeId')?.setValue(subRecipeId);
+  onSubRecipeSelected(subRecipe: SubRecipe): void {
+    this.lineForm.get('childSubRecipeId')?.setValue(subRecipe.id);
+    this.subRecipeCtrl.setValue(subRecipe.name);
     
-    // Look up the sub-recipe to get its default UOM and cost
-    this.subRecipeService.getSubRecipeById(subRecipeId).subscribe(subRecipe => {
-      if (subRecipe) {
-        // Set the UOM if not already set
-        if (!this.lineForm.get('unitOfMeasureId')?.value) {
-          this.lineForm.get('unitOfMeasureId')?.setValue(subRecipe.uomId);
-        }
-        
-        // Calculate line cost
-        this.calculateLineCost();
-      }
-    });
+    // Set the UOM if not already set
+    if (!this.lineForm.get('unitOfMeasureId')?.value && subRecipe.uomId) {
+      this.lineForm.get('unitOfMeasureId')?.setValue(subRecipe.uomId);
+    }
+    
+    // Calculate line cost based on recipe cost
+    const quantity = this.lineForm.get('quantity')?.value || 0;
+    const wastage = this.lineForm.get('wastagePercent')?.value || 0;
+    const effectiveQuantity = quantity * (1 + wastage / 100);
+    
+    // If the sub-recipe has a yield quantity, adjust the cost calculation
+    const yieldAdjustment = subRecipe.yieldQty && subRecipe.yieldQty > 0 
+      ? effectiveQuantity / subRecipe.yieldQty 
+      : effectiveQuantity;
+    
+    const cost = yieldAdjustment * (subRecipe.cost || 0);
+    this.lineForm.get('lineCost')?.setValue(cost);
   }
 
   calculateLineCost(): void {
@@ -283,10 +291,19 @@ export class SubRecipeLineItemComponent implements OnInit {
   onCancel(): void {
     this.cancel.emit();
   }
-
+  
   onDelete(): void {
     if (this.line && this.line.id) {
       this.delete.emit(this.line.id);
     }
+  }
+  
+  // Display functions for autocomplete
+  displayInventoryFn(item: InventoryItem): string {
+    return item && item.name ? item.name : '';
+  }
+  
+  displaySubRecipeFn(recipe: SubRecipe): string {
+    return recipe && recipe.name ? recipe.name : '';
   }
 }

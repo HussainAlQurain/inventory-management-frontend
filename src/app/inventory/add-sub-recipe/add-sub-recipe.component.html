@@ -1,0 +1,229 @@
+<div class="slide-panel">
+  <div class="panel-header">
+    <h2>Add Sub-Recipe / Preparation</h2>
+    <button mat-icon-button (click)="cancel()" aria-label="Close panel">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <mat-divider></mat-divider>
+
+  <div class="panel-content">
+    <form [formGroup]="subRecipeForm">
+      <mat-tab-group>
+        <!-- Basic Details Tab -->
+        <mat-tab label="Basic Details">
+          <div class="form-section">
+            <!-- Name & Type Fields -->
+            <div class="form-row">
+              <mat-form-field appearance="outline" class="form-field-large">
+                <mat-label>Sub-Recipe Name</mat-label>
+                <input matInput formControlName="name" required>
+                <mat-error *ngIf="subRecipeForm.get('name')?.hasError('required')">
+                  Name is required
+                </mat-error>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="form-field-small">
+                <mat-label>Type</mat-label>
+                <mat-select formControlName="type" required>
+                  <mat-option *ngFor="let type of recipeTypes" [value]="type.value">
+                    {{ type.label }}
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+
+            <!-- Category -->
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Category</mat-label>
+              <input type="text" matInput [formControl]="categoryCtrl" [matAutocomplete]="autoCat">
+              <mat-autocomplete #autoCat="matAutocomplete" (optionSelected)="onCategoryOptionSelected($event.option.value)">
+                <!-- Existing categories -->
+                <mat-option *ngFor="let cat of filteredCategories" [value]="cat.name">
+                  {{ cat.name }}
+                </mat-option>
+                <!-- Create new category option -->
+                <mat-option *ngIf="canCreateNewCategory" [value]="categoryCtrl.value">
+                  Create "<b>{{ categoryCtrl.value }}</b>" as new category
+                </mat-option>
+              </mat-autocomplete>
+            </mat-form-field>
+
+            <!-- Yield & UOM Fields -->
+            <div class="form-row">
+              <mat-form-field appearance="outline" class="form-field-small">
+                <mat-label>Yield Quantity</mat-label>
+                <input matInput type="number" formControlName="yieldQty" min="0.001" step="0.001" required>
+                <mat-error *ngIf="subRecipeForm.get('yieldQty')?.hasError('required')">
+                  Yield quantity is required
+                </mat-error>
+                <mat-error *ngIf="subRecipeForm.get('yieldQty')?.hasError('min')">
+                  Must be greater than 0
+                </mat-error>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="form-field-large">
+                <mat-label>Unit of Measure</mat-label>
+                <input type="text" matInput [formControl]="uomCtrl" [matAutocomplete]="autoUom">
+                <mat-autocomplete #autoUom="matAutocomplete" (optionSelected)="onUomSelected($event.option.value)">
+                  <mat-option *ngFor="let uom of filteredUoms" [value]="uom.name">
+                    {{ uom.name }} ({{ uom.abbreviation }})
+                  </mat-option>
+                  <!-- Create new UOM option -->
+                  <mat-option *ngIf="uomCtrl.value && filteredUoms.length === 0" (click)="openNewUomDialog()">
+                    Create new UOM: "{{ uomCtrl.value }}"
+                  </mat-option>
+                </mat-autocomplete>
+              </mat-form-field>
+            </div>
+
+            <!-- Ingredients/Lines Section -->
+            <div class="lines-section">
+              <div class="section-header">
+                <h3>Ingredients & Components</h3>
+                <button mat-raised-button color="primary" (click)="addNewLine()" *ngIf="!isEditingLine">
+                  <mat-icon>add</mat-icon> Add Line
+                </button>
+              </div>
+              
+              <app-sub-recipe-line-item 
+                *ngIf="isEditingLine"
+                [line]="currentLine"
+                [isEditMode]="true"
+                (save)="saveLine($event)"
+                (cancel)="cancelLineEdit()"
+                (delete)="deleteLine($event)">
+              </app-sub-recipe-line-item>
+              
+              <table *ngIf="!isEditingLine && recipeLines.length > 0" 
+                     mat-table [dataSource]="recipeLines" class="lines-table">
+                <ng-container matColumnDef="item">
+                  <th mat-header-cell *matHeaderCellDef>Item</th>
+                  <td mat-cell *matCellDef="let line">
+                    {{ line.inventoryItemName || line.childSubRecipeName || 'Unknown' }}
+                  </td>
+                </ng-container>
+                
+                <ng-container matColumnDef="type">
+                  <th mat-header-cell *matHeaderCellDef>Type</th>
+                  <td mat-cell *matCellDef="let line">
+                    {{ line.inventoryItemId ? 'Inventory Item' : (line.childSubRecipeId ? 'Sub-Recipe' : 'Unknown') }}
+                  </td>
+                </ng-container>
+                
+                <ng-container matColumnDef="netQuantity">
+                  <th mat-header-cell *matHeaderCellDef>Net Quantity</th>
+                  <td mat-cell *matCellDef="let line">{{ line.quantity }}</td>
+                </ng-container>
+                
+                <ng-container matColumnDef="wastage">
+                  <th mat-header-cell *matHeaderCellDef>Wastage %</th>
+                  <td mat-cell *matCellDef="let line">{{ line.wastagePercent }}%</td>
+                </ng-container>
+                
+                <ng-container matColumnDef="grossQuantity">
+                  <th mat-header-cell *matHeaderCellDef>Gross Quantity</th>
+                  <td mat-cell *matCellDef="let line">
+                    {{ calculateGrossQuantity(line) | number:'1.2-2' }}
+                  </td>
+                </ng-container>
+                
+                <ng-container matColumnDef="uom">
+                  <th mat-header-cell *matHeaderCellDef>UOM</th>
+                  <td mat-cell *matCellDef="let line">
+                    {{ line.uomAbbreviation || getUomInfo(line.unitOfMeasureId) }}
+                  </td>
+                </ng-container>
+                
+                <ng-container matColumnDef="cost">
+                  <th mat-header-cell *matHeaderCellDef>Cost</th>
+                  <td mat-cell *matCellDef="let line">{{ line.lineCost | currency }}</td>
+                </ng-container>
+                
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef>Actions</th>
+                  <td mat-cell *matCellDef="let line; let i = index">
+                    <button mat-icon-button color="primary" (click)="editLine(line)">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button mat-icon-button color="warn" (click)="deleteLine(i)">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </td>
+                </ng-container>
+                
+                <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+              </table>
+              
+              <div *ngIf="!isEditingLine && recipeLines.length === 0" class="no-lines">
+                <p>No ingredients or components added to this sub-recipe.</p>
+                <button mat-raised-button color="primary" (click)="addNewLine()">
+                  <mat-icon>add</mat-icon> Add First Line
+                </button>
+              </div>
+              
+              <div class="cost-summary" *ngIf="recipeLines.length > 0">
+                <div class="summary-row">
+                  <span class="label">Total Cost:</span>
+                  <span class="value">{{ totalCost | currency }}</span>
+                </div>
+                <div class="summary-row">
+                  <span class="label">Cost Per {{ subRecipeForm.get('yieldQty')?.value || 0 }} {{ getUomInfo(subRecipeForm.get('uomId')?.value) }}:</span>
+                  <span class="value">{{ totalCost | currency }}</span>
+                </div>
+                <div class="summary-row">
+                  <span class="label">Cost Per Unit:</span>
+                  <span class="value">{{ getCostPerUnit() | currency }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </mat-tab>
+
+        <!-- Procedure Tab -->
+        <mat-tab label="Procedure Details">
+          <div class="form-section">
+            <!-- Photo URL -->
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Photo URL</mat-label>
+              <input matInput formControlName="photoUrl" placeholder="https://example.com/image.jpg">
+            </mat-form-field>
+
+            <!-- Prep & Cook Time -->
+            <div class="form-row">
+              <mat-form-field appearance="outline" class="form-field-small">
+                <mat-label>Prep Time (minutes)</mat-label>
+                <input matInput type="number" formControlName="prepTimeMinutes" min="0">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="form-field-small">
+                <mat-label>Cook Time (minutes)</mat-label>
+                <input matInput type="number" formControlName="cookTimeMinutes" min="0">
+              </mat-form-field>
+
+              <div class="time-total">
+                <span>Total Time: {{ updateTotalTime() }} minutes</span>
+              </div>
+            </div>
+
+            <!-- Instructions -->
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Cooking Instructions</mat-label>
+              <textarea matInput formControlName="instructions" rows="10" placeholder="Enter detailed cooking instructions..."></textarea>
+            </mat-form-field>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    </form>
+  </div>
+
+  <div class="panel-footer">
+    <button mat-button (click)="cancel()">Cancel</button>
+    <button mat-raised-button color="primary" (click)="submitForm()" [disabled]="isSubmitting || !subRecipeForm.valid">
+      <span *ngIf="isSubmitting">Saving...</span>
+      <span *ngIf="!isSubmitting">Save</span>
+    </button>
+  </div>
+</div>
