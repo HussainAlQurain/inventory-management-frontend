@@ -110,3 +110,25 @@
 .full-width {
   width: 100%;
 }
+
+.selected-item-indicator {
+  background-color: #e3f2fd;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  border-left: 4px solid #2196f3;
+  
+  .indicator-content {
+    display: flex;
+    align-items: center;
+    
+    mat-icon {
+      color: #2196f3;
+      margin-right: 8px;
+    }
+    
+    span {
+      font-weight: 500;
+    }
+  }
+}

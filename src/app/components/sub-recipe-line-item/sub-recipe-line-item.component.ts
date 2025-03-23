@@ -103,7 +103,6 @@ export class SubRecipeLineItemComponent implements OnInit {
       debounceTime(300),
       distinctUntilChanged(),
       switchMap(term => {
-        // Change minimum character requirement from 2 to 1
         if (!term || typeof term !== 'string' || term.length < 1) return of([]);
         return this.inventoryItemsService.searchInventoryItems(term);
       })
@@ -120,7 +119,6 @@ export class SubRecipeLineItemComponent implements OnInit {
       debounceTime(300),
       distinctUntilChanged(),
       switchMap(term => {
-        // Change minimum character requirement from 2 to 1
         if (!term || typeof term !== 'string' || term.length < 1) return of([]);
         return this.subRecipeService.searchSubRecipes(term);
       })
@@ -187,15 +185,37 @@ export class SubRecipeLineItemComponent implements OnInit {
   }
 
   onInventoryItemSelected(item: InventoryItem): void {
+    if (!item) return;
+    
+    // Store the selected item ID
     this.lineForm.get('inventoryItemId')?.setValue(item.id);
-    this.inventoryItemCtrl.setValue(item.name);
     
     // Set the UOM if not already set
     if (!this.lineForm.get('unitOfMeasureId')?.value && item.inventoryUom?.id) {
       this.lineForm.get('unitOfMeasureId')?.setValue(item.inventoryUom.id);
     }
     
-    // Set line cost based on current price
+    // Calculate cost immediately
+    this.calculateInventoryItemCost(item);
+  }
+
+  onSubRecipeSelected(subRecipe: SubRecipe): void {
+    if (!subRecipe) return;
+    
+    // Store the selected sub-recipe ID
+    this.lineForm.get('childSubRecipeId')?.setValue(subRecipe.id);
+    
+    // Set the UOM if not already set
+    if (!this.lineForm.get('unitOfMeasureId')?.value && subRecipe.uomId) {
+      this.lineForm.get('unitOfMeasureId')?.setValue(subRecipe.uomId);
+    }
+    
+    // Calculate cost immediately
+    this.calculateSubRecipeCost(subRecipe);
+  }
+
+  // New method to calculate inventory item cost
+  private calculateInventoryItemCost(item: InventoryItem): void {
     const quantity = this.lineForm.get('quantity')?.value || 0;
     const wastage = this.lineForm.get('wastagePercent')?.value || 0;
     const effectiveQuantity = quantity * (1 + wastage / 100);
@@ -203,24 +223,17 @@ export class SubRecipeLineItemComponent implements OnInit {
     this.lineForm.get('lineCost')?.setValue(cost);
   }
 
-  onSubRecipeSelected(subRecipe: SubRecipe): void {
-    this.lineForm.get('childSubRecipeId')?.setValue(subRecipe.id);
-    this.subRecipeCtrl.setValue(subRecipe.name);
-    
-    // Set the UOM if not already set
-    if (!this.lineForm.get('unitOfMeasureId')?.value && subRecipe.uomId) {
-      this.lineForm.get('unitOfMeasureId')?.setValue(subRecipe.uomId);
-    }
-    
-    // Calculate line cost based on recipe cost
+  // New method to calculate sub-recipe cost
+  private calculateSubRecipeCost(subRecipe: SubRecipe): void {
     const quantity = this.lineForm.get('quantity')?.value || 0;
     const wastage = this.lineForm.get('wastagePercent')?.value || 0;
     const effectiveQuantity = quantity * (1 + wastage / 100);
     
     // If the sub-recipe has a yield quantity, adjust the cost calculation
-    const yieldAdjustment = subRecipe.yieldQty && subRecipe.yieldQty > 0 
-      ? effectiveQuantity / subRecipe.yieldQty 
-      : effectiveQuantity;
+    let yieldAdjustment = effectiveQuantity;
+    if (subRecipe.yieldQty && subRecipe.yieldQty > 0) {
+      yieldAdjustment = effectiveQuantity / subRecipe.yieldQty;
+    }
     
     const cost = yieldAdjustment * (subRecipe.cost || 0);
     this.lineForm.get('lineCost')?.setValue(cost);
@@ -230,40 +243,84 @@ export class SubRecipeLineItemComponent implements OnInit {
     const quantity = this.lineForm.get('quantity')?.value || 0;
     const wastage = this.lineForm.get('wastagePercent')?.value || 0;
     const effectiveQuantity = quantity * (1 + wastage / 100);
-    let cost = 0;
     
     if (this.lineType === 'inventory' && this.lineForm.get('inventoryItemId')?.value) {
       // Calculate cost based on inventory item
       const itemId = this.lineForm.get('inventoryItemId')?.value;
-      this.inventoryItemsService.getInventoryItemById(itemId).subscribe(item => {
-        if (item) {
-          cost = effectiveQuantity * (item.currentPrice || 0);
-          this.lineForm.get('lineCost')?.setValue(cost);
-        }
+      this.inventoryItemsService.getInventoryItemById(itemId).subscribe({
+        next: (item) => {
+          if (item) {
+            this.calculateInventoryItemCost(item);
+          }
+        },
+        error: (err) => console.error('Error getting inventory item for cost calculation:', err)
       });
     } else if (this.lineType === 'subrecipe' && this.lineForm.get('childSubRecipeId')?.value) {
       // Calculate cost based on sub-recipe
       const subRecipeId = this.lineForm.get('childSubRecipeId')?.value;
-      this.subRecipeService.getSubRecipeById(subRecipeId).subscribe(subRecipe => {
-        if (subRecipe) {
-          // If the sub-recipe has a yield quantity, adjust the cost calculation
-          const yieldAdjustment = subRecipe.yieldQty && subRecipe.yieldQty > 0 
-            ? effectiveQuantity / subRecipe.yieldQty 
-            : effectiveQuantity;
-          
-          cost = yieldAdjustment * (subRecipe.cost || 0);
-          this.lineForm.get('lineCost')?.setValue(cost);
-        }
+      this.subRecipeService.getSubRecipeById(subRecipeId).subscribe({
+        next: (subRecipe) => {
+          if (subRecipe) {
+            this.calculateSubRecipeCost(subRecipe);
+          }
+        },
+        error: (err) => console.error('Error getting sub-recipe for cost calculation:', err)
       });
     }
   }
 
   onQuantityChange(): void {
-    this.calculateLineCost();
+    // Store selected item/recipe information so we don't need to fetch again
+    if (this.lineType === 'inventory' && this.lineForm.get('inventoryItemId')?.value) {
+      const itemId = this.lineForm.get('inventoryItemId')?.value;
+      this.inventoryItemsService.getInventoryItemById(itemId).subscribe({
+        next: (item) => {
+          if (item) {
+            this.calculateInventoryItemCost(item);
+          }
+        },
+        error: (err) => console.error('Error getting inventory item for cost calculation:', err)
+      });
+    } else if (this.lineType === 'subrecipe' && this.lineForm.get('childSubRecipeId')?.value) {
+      const subRecipeId = this.lineForm.get('childSubRecipeId')?.value;
+      this.subRecipeService.getSubRecipeById(subRecipeId).subscribe({
+        next: (subRecipe) => {
+          if (subRecipe) {
+            this.calculateSubRecipeCost(subRecipe);
+          }
+        },
+        error: (err) => console.error('Error getting sub-recipe for cost calculation:', err)
+      });
+    }
   }
 
   onWastageChange(): void {
-    this.calculateLineCost();
+    // Use the same logic as onQuantityChange to recalculate
+    this.onQuantityChange();
+  }
+
+  // New method to manually set selected item display
+  // This helps with selection visibility
+  updateSelectedItemDisplay(): void {
+    if (this.lineType === 'inventory' && this.lineForm.get('inventoryItemId')?.value) {
+      const itemId = this.lineForm.get('inventoryItemId')?.value;
+      this.inventoryItemsService.getInventoryItemById(itemId).subscribe({
+        next: (item) => {
+          if (item) {
+            this.inventoryItemCtrl.setValue(item.name);
+          }
+        }
+      });
+    } else if (this.lineType === 'subrecipe' && this.lineForm.get('childSubRecipeId')?.value) {
+      const subRecipeId = this.lineForm.get('childSubRecipeId')?.value;
+      this.subRecipeService.getSubRecipeById(subRecipeId).subscribe({
+        next: (subRecipe) => {
+          if (subRecipe) {
+            this.subRecipeCtrl.setValue(subRecipe.name);
+          }
+        }
+      });
+    }
   }
 
   onSave(): void {
@@ -272,20 +329,23 @@ export class SubRecipeLineItemComponent implements OnInit {
       return;
     }
     
-    // Final line cost calculation before save
-    this.calculateLineCost();
+    // Update the display name one final time to ensure it's correct
+    this.updateSelectedItemDisplay();
     
-    // Prepare the line data
-    const lineData: SubRecipeLine = {
-      ...this.lineForm.getRawValue(),
-      // Add display names for UI if available
-      inventoryItemName: this.lineType === 'inventory' ? this.inventoryItemCtrl.value : undefined,
-      childSubRecipeName: this.lineType === 'subrecipe' ? this.subRecipeCtrl.value : undefined,
-      uomName: this.allUoms.find(u => u.id === this.lineForm.get('unitOfMeasureId')?.value)?.name,
-      uomAbbreviation: this.allUoms.find(u => u.id === this.lineForm.get('unitOfMeasureId')?.value)?.abbreviation
-    };
-    
-    this.save.emit(lineData);
+    // Allow a brief moment for the display name update
+    setTimeout(() => {
+      // Prepare the line data
+      const lineData: SubRecipeLine = {
+        ...this.lineForm.getRawValue(),
+        // Add display names for UI if available
+        inventoryItemName: this.lineType === 'inventory' ? this.inventoryItemCtrl.value : undefined,
+        childSubRecipeName: this.lineType === 'subrecipe' ? this.subRecipeCtrl.value : undefined,
+        uomName: this.allUoms.find(u => u.id === this.lineForm.get('unitOfMeasureId')?.value)?.name,
+        uomAbbreviation: this.allUoms.find(u => u.id === this.lineForm.get('unitOfMeasureId')?.value)?.abbreviation
+      };
+      
+      this.save.emit(lineData);
+    }, 100);
   }
 
   onCancel(): void {
@@ -298,12 +358,14 @@ export class SubRecipeLineItemComponent implements OnInit {
     }
   }
   
-  // Display functions for autocomplete
-  displayInventoryFn(item: InventoryItem): string {
+  // Display functions for autocomplete - modified to properly handle string inputs
+  displayInventoryFn(item: InventoryItem | string): string {
+    if (typeof item === 'string') return item;
     return item && item.name ? item.name : '';
   }
   
-  displaySubRecipeFn(recipe: SubRecipe): string {
+  displaySubRecipeFn(recipe: SubRecipe | string): string {
+    if (typeof recipe === 'string') return recipe;
     return recipe && recipe.name ? recipe.name : '';
   }
 }

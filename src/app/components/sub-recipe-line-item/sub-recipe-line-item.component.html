@@ -28,7 +28,7 @@
                          [displayWith]="displayInventoryFn">
           <mat-option *ngFor="let item of filteredInventoryItems" 
                      [value]="item"
-                     (click)="onInventoryItemSelected(item)">
+                     (onSelectionChange)="$event.isUserInput && onInventoryItemSelected(item)">
             {{ item.name }}
           </mat-option>
           <mat-option *ngIf="filteredInventoryItems.length === 0 && (inventoryItemCtrl.value ?? '').length > 0">
@@ -47,7 +47,7 @@
                          [displayWith]="displaySubRecipeFn">
           <mat-option *ngFor="let recipe of filteredSubRecipes" 
                      [value]="recipe"
-                     (click)="onSubRecipeSelected(recipe)">
+                     (onSelectionChange)="$event.isUserInput && onSubRecipeSelected(recipe)">
             {{ recipe.name }}
           </mat-option>
           <mat-option *ngIf="filteredSubRecipes.length === 0 && (subRecipeCtrl.value ?? '').length > 0">
