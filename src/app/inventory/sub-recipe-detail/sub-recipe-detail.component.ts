@@ -174,9 +174,13 @@ export class SubRecipeDetailComponent implements OnInit {
   }
 
   selectSubRecipe(recipe: SubRecipe): void {
+    // Reset editing states when selecting a new recipe
+    this.isEditingLine = false;
+    this.currentLine = undefined;
+    this.editMode = false;
+    
     this.selectedSubRecipe = recipe;
     this.showDetailPanel = true;
-    this.editMode = false;
     
     // Load full details including lines
     if (recipe.id) {
@@ -185,6 +189,10 @@ export class SubRecipeDetailComponent implements OnInit {
   }
 
   loadSubRecipeDetails(id: number): void {
+    // Reset line editing state when loading new sub-recipe details
+    this.isEditingLine = false;
+    this.currentLine = undefined;
+    
     this.isLoading = true;
     this.subRecipeService.getSubRecipeById(id).subscribe({
       next: (recipe) => {
@@ -253,6 +261,9 @@ export class SubRecipeDetailComponent implements OnInit {
     this.showDetailPanel = false;
     this.selectedSubRecipe = null;
     this.editMode = false;
+    // Reset line editing state when closing the panel
+    this.isEditingLine = false;
+    this.currentLine = undefined;
   }
 
   addManually(): void {
