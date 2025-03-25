@@ -134,10 +134,23 @@ export function authInterceptor(req: HttpRequest<unknown>, next: HttpHandlerFn):
     return next(req); // Skip adding token for login request
   }
 
+  // Clone headers and add required ones
+  let headers = req.headers;
+
+  if (authToken) {
+    headers = headers.set('Authorization', `Bearer ${authToken}`);
+  }
+
+    // Add these headers for all API requests
+    const authReq = req.clone({
+      headers: headers
+        .set('X-Requested-With', 'XMLHttpRequest')
+        .set('Content-Type', 'application/json')
+    });
   // Clone the request to add the authentication token if it exists
-  const authReq = authToken ? req.clone({
-    headers: req.headers.set('Authorization', `Bearer ${authToken}`)
-  }) : req;
+  // const authReq = authToken ? req.clone({
+  //   headers: req.headers.set('Authorization', `Bearer ${authToken}`)
+  // }) : req;
 
   return next(authReq).pipe(
     tap(event => {

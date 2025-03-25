@@ -160,218 +160,362 @@
   <!-- Detail Panel that slides from right -->
   <div class="detail-panel" [class.open]="showDetailPanel" *ngIf="selectedSubRecipe">
     <div class="panel-header">
-      <h2>{{ selectedSubRecipe.name }}</h2>
-      <button mat-icon-button (click)="closeDetailPanel()">
-        <mat-icon>close</mat-icon>
-      </button>
+      <h2>{{ editMode ? 'Edit ' : '' }}{{ selectedSubRecipe.name }}</h2>
+      <div class="header-actions">
+        <button *ngIf="!editMode" mat-icon-button color="primary" (click)="enableEditMode()" matTooltip="Edit">
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button *ngIf="!editMode" mat-icon-button color="warn" (click)="deleteSubRecipe()" matTooltip="Delete">
+          <mat-icon>delete</mat-icon>
+        </button>
+        <button mat-icon-button (click)="closeDetailPanel()" matTooltip="Close">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
     </div>
 
     <mat-divider></mat-divider>
 
     <div class="panel-content">
-      <mat-tab-group>
-        <!-- Details Tab -->
-        <mat-tab label="Details">
-          <div class="details-section">
-            <div class="detail-row">
-              <div class="field-label">Name:</div>
-              <div class="field-value">
-                <mat-form-field appearance="outline">
-                  <input matInput [(ngModel)]="selectedSubRecipe.name">
-                </mat-form-field>
+      <!-- View Mode Content -->
+      <div *ngIf="!editMode">
+        <mat-tab-group>
+          <!-- Details Tab -->
+          <mat-tab label="Details">
+            <div class="details-section">
+              <div class="detail-row">
+                <span class="detail-label">Name:</span>
+                <span class="detail-value">{{ selectedSubRecipe.name }}</span>
+              </div>
+              
+              <div class="detail-row">
+                <span class="detail-label">Type:</span>
+                <span class="detail-value">{{ getTypeName(selectedSubRecipe.type) }}</span>
+              </div>
+              
+              <div class="detail-row">
+                <span class="detail-label">Category:</span>
+                <span class="detail-value">{{ getCategoryName(selectedSubRecipe.categoryId) }}</span>
+              </div>
+              
+              <div class="detail-row">
+                <span class="detail-label">Yield:</span>
+                <span class="detail-value">{{ selectedSubRecipe.yieldQty }} {{ getUomInfo(selectedSubRecipe.uomId) }}</span>
+              </div>
+              
+              <div class="detail-row">
+                <span class="detail-label">Cost:</span>
+                <span class="detail-value">{{ selectedSubRecipe.cost | currency }}</span>
+              </div>
+              
+              <div class="detail-row" *ngIf="selectedSubRecipe.prepTimeMinutes">
+                <span class="detail-label">Prep Time:</span>
+                <span class="detail-value">{{ selectedSubRecipe.prepTimeMinutes }} minutes</span>
+              </div>
+              
+              <div class="detail-row" *ngIf="selectedSubRecipe.cookTimeMinutes">
+                <span class="detail-label">Cook Time:</span>
+                <span class="detail-value">{{ selectedSubRecipe.cookTimeMinutes }} minutes</span>
+              </div>
+              
+              <div class="detail-row" *ngIf="selectedSubRecipe.instructions">
+                <span class="detail-label">Instructions:</span>
+                <div class="detail-value instructions">{{ selectedSubRecipe.instructions }}</div>
+              </div>
+              
+              <div class="detail-row" *ngIf="selectedSubRecipe.photoUrl">
+                <span class="detail-label">Photo:</span>
+                <div class="detail-value">
+                  <img [src]="selectedSubRecipe.photoUrl" alt="Sub-recipe photo" class="recipe-photo">
+                </div>
               </div>
             </div>
-            
-            <div class="detail-row">
-              <div class="field-label">Type:</div>
-              <div class="field-value">
-                <mat-form-field appearance="outline">
-                  <mat-select [(ngModel)]="selectedSubRecipe.type">
-                    <mat-option *ngFor="let type of recipeTypes" [value]="type.value">
-                      {{ type.label }}
-                    </mat-option>
-                  </mat-select>
-                </mat-form-field>
+          </mat-tab>
+          
+          <!-- Ingredients Tab -->
+          <mat-tab label="Ingredients">
+            <div class="lines-section">
+              <div *ngIf="isLoading" class="loading-spinner">
+                <mat-spinner diameter="40"></mat-spinner>
+              </div>
+              
+              <div *ngIf="!isLoading">
+                <div class="section-header">
+                  <h3>Ingredients & Components</h3>
+                  <button mat-raised-button color="primary" (click)="addNewLine()" *ngIf="!isEditingLine">
+                    <mat-icon>add</mat-icon> Add Line
+                  </button>
+                </div>
+                
+                <app-sub-recipe-line-item 
+                  *ngIf="isEditingLine"
+                  [line]="currentLine"
+                  [isEditMode]="true"
+                  (save)="saveLine($event)"
+                  (cancel)="cancelLineEdit()"
+                  (delete)="deleteLine($event)">
+                </app-sub-recipe-line-item>
+                
+                <table *ngIf="!isEditingLine && selectedSubRecipe.lines?.length" 
+                       mat-table [dataSource]="selectedSubRecipe.lines || []" class="lines-table">
+                  <ng-container matColumnDef="item">
+                    <th mat-header-cell *matHeaderCellDef>Item</th>
+                    <td mat-cell *matCellDef="let line">
+                      {{ line.inventoryItemName || line.childSubRecipeName || 'Unknown' }}
+                    </td>
+                  </ng-container>
+                  
+                  <ng-container matColumnDef="type">
+                    <th mat-header-cell *matHeaderCellDef>Type</th>
+                    <td mat-cell *matCellDef="let line">
+                      {{ line.inventoryItemId ? 'Inventory Item' : (line.childSubRecipeId ? 'Sub-Recipe' : 'Unknown') }}
+                    </td>
+                  </ng-container>
+                  
+                  <ng-container matColumnDef="netQuantity">
+                    <th mat-header-cell *matHeaderCellDef>Net Quantity</th>
+                    <td mat-cell *matCellDef="let line">{{ line.quantity }}</td>
+                  </ng-container>
+                  
+                  <ng-container matColumnDef="wastage">
+                    <th mat-header-cell *matHeaderCellDef>Wastage %</th>
+                    <td mat-cell *matCellDef="let line">{{ line.wastagePercent }}%</td>
+                  </ng-container>
+                  
+                  <ng-container matColumnDef="grossQuantity">
+                    <th mat-header-cell *matHeaderCellDef>Gross Quantity</th>
+                    <td mat-cell *matCellDef="let line">
+                      {{ calculateGrossQuantity(line) | number:'1.2-2' }}
+                    </td>
+                  </ng-container>
+                  
+                  <ng-container matColumnDef="uom">
+                    <th mat-header-cell *matHeaderCellDef>UOM</th>
+                    <td mat-cell *matCellDef="let line">
+                      {{ line.uomAbbreviation || getUomInfo(line.unitOfMeasureId) }}
+                    </td>
+                  </ng-container>
+                  
+                  <ng-container matColumnDef="cost">
+                    <th mat-header-cell *matHeaderCellDef>Cost</th>
+                    <td mat-cell *matCellDef="let line">{{ line.lineCost | currency }}</td>
+                  </ng-container>
+                  
+                  <ng-container matColumnDef="actions">
+                    <th mat-header-cell *matHeaderCellDef>Actions</th>
+                    <td mat-cell *matCellDef="let line">
+                      <button mat-icon-button color="primary" (click)="editLine(line); $event.stopPropagation()">
+                        <mat-icon>edit</mat-icon>
+                      </button>
+                      <button mat-icon-button color="warn" (click)="deleteLine(line.id!); $event.stopPropagation()">
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    </td>
+                  </ng-container>
+                  
+                  <tr mat-header-row *matHeaderRowDef="linesDisplayedColumns"></tr>
+                  <tr mat-row *matRowDef="let row; columns: linesDisplayedColumns"></tr>
+                </table>
+                
+                <div *ngIf="!isEditingLine && (!selectedSubRecipe.lines || selectedSubRecipe.lines.length === 0)" class="no-lines">
+                  <p>No ingredients or components added to this sub-recipe.</p>
+                  <button mat-raised-button color="primary" (click)="addNewLine()">
+                    <mat-icon>add</mat-icon> Add First Line
+                  </button>
+                </div>
+                
+                <div class="total-cost" *ngIf="selectedSubRecipe.lines?.length">
+                  <div>Total Cost: {{ selectedSubRecipe.cost | currency }}</div>
+                  <div>Cost Per {{ selectedSubRecipe.yieldQty }} {{ getUomInfo(selectedSubRecipe.uomId) }}</div>
+                </div>
               </div>
             </div>
-            
-            <div class="detail-row">
-              <div class="field-label">Category:</div>
-              <div class="field-value">
-                <mat-form-field appearance="outline">
-                  <mat-select [(ngModel)]="selectedSubRecipe.categoryId">
-                    <mat-option *ngFor="let category of categories" [value]="category.id">
-                      {{ category.name }}
-                    </mat-option>
-                  </mat-select>
-                </mat-form-field>
-              </div>
-            </div>
-            
-            <div class="detail-row">
-              <div class="field-label">Yield Quantity:</div>
-              <div class="field-value">
-                <mat-form-field appearance="outline">
-                  <input matInput type="number" [(ngModel)]="selectedSubRecipe.yieldQty" min="0.001" step="0.001">
-                </mat-form-field>
-              </div>
-            </div>
-            
-            <div class="detail-row">
-              <div class="field-label">Unit of Measure:</div>
-              <div class="field-value">
-                <mat-form-field appearance="outline">
-                  <mat-select [(ngModel)]="selectedSubRecipe.uomId">
-                    <!-- We'd need to load UOMs from the service -->
-                    <mat-option *ngFor="let uom of allUoms" [value]="uom.id">
-                      {{ uom.name }} ({{ uom.abbreviation }})
-                    </mat-option>
-                  </mat-select>
-                </mat-form-field>
-              </div>
-            </div>
-            
-            <div class="detail-row">
-              <div class="field-label">Cost:</div>
-              <div class="field-value">{{ selectedSubRecipe.cost | currency }}</div>
-            </div>
-            
-            <div class="detail-row">
-              <div class="field-label">Prep Time (min):</div>
-              <div class="field-value">
-                <mat-form-field appearance="outline">
-                  <input matInput type="number" [(ngModel)]="selectedSubRecipe.prepTimeMinutes" min="0">
-                </mat-form-field>
-              </div>
-            </div>
-            
-            <div class="detail-row">
-              <div class="field-label">Cook Time (min):</div>
-              <div class="field-value">
-                <mat-form-field appearance="outline">
-                  <input matInput type="number" [(ngModel)]="selectedSubRecipe.cookTimeMinutes" min="0">
-                </mat-form-field>
-              </div>
-            </div>
-            
-            <div class="detail-row full-width">
-              <div class="field-label">Instructions:</div>
-              <div class="field-value">
-                <mat-form-field appearance="outline" class="full-width">
-                  <textarea matInput [(ngModel)]="selectedSubRecipe.instructions" rows="4"></textarea>
-                </mat-form-field>
-              </div>
-            </div>
-            
-            <div class="actions">
-              <button mat-raised-button color="primary" (click)="saveSubRecipe(selectedSubRecipe)">
-                Save Changes
-              </button>
+          </mat-tab>
+        </mat-tab-group>
+      </div>
+      
+      <!-- Edit Mode Content -->
+      <div *ngIf="editMode" class="edit-form">
+        <form class="form-section">
+          <!-- Name & Type Fields -->
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="form-field-large">
+              <mat-label>Sub-Recipe Name</mat-label>
+              <input matInput [(ngModel)]="selectedSubRecipe.name" name="name" required>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="form-field-small">
+              <mat-label>Type</mat-label>
+              <mat-select [(ngModel)]="selectedSubRecipe.type" name="type" required>
+                <mat-option *ngFor="let type of recipeTypes" [value]="type.value">
+                  {{ type.label }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <!-- Category, Yield & UOM Fields -->
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="form-field-medium">
+              <mat-label>Category</mat-label>
+              <mat-select [(ngModel)]="selectedSubRecipe.categoryId" name="categoryId" required>
+                <mat-option *ngFor="let category of categories" [value]="category.id">
+                  {{ category.name }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="form-field-small">
+              <mat-label>Yield Quantity</mat-label>
+              <input matInput type="number" [(ngModel)]="selectedSubRecipe.yieldQty" name="yieldQty" min="0.001" step="0.001" required>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="form-field-medium">
+              <mat-label>Unit of Measure</mat-label>
+              <mat-select [(ngModel)]="selectedSubRecipe.uomId" name="uomId" required>
+                <mat-option *ngFor="let uom of allUoms" [value]="uom.id">
+                  {{ uom.name }} ({{ uom.abbreviation }})
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <!-- Prep & Cook Time Fields -->
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="form-field-small">
+              <mat-label>Prep Time (minutes)</mat-label>
+              <input matInput type="number" [(ngModel)]="selectedSubRecipe.prepTimeMinutes" name="prepTimeMinutes" min="0">
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="form-field-small">
+              <mat-label>Cook Time (minutes)</mat-label>
+              <input matInput type="number" [(ngModel)]="selectedSubRecipe.cookTimeMinutes" name="cookTimeMinutes" min="0">
+            </mat-form-field>
+
+            <div class="time-total">
+              <span>Total Time: {{ (selectedSubRecipe.prepTimeMinutes || 0) + (selectedSubRecipe.cookTimeMinutes || 0) }} minutes</span>
             </div>
           </div>
-        </mat-tab>
+
+          <!-- Photo URL -->
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Photo URL</mat-label>
+              <input matInput [(ngModel)]="selectedSubRecipe.photoUrl" name="photoUrl" placeholder="https://example.com/image.jpg">
+            </mat-form-field>
+          </div>
+
+          <!-- Instructions -->
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Cooking Instructions</mat-label>
+              <textarea matInput [(ngModel)]="selectedSubRecipe.instructions" name="instructions" rows="4" placeholder="Enter detailed cooking instructions..."></textarea>
+            </mat-form-field>
+          </div>
+
+          <!-- Buttons for edit mode -->
+          <div class="form-actions">
+            <button mat-button (click)="cancelEdit()">Cancel</button>
+            <button mat-raised-button color="primary" (click)="saveSubRecipe(selectedSubRecipe)">Save Changes</button>
+          </div>
+        </form>
         
-        <!-- Lines Tab -->
-        <mat-tab label="Ingredients">
-          <div class="lines-section">
-            <div *ngIf="isLoading" class="loading-spinner">
-              <mat-spinner diameter="40"></mat-spinner>
-            </div>
-            
-            <div *ngIf="!isLoading">
-              <div class="section-header">
-                <h3>Ingredients & Components</h3>
-                <button mat-raised-button color="primary" (click)="addNewLine()" *ngIf="!isEditingLine">
-                  <mat-icon>add</mat-icon> Add Line
-                </button>
-              </div>
-              
-              <app-sub-recipe-line-item 
-                *ngIf="isEditingLine"
-                [line]="currentLine"
-                [isEditMode]="true"
-                (save)="saveLine($event)"
-                (cancel)="cancelLineEdit()"
-                (delete)="deleteLine($event)">
-              </app-sub-recipe-line-item>
-              
-              <table *ngIf="!isEditingLine && selectedSubRecipe.lines?.length" 
-                     mat-table [dataSource]="selectedSubRecipe.lines || []" class="lines-table">
-                <ng-container matColumnDef="item">
-                  <th mat-header-cell *matHeaderCellDef>Item</th>
-                  <td mat-cell *matCellDef="let line">
-                    {{ line.inventoryItemName || line.childSubRecipeName || 'Unknown' }}
-                  </td>
-                </ng-container>
-                
-                <ng-container matColumnDef="type">
-                  <th mat-header-cell *matHeaderCellDef>Type</th>
-                  <td mat-cell *matCellDef="let line">
-                    {{ line.inventoryItemId ? 'Inventory Item' : (line.childSubRecipeId ? 'Sub-Recipe' : 'Unknown') }}
-                  </td>
-                </ng-container>
-                
-                <ng-container matColumnDef="netQuantity">
-                  <th mat-header-cell *matHeaderCellDef>Net Quantity</th>
-                  <td mat-cell *matCellDef="let line">{{ line.quantity }}</td>
-                </ng-container>
-                
-                <ng-container matColumnDef="grossQuantity">
-                  <th mat-header-cell *matHeaderCellDef>Gross Quantity</th>
-                  <td mat-cell *matCellDef="let line">
-                    {{ line.quantity * (1 + line.wastagePercent / 100) | number:'1.2-2' }}
-                  </td>
-                </ng-container>
-                
-                <ng-container matColumnDef="wastage">
-                  <th mat-header-cell *matHeaderCellDef>Wastage %</th>
-                  <td mat-cell *matCellDef="let line">{{ line.wastagePercent }}%</td>
-                </ng-container>
-                
-                <ng-container matColumnDef="uom">
-                  <th mat-header-cell *matHeaderCellDef>UOM</th>
-                  <td mat-cell *matCellDef="let line">
-                    {{ line.uomAbbreviation || 'UOM-' + line.unitOfMeasureId }}
-                  </td>
-                </ng-container>
-                
-                <ng-container matColumnDef="cost">
-                  <th mat-header-cell *matHeaderCellDef>Cost</th>
-                  <td mat-cell *matCellDef="let line">{{ line.lineCost | currency }}</td>
-                </ng-container>
-                
-                <ng-container matColumnDef="actions">
-                  <th mat-header-cell *matHeaderCellDef>Actions</th>
-                  <td mat-cell *matCellDef="let line">
-                    <button mat-icon-button color="primary" (click)="editLine(line); $event.stopPropagation()">
-                      <mat-icon>edit</mat-icon>
-                    </button>
-                    <button mat-icon-button color="warn" (click)="deleteLine(line.id!); $event.stopPropagation()">
-                      <mat-icon>delete</mat-icon>
-                    </button>
-                  </td>
-                </ng-container>
-                
-                <tr mat-header-row *matHeaderRowDef="['item', 'type', 'netQuantity', 'grossQuantity', 'wastage', 'uom', 'cost', 'actions']"></tr>
-                <tr mat-row *matRowDef="let row; columns: ['item', 'type', 'netQuantity', 'grossQuantity', 'wastage', 'uom', 'cost', 'actions']"></tr>
-              </table>
-              
-              <div *ngIf="!isEditingLine && (!selectedSubRecipe.lines || selectedSubRecipe.lines.length === 0)" class="no-lines">
-                <p>No ingredients or components added to this sub-recipe.</p>
-                <button mat-raised-button color="primary" (click)="addNewLine()">
-                  <mat-icon>add</mat-icon> Add First Line
-                </button>
-              </div>
-              
-              <div class="total-cost" *ngIf="selectedSubRecipe.lines?.length">
-                <div>Total Cost: {{ selectedSubRecipe.cost | currency }}</div>
-                <div>Cost Per {{ selectedSubRecipe.yieldQty }} {{ selectedSubRecipe.uomId ? 'UOM-' + selectedSubRecipe.uomId : 'units' }}</div>
-              </div>
-            </div>
+        <mat-divider></mat-divider>
+
+        <!-- Ingredients Tab when in Edit Mode -->
+        <div class="lines-section">
+          <div class="section-header">
+            <h3>Ingredients & Components</h3>
+            <button mat-raised-button color="primary" (click)="addNewLine()" *ngIf="!isEditingLine">
+              <mat-icon>add</mat-icon> Add Line
+            </button>
           </div>
-        </mat-tab>
-      </mat-tab-group>
+          
+          <app-sub-recipe-line-item 
+            *ngIf="isEditingLine"
+            [line]="currentLine"
+            [isEditMode]="true"
+            (save)="saveLine($event)"
+            (cancel)="cancelLineEdit()"
+            (delete)="deleteLine($event)">
+          </app-sub-recipe-line-item>
+          
+          <table *ngIf="!isEditingLine && selectedSubRecipe.lines?.length" 
+                 mat-table [dataSource]="selectedSubRecipe.lines || []" class="lines-table">
+            <ng-container matColumnDef="item">
+              <th mat-header-cell *matHeaderCellDef>Item</th>
+              <td mat-cell *matCellDef="let line">
+                {{ line.inventoryItemName || line.childSubRecipeName || 'Unknown' }}
+              </td>
+            </ng-container>
+            
+            <ng-container matColumnDef="type">
+              <th mat-header-cell *matHeaderCellDef>Type</th>
+              <td mat-cell *matCellDef="let line">
+                {{ line.inventoryItemId ? 'Inventory Item' : (line.childSubRecipeId ? 'Sub-Recipe' : 'Unknown') }}
+              </td>
+            </ng-container>
+            
+            <ng-container matColumnDef="netQuantity">
+              <th mat-header-cell *matHeaderCellDef>Net Quantity</th>
+              <td mat-cell *matCellDef="let line">{{ line.quantity }}</td>
+            </ng-container>
+            
+            <ng-container matColumnDef="wastage">
+              <th mat-header-cell *matHeaderCellDef>Wastage %</th>
+              <td mat-cell *matCellDef="let line">{{ line.wastagePercent }}%</td>
+            </ng-container>
+            
+            <ng-container matColumnDef="grossQuantity">
+              <th mat-header-cell *matHeaderCellDef>Gross Quantity</th>
+              <td mat-cell *matCellDef="let line">
+                {{ calculateGrossQuantity(line) | number:'1.2-2' }}
+              </td>
+            </ng-container>
+            
+            <ng-container matColumnDef="uom">
+              <th mat-header-cell *matHeaderCellDef>UOM</th>
+              <td mat-cell *matCellDef="let line">
+                {{ line.uomAbbreviation || getUomInfo(line.unitOfMeasureId) }}
+              </td>
+            </ng-container>
+            
+            <ng-container matColumnDef="cost">
+              <th mat-header-cell *matHeaderCellDef>Cost</th>
+              <td mat-cell *matCellDef="let line">{{ line.lineCost | currency }}</td>
+            </ng-container>
+            
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Actions</th>
+              <td mat-cell *matCellDef="let line">
+                <button mat-icon-button color="primary" (click)="editLine(line); $event.stopPropagation()">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button color="warn" (click)="deleteLine(line.id!); $event.stopPropagation()">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </td>
+            </ng-container>
+            
+            <tr mat-header-row *matHeaderRowDef="linesDisplayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: linesDisplayedColumns"></tr>
+          </table>
+          
+          <div *ngIf="!isEditingLine && (!selectedSubRecipe.lines || selectedSubRecipe.lines.length === 0)" class="no-lines">
+            <p>No ingredients or components added to this sub-recipe.</p>
+            <button mat-raised-button color="primary" (click)="addNewLine()">
+              <mat-icon>add</mat-icon> Add First Line
+            </button>
+          </div>
+          
+          <div class="total-cost" *ngIf="selectedSubRecipe.lines?.length">
+            <div>Total Cost: {{ selectedSubRecipe.cost | currency }}</div>
+            <div>Cost Per {{ selectedSubRecipe.yieldQty }} {{ getUomInfo(selectedSubRecipe.uomId) }}</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
+
   <app-add-sub-recipe *ngIf="showAddSubRecipePanel" (closePanel)="handleCloseAddPanel($event)"></app-add-sub-recipe>
 </div>

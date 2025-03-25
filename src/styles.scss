@@ -15,3 +15,21 @@ html {
 }
 
 html, body { height: 100%;  margin: 0; padding: 0; }
+
+/* Ensure sliding panels and dialogs have proper z-index stacking */
+.cdk-overlay-container {
+  z-index: 1200 !important;
+}
+
+.slide-panel, .detail-panel {
+  z-index: 1000 !important;
+}
+
+/* Ensure that dropdowns and dialogs appear above panels */
+.mat-mdc-menu-panel {
+  z-index: 1300 !important;
+}
+
+.mat-mdc-dialog-container {
+  z-index: 1300 !important;
+}

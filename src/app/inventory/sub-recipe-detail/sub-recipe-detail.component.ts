@@ -13,7 +13,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -81,6 +81,7 @@ export class SubRecipeDetailComponent implements OnInit {
   // Selected subrecipe for detail view
   selectedSubRecipe: SubRecipe | null = null;
   showDetailPanel = false;
+  editMode = false;
   
   // Line editing
   isEditingLine = false;
@@ -111,21 +112,27 @@ export class SubRecipeDetailComponent implements OnInit {
   @ViewChild(MatSort) sort!: MatSort;
   @ViewChild(MatTable) table!: MatTable<SubRecipe>;
 
-  // Add the missing allUoms property
+  // UOMs collection
   allUoms: UnitOfMeasure[] = [];
+
+  // Display columns for the lines table
+  linesDisplayedColumns: string[] = [
+    'item', 'type', 'netQuantity', 'wastage', 'grossQuantity', 'uom', 'cost', 'actions'
+  ];
   
   constructor(
     private subRecipeService: SubRecipeService,
     private subRecipesService: SubRecipesService,
     private uomService: UomService,
     private categoriesService: CategoriesService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private snackBar: MatSnackBar
   ) { }
 
   ngOnInit(): void {
     this.loadSubRecipes();
     this.loadCategories();
-    this.loadUoms();  // Add this line to load UOMs on init
+    this.loadUoms();
   }
 
   loadSubRecipes(): void {
@@ -155,7 +162,6 @@ export class SubRecipeDetailComponent implements OnInit {
     });
   }
 
-  // Add this method to load UOMs
   loadUoms(): void {
     this.uomService.getAllUoms().subscribe({
       next: (uoms) => {
@@ -170,6 +176,7 @@ export class SubRecipeDetailComponent implements OnInit {
   selectSubRecipe(recipe: SubRecipe): void {
     this.selectedSubRecipe = recipe;
     this.showDetailPanel = true;
+    this.editMode = false;
     
     // Load full details including lines
     if (recipe.id) {
@@ -187,6 +194,11 @@ export class SubRecipeDetailComponent implements OnInit {
       error: (error) => {
         console.error(`Error loading sub-recipe details for ID ${id}:`, error);
         this.isLoading = false;
+        this.snackBar.open('Error loading sub-recipe details', 'Close', {
+          duration: 3000,
+          horizontalPosition: 'center',
+          verticalPosition: 'bottom'
+        });
       }
     });
   }
@@ -230,7 +242,6 @@ export class SubRecipeDetailComponent implements OnInit {
     return this.recipeTypes.find(t => t.value === type)?.label || type;
   }
 
-  // Add this new helper method to get UOM information
   getUomInfo(uomId: number | undefined): string {
     if (!uomId) return 'N/A';
     const uom = this.allUoms.find(u => u.id === uomId);
@@ -241,13 +252,13 @@ export class SubRecipeDetailComponent implements OnInit {
   closeDetailPanel(): void {
     this.showDetailPanel = false;
     this.selectedSubRecipe = null;
+    this.editMode = false;
   }
 
   addManually(): void {
     this.showAddSubRecipePanel = true;
   }
 
-  // Add method to handle closing the add sub-recipe panel
   handleCloseAddPanel(createdSubRecipe: SubRecipe | null): void {
     this.showAddSubRecipePanel = false;
     if (createdSubRecipe) {
@@ -270,6 +281,9 @@ export class SubRecipeDetailComponent implements OnInit {
   }
 
   saveSubRecipe(subRecipe: SubRecipe): void {
+    if (!subRecipe) return;
+    this.isLoading = true;
+    
     if (subRecipe.id) {
       // Update existing sub-recipe
       this.subRecipeService.updateSubRecipe(subRecipe).subscribe({
@@ -282,9 +296,18 @@ export class SubRecipeDetailComponent implements OnInit {
           }
           // Update selected sub-recipe
           this.selectedSubRecipe = updated;
+          this.isLoading = false;
+          this.editMode = false;
+          this.snackBar.open('Sub-recipe updated successfully', 'Close', {
+            duration: 3000
+          });
         },
         error: (error) => {
           console.error('Error updating sub-recipe:', error);
+          this.isLoading = false;
+          this.snackBar.open('Error updating sub-recipe', 'Close', {
+            duration: 3000
+          });
         }
       });
     } else {
@@ -294,11 +317,32 @@ export class SubRecipeDetailComponent implements OnInit {
           this.subRecipes.push(created);
           this.applyFilters();
           this.showAddForm = false;
+          this.isLoading = false;
+          this.snackBar.open('New sub-recipe created', 'Close', {
+            duration: 3000
+          });
         },
         error: (error) => {
           console.error('Error creating sub-recipe:', error);
+          this.isLoading = false;
+          this.snackBar.open('Error creating sub-recipe', 'Close', {
+            duration: 3000
+          });
         }
       });
+    }
+  }
+
+  // Enable edit mode
+  enableEditMode(): void {
+    this.editMode = true;
+  }
+
+  // Cancel edit mode
+  cancelEdit(): void {
+    this.editMode = false;
+    if (this.selectedSubRecipe?.id) {
+      this.loadSubRecipeDetails(this.selectedSubRecipe.id);
     }
   }
 
@@ -324,10 +368,16 @@ export class SubRecipeDetailComponent implements OnInit {
           this.loadSubRecipeDetails(this.selectedSubRecipe!.id!);
           this.isEditingLine = false;
           this.currentLine = undefined;
+          this.snackBar.open('Line updated successfully', 'Close', {
+            duration: 3000
+          });
         },
         error: (error) => {
           console.error('Error updating line:', error);
           this.isLoading = false;
+          this.snackBar.open('Error updating line', 'Close', {
+            duration: 3000
+          });
         }
       });
     } else {
@@ -337,10 +387,16 @@ export class SubRecipeDetailComponent implements OnInit {
           this.loadSubRecipeDetails(this.selectedSubRecipe!.id!);
           this.isEditingLine = false;
           this.currentLine = undefined;
+          this.snackBar.open('New line added', 'Close', {
+            duration: 3000
+          });
         },
         error: (error) => {
           console.error('Error adding line:', error);
           this.isLoading = false;
+          this.snackBar.open('Error adding line', 'Close', {
+            duration: 3000
+          });
         }
       });
     }
@@ -359,13 +415,24 @@ export class SubRecipeDetailComponent implements OnInit {
       this.subRecipeService.deleteSubRecipeLine(this.selectedSubRecipe.id, lineId).subscribe({
         next: () => {
           this.loadSubRecipeDetails(this.selectedSubRecipe!.id!);
+          this.snackBar.open('Line deleted', 'Close', {
+            duration: 3000
+          });
         },
         error: (error) => {
           console.error('Error deleting line:', error);
           this.isLoading = false;
+          this.snackBar.open('Error deleting line', 'Close', {
+            duration: 3000
+          });
         }
       });
     }
+  }
+
+  // Calculate gross quantity
+  calculateGrossQuantity(line: SubRecipeLine): number {
+    return line.quantity * (1 + (line.wastagePercent || 0) / 100);
   }
 
   // Update yield quantity and UOM
@@ -394,5 +461,34 @@ export class SubRecipeDetailComponent implements OnInit {
         console.error('Error updating sub-recipe:', error);
       }
     });
+  }
+
+  deleteSubRecipe(): void {
+    if (!this.selectedSubRecipe?.id) return;
+    
+    if (confirm(`Are you sure you want to delete '${this.selectedSubRecipe.name}'? This action cannot be undone.`)) {
+      this.isLoading = true;
+      this.subRecipeService.deleteSubRecipe(this.selectedSubRecipe.id).subscribe({
+        next: () => {
+          // Remove from list
+          this.subRecipes = this.subRecipes.filter(r => r.id !== this.selectedSubRecipe!.id);
+          this.filteredSubRecipes = this.filteredSubRecipes.filter(r => r.id !== this.selectedSubRecipe!.id);
+          
+          // Close panel
+          this.closeDetailPanel();
+          this.isLoading = false;
+          this.snackBar.open('Sub-recipe deleted successfully', 'Close', {
+            duration: 3000
+          });
+        },
+        error: (error) => {
+          console.error('Error deleting sub-recipe:', error);
+          this.isLoading = false;
+          this.snackBar.open('Error deleting sub-recipe', 'Close', {
+            duration: 3000
+          });
+        }
+      });
+    }
   }
 }
