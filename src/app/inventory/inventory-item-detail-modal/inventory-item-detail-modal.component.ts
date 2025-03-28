@@ -3,6 +3,7 @@ import { MAT_DIALOG_DATA, MatDialogRef, MatDialog, MatDialogModule } from '@angu
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { Observable, of } from 'rxjs';
+import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 
 import { InventoryItem } from '../../models/InventoryItem';
 import { PurchaseOption } from '../../models/PurchaseOption';
@@ -75,7 +76,8 @@ interface LocationInventory {
     MatDividerModule,
     MatRadioModule,
     MatSelectModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatSnackBarModule
   ],
 })
 export class InventoryItemDetailModalComponent implements OnInit {
@@ -101,7 +103,8 @@ export class InventoryItemDetailModalComponent implements OnInit {
     private uomService: UomService,
     private locationService: LocationService,
     private companiesService: CompaniesService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private snackBar: MatSnackBar
   ) { }
 
   ngOnInit(): void {
@@ -282,15 +285,48 @@ export class InventoryItemDetailModalComponent implements OnInit {
   /** Bulk update bridging for minOnHand / par across all stores */
   updateAllStores() {
     if (!this.item.id) return;
-    const payload = {
-      newMin: this.item.minOnHand,
-      newPar: this.item.par
-    };
-    this.inventoryItemLocationService.bulkUpdate(this.item.id, payload)
-      .subscribe({
-        next: () => alert('All stores updated'),
-        error: (err: any) => console.error(err)
-      });
+    
+    this.inventoryItemLocationService.bulkSetThresholdsForCompany(
+      this.item.id,
+      this.item.minOnHand,
+      this.item.par
+    ).subscribe({
+      next: () => {
+        this.snackBar.open('Thresholds updated for all locations', 'Close', {
+          duration: 3000
+        });
+      },
+      error: (err: any) => {
+        console.error('Error updating thresholds for all locations:', err);
+        this.snackBar.open('Failed to update thresholds', 'Close', {
+          duration: 3000
+        });
+      }
+    });
+  }
+
+  /** Update thresholds for a single location */
+  updateLocationThresholds(locationId: number) {
+    if (!this.item.id) return;
+    
+    this.inventoryItemLocationService.updateLocationThresholds(
+      this.item.id,
+      locationId,
+      this.item.minOnHand,
+      this.item.par
+    ).subscribe({
+      next: () => {
+        this.snackBar.open('Thresholds updated for selected location', 'Close', {
+          duration: 3000
+        });
+      },
+      error: (err: any) => {
+        console.error('Error updating thresholds for location:', err);
+        this.snackBar.open('Failed to update thresholds for location', 'Close', {
+          duration: 3000
+        });
+      }
+    });
   }
 
   /** Load table of on-hand by location (for the 3rd tab) */
