@@ -219,7 +219,13 @@ export class SubRecipeLineItemComponent implements OnInit {
     const quantity = this.lineForm.get('quantity')?.value || 0;
     const wastage = this.lineForm.get('wastagePercent')?.value || 0;
     const effectiveQuantity = quantity * (1 + wastage / 100);
-    const cost = effectiveQuantity * (item.currentPrice || 0);
+    let cost = effectiveQuantity * (item.currentPrice || 0);
+    const lineUom = this.allUoms.find(u => u.id === this.lineForm.get('unitOfMeasureId')?.value);
+    const itemUom = item.inventoryUom;
+    if (lineUom && itemUom && lineUom.conversionFactor > 0 && itemUom.conversionFactor > 0) {
+      const convertedQty = effectiveQuantity * (lineUom.conversionFactor / itemUom.conversionFactor);
+      cost = convertedQty * (item.currentPrice || 0);
+    }
     this.lineForm.get('lineCost')?.setValue(cost);
   }
 
@@ -228,14 +234,24 @@ export class SubRecipeLineItemComponent implements OnInit {
     const quantity = this.lineForm.get('quantity')?.value || 0;
     const wastage = this.lineForm.get('wastagePercent')?.value || 0;
     const effectiveQuantity = quantity * (1 + wastage / 100);
-    
-    // If the sub-recipe has a yield quantity, adjust the cost calculation
-    let yieldAdjustment = effectiveQuantity;
-    if (subRecipe.yieldQty && subRecipe.yieldQty > 0) {
-      yieldAdjustment = effectiveQuantity / subRecipe.yieldQty;
+
+    // Previously: const childUom = subRecipe.uom;  // subRecipe has no 'uom' property
+    const childUom = this.allUoms.find(u => u.id === subRecipe.uomId);
+
+    if (childUom) {
+      // ...existing cost calculation logic...
+      const lineUom = this.allUoms.find(u => u.id === this.lineForm.get('unitOfMeasureId')?.value);
+      if (lineUom && lineUom.conversionFactor > 0 && childUom.conversionFactor > 0) {
+        const convertedQty = effectiveQuantity * (lineUom.conversionFactor / childUom.conversionFactor);
+        const childYield = subRecipe.yieldQty && subRecipe.yieldQty > 0 ? subRecipe.yieldQty : 1;
+        const cost = (convertedQty / childYield) * (subRecipe.cost || 0);
+        this.lineForm.get('lineCost')?.setValue(cost);
+        return;
+      }
     }
-    
-    const cost = yieldAdjustment * (subRecipe.cost || 0);
+
+    // Fall back if no matching UOM
+    const cost = (subRecipe.cost || 0) * (effectiveQuantity / (subRecipe.yieldQty || 1));
     this.lineForm.get('lineCost')?.setValue(cost);
   }
 
