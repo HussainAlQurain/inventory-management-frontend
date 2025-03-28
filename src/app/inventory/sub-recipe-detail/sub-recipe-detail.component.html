@@ -112,8 +112,8 @@
 
       <!-- Cost Column -->
       <ng-container matColumnDef="cost">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header> Cost </th>
-        <td mat-cell *matCellDef="let recipe"> {{ recipe.cost | currency }} </td>
+        <th mat-header-cell *matHeaderCellDef mat-sort-header> Cost Per UOM </th>
+        <td mat-cell *matCellDef="let recipe"> {{ recipe.cost / recipe.yieldQty | currency }} </td>
       </ng-container>
 
       <!-- UOM Column -->
