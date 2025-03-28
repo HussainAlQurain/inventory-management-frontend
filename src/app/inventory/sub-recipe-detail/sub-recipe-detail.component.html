@@ -204,8 +204,13 @@
               </div>
               
               <div class="detail-row">
-                <span class="detail-label">Cost:</span>
+                <span class="detail-label">Cost Per Yield:</span>
                 <span class="detail-value">{{ selectedSubRecipe.cost | currency }}</span>
+              </div>
+
+              <div class="detail-row">
+                <span class="detail-label">Cost Per Unit:</span>
+                <span class="detail-value">{{ selectedSubRecipe.cost / selectedSubRecipe.yieldQty | currency }}</span>
               </div>
               
               <div class="detail-row" *ngIf="selectedSubRecipe.prepTimeMinutes">
