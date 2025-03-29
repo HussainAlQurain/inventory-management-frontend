@@ -56,6 +56,20 @@ export class InventoryItemLocationService {
     );
   }
 
+  // New endpoint to get all locations for an item
+  getAllLocationsForItem(itemId: number): Observable<LocationInventory[]> {
+    return this.http.get<LocationInventory[]>(
+      `${this.baseUrl}/item/${itemId}`
+    );
+  }
+
+  // New endpoint to get specific location data for an item
+  getItemLocationData(itemId: number, locationId: number): Observable<LocationInventory> {
+    return this.http.get<LocationInventory>(
+      `${this.baseUrl}/item/${itemId}/location/${locationId}`
+    );
+  }
+
   // TODO: Update this later to actually allow selecting a location
   // For now, hardcoded to location ID 1
   getSelectedLocationId(): number {
