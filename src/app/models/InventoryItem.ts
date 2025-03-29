@@ -21,6 +21,7 @@ export interface InventoryItem {
   par?: number;
   onHand?: number;
   onHandValue?: number;
+  lastCount?: number;
 }
 
 export interface InventoryItemLocation {

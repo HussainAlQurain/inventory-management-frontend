@@ -46,11 +46,8 @@ import { PurchaseOptionModalComponent } from '../purchase-option-modal/purchase-
 // Add import for the new supplier dialog
 import { SupplierDialogComponent } from '../../suppliers/supplier-dialog/supplier-dialog.component';
 
-interface LocationInventory {
-  location: Location;
-  quantity: number;
-  value: number;
-}
+// Import the LocationInventory interface from models
+import { LocationInventory } from '../../models/LocationInventory';
 
 @Component({
   selector: 'app-inventory-item-detail-modal',
@@ -88,7 +85,7 @@ export class InventoryItemDetailModalComponent implements OnInit {
   allUoms: UnitOfMeasure[] = [];
 
   /** Display table of on-hand by location. */
-  locationInventory: LocationInventory[] = [];
+  locationInventory: { location: { id: number; name: string }; quantity: number; value: number }[] = [];
 
   constructor(
     public dialogRef: MatDialogRef<InventoryItemDetailModalComponent>,
@@ -335,9 +332,9 @@ export class InventoryItemDetailModalComponent implements OnInit {
     this.inventoryItemLocationService.getItemLocations(itemId).subscribe({
       next: (list) => {
         this.locationInventory = list.map(dto => ({
-          location: { id: dto.location.id, name: dto.location.name },
-          quantity: dto.quantity,
-          value: dto.value
+          location: dto.location ? { id: dto.location.id, name: dto.location.name } : { id: 0, name: 'Unknown' },
+          quantity: dto.quantity || 0,
+          value: dto.value || 0
         }));
         // compute total
         const totalQty = this.locationInventory.reduce((sum, row) => sum + row.quantity, 0);

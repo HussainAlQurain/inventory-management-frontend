@@ -23,6 +23,8 @@ import { Supplier } from '../../models/Supplier';
 import { CategoriesService } from '../../services/categories.service';
 import { SupplierService } from '../../services/supplier.service';
 import { AddInventoryItemComponent } from '../add-inventory-item/add-inventory-item.component';
+import { InventoryItemLocationService } from '../../services/inventory-item-location.service';
+import { InventoryItemLocation } from '../../models/InventoryItem';
 
 interface Buyer {
   id: number;
@@ -104,7 +106,8 @@ export class InventoryItemsComponent implements OnInit {
     private inventoryService: InventoryItemsService,
     private categoriesService: CategoriesService,
     private supplierService: SupplierService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private inventoryItemLocationService: InventoryItemLocationService
   ) {}
 
   ngOnInit(): void {
@@ -118,7 +121,28 @@ export class InventoryItemsComponent implements OnInit {
     this.inventoryService.getInventoryItemsByCompany().subscribe({
       next: (items) => {
         this.dataSource = items;
-        this.filteredItems = items; // Initialize filtered items with all items
+        this.filteredItems = items;
+        
+        // Fetch location data for each item
+        const selectedLocationId = this.inventoryItemLocationService.getSelectedLocationId();
+        items.forEach(item => {
+          if (item.id) {
+            this.inventoryItemLocationService.getItemLocationData(item.id, selectedLocationId)
+              .subscribe({
+                next: (locationData) => {
+                  // Update the item with location-specific data
+                  item.minOnHand = locationData.minOnHand;
+                  item.par = locationData.parLevel;
+                  item.lastCount = locationData.lastCount;
+                },
+                error: (error) => {
+                  // If no location data exists or there's an error, keep the default values
+                  // console.log(`No location data for item ${item.id}`);
+                }
+              });
+          }
+        });
+        
         this.isLoading = false;
       },
       error: (error) => {

@@ -155,20 +155,20 @@
           <!-- Min On Hand Column -->
           <ng-container matColumnDef="minOnHand">
             <th mat-header-cell *matHeaderCellDef mat-sort-header> Min On Hand </th>
-            <td mat-cell *matCellDef="let item"> {{ item.minOnHand || 'N/A' }} </td>
+            <td mat-cell *matCellDef="let item"> {{ item.minOnHand !== undefined ? item.minOnHand : 'N/A' }} </td>
           </ng-container>
   
           <!-- PAR Column -->
           <ng-container matColumnDef="par">
             <th mat-header-cell *matHeaderCellDef mat-sort-header> PAR </th>
-            <td mat-cell *matCellDef="let item"> {{ item.par || 'N/A' }} </td>
+            <td mat-cell *matCellDef="let item"> {{ item.par !== undefined ? item.par : 'N/A' }} </td>
           </ng-container>
   
           <!-- Last Count Column -->
           <ng-container matColumnDef="lastCount">
             <th mat-header-cell *matHeaderCellDef mat-sort-header> Last Count </th>
             <td mat-cell *matCellDef="let item"> 
-              {{ item.lastCount ? (item.lastCount | date:'short') : 'N/A' }} 
+              {{ item.lastCount !== undefined ? item.lastCount : 'N/A' }} 
             </td>
           </ng-container>
   
