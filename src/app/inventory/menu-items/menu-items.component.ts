@@ -22,6 +22,7 @@ import { MenuItem } from '../../models/MenuItem';
 import { Category } from '../../models/Category';
 import { MenuItemsService } from '../../services/menu-items.service';
 import { CategoriesService } from '../../services/categories.service';
+import { AddMenuItemComponent } from '../add-menu-item/add-menu-item.component';
 
 @Component({
   selector: 'app-menu-items',
@@ -44,7 +45,8 @@ import { CategoriesService } from '../../services/categories.service';
     MatMenuModule,
     MatChipsModule,
     MatTooltipModule,
-    MatDialogModule
+    MatDialogModule,
+    AddMenuItemComponent
   ],
   templateUrl: './menu-items.component.html',
   styleUrl: './menu-items.component.scss'
@@ -211,6 +213,10 @@ export class MenuItemsComponent implements OnInit {
       
       // Optionally select the newly created menu item
       this.selectMenuItem(createdMenuItem);
+      
+      this.snackBar.open('Menu item created successfully', 'Close', {
+        duration: 3000
+      });
     }
   }
 

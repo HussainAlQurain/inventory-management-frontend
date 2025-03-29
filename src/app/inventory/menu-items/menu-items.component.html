@@ -148,6 +148,5 @@
     <mat-paginator [pageSizeOptions]="[10, 25, 50, 100]" showFirstLastButtons></mat-paginator>
   </div>
 
-  <!-- Detail panel will be added later when needed -->
-  
+  <app-add-menu-item *ngIf="showAddMenuItemPanel" (closePanel)="handleCloseAddPanel($event)"></app-add-menu-item>
 </div>
