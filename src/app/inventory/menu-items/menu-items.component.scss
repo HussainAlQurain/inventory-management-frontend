@@ -1,0 +1,130 @@
+.menu-items-container {
+  padding: 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+
+  .page-title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 500;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 10px;
+  }
+}
+
+.filters-panel {
+  padding: 15px;
+  margin-bottom: 20px;
+  border-radius: 4px;
+
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+
+    mat-form-field {
+      flex: 1;
+      min-width: 200px;
+    }
+  }
+
+  .active-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+    align-items: center;
+
+    .filter-chip {
+      display: flex;
+      align-items: center;
+      background-color: #f1f1f1;
+      padding: 5px 10px;
+      border-radius: 16px;
+      font-size: 14px;
+    }
+  }
+}
+
+.table-container {
+  flex: 1;
+  position: relative;
+  overflow: auto;
+
+  .loading-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(255, 255, 255, 0.7);
+  }
+
+  .error-container, .no-data-container {
+    padding: 20px;
+    text-align: center;
+
+    .error-message {
+      color: #f44336;
+      margin-bottom: 15px;
+    }
+  }
+
+  .menu-items-table {
+    width: 100%;
+    
+    .mat-column-name {
+      flex: 3;
+    }
+    
+    .mat-column-category {
+      flex: 2;
+    }
+    
+    .mat-column-posCode {
+      flex: 2;
+    }
+    
+    .mat-column-cost, 
+    .mat-column-foodCostPercentage, 
+    .mat-column-retailPriceExclTax {
+      flex: 2;
+      text-align: right;
+      justify-content: flex-end;
+    }
+    
+    .mat-column-actions {
+      flex: 1;
+      justify-content: flex-end;
+    }
+  }
+
+  .menu-item-row {
+    cursor: pointer;
+    transition: background-color 0.2s;
+    
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.04);
+    }
+  }
+}
+
+mat-paginator {
+  margin-top: 10px;
+}
+
+// Detail panel styling will be added later when needed
