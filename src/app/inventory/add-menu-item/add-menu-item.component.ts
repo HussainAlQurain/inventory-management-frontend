@@ -89,7 +89,7 @@ export class AddMenuItemComponent implements OnInit {
       posCode: [''],
       categoryId: [null, Validators.required],
       retailPriceExclTax: [0, [Validators.required, Validators.min(0)]],
-      maxAllowedFoodCostPct: [0.3], // Default 30%
+      maxAllowedFoodCostPct: [30, [Validators.min(0), Validators.max(100)]], // Changed to 30 (for 30%) and added max validator
       modifierGroups: [''],
       cost: [{ value: 0, disabled: true }],
       foodCostPercentage: [{ value: 0, disabled: true }]
@@ -240,7 +240,8 @@ export class AddMenuItemComponent implements OnInit {
     
     let foodCostPct = 0;
     if (retailPrice > 0) {
-      foodCostPct = cost / retailPrice;
+      // Calculate as percentage (0-100 range)
+      foodCostPct = (cost / retailPrice) * 100;
     }
     
     this.menuItemForm.get('foodCostPercentage')?.setValue(foodCostPct);
@@ -278,10 +279,14 @@ export class AddMenuItemComponent implements OnInit {
       };
     });
     
+    // Convert food cost percentage from display format (0-100) to decimal format (0-1) for backend
+    const foodCostPercentage = formValues.foodCostPercentage / 100;
+    
     const menuItemData: MenuItem = {
       ...formValues,
+      maxAllowedFoodCostPct: formValues.maxAllowedFoodCostPct / 100, // Convert to decimal
       cost: this.menuItemForm.get('cost')?.value || 0,
-      foodCostPercentage: this.menuItemForm.get('foodCostPercentage')?.value || 0,
+      foodCostPercentage: foodCostPercentage, // Store as decimal for backend
       menuItemLines: cleanedLines
     };
     
