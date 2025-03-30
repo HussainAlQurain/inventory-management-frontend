@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { MenuItem } from '../models/MenuItem';
+import { MenuItemLine } from '../models/MenuItemLine';
 import { environment } from '../../environments/environment';
 import { CompaniesService } from './companies.service';
 
@@ -26,7 +27,8 @@ export class MenuItemsService {
   }
 
   getMenuItemById(id: number): Observable<MenuItem> {
-    return this.http.get<MenuItem>(`${this.apiUrl}/${id}`);
+    const companyId = this.companiesService.getSelectedCompanyId();
+    return this.http.get<MenuItem>(`${this.apiUrl}/${id}/company/${companyId}`);
   }
 
   // Create a new menu item
@@ -34,25 +36,57 @@ export class MenuItemsService {
     return this.http.post<MenuItem>(`${this.apiUrl}/company/${companyId}`, menuItem);
   }
 
+  // Update an existing menu item
   updateMenuItem(menuItem: MenuItem): Observable<MenuItem> {
-    return this.http.put<MenuItem>(`${this.apiUrl}/${menuItem.id}`, menuItem);
+    const companyId = this.companiesService.getSelectedCompanyId();
+    return this.http.put<MenuItem>(`${this.apiUrl}/${menuItem.id}/company/${companyId}`, menuItem);
+  }
+
+  // Partially update a menu item
+  partialUpdateMenuItem(menuItem: Partial<MenuItem>): Observable<MenuItem> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    return this.http.patch<MenuItem>(`${this.apiUrl}/${menuItem.id}/company/${companyId}`, menuItem);
   }
 
   deleteMenuItem(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+    const companyId = this.companiesService.getSelectedCompanyId();
+    return this.http.delete<void>(`${this.apiUrl}/${id}/company/${companyId}`);
   }
 
-  // Methods for menu item lines
-  addLineToMenuItem(menuItemId: number, line: any): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/${menuItemId}/lines`, line);
+  // ===== Menu Item Lines =====
+
+  // Get all lines for a menu item
+  getMenuItemLines(menuItemId: number): Observable<MenuItemLine[]> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    return this.http.get<MenuItemLine[]>(
+      `${this.apiUrl}/${menuItemId}/company/${companyId}/lines`
+    );
   }
 
-  updateMenuItemLine(menuItemId: number, lineId: number, line: any): Observable<any> {
-    return this.http.put<any>(`${this.apiUrl}/${menuItemId}/lines/${lineId}`, line);
+  // Add a new line to a menu item
+  addLineToMenuItem(menuItemId: number, line: MenuItemLine): Observable<MenuItemLine> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    return this.http.post<MenuItemLine>(
+      `${this.apiUrl}/${menuItemId}/company/${companyId}/lines`, 
+      line
+    );
   }
 
+  // Update an existing line
+  updateMenuItemLine(menuItemId: number, lineId: number, line: MenuItemLine): Observable<MenuItemLine> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    return this.http.put<MenuItemLine>(
+      `${this.apiUrl}/${menuItemId}/company/${companyId}/lines/${lineId}`, 
+      line
+    );
+  }
+
+  // Delete a line
   deleteMenuItemLine(menuItemId: number, lineId: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${menuItemId}/lines/${lineId}`);
+    const companyId = this.companiesService.getSelectedCompanyId();
+    return this.http.delete<void>(
+      `${this.apiUrl}/${menuItemId}/company/${companyId}/lines/${lineId}`
+    );
   }
   
   // Search menu items (for selecting parent menu items)

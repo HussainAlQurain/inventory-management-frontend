@@ -1,0 +1,195 @@
+<div class="slide-panel">
+  <div class="panel-header">
+    <h2>{{ isEditMode ? 'Edit' : 'View' }} Menu Item</h2>
+    <div class="header-actions">
+      <button *ngIf="!isEditMode" 
+              mat-button 
+              color="primary" 
+              (click)="toggleEditMode()"
+              matTooltip="Edit this menu item">
+        <mat-icon>edit</mat-icon> Edit
+      </button>
+      <button mat-icon-button (click)="onClose()" aria-label="Close panel" matTooltip="Close">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <mat-divider></mat-divider>
+
+  <div class="panel-content" *ngIf="menuItem">
+    <form [formGroup]="menuItemForm">
+      <mat-tab-group>
+        <!-- Basic Details Tab -->
+        <mat-tab label="Basic Details">
+          <div class="form-section">
+            <!-- Name & POS Code Fields -->
+            <div class="form-row">
+              <mat-form-field appearance="outline" class="form-field-large">
+                <mat-label>Menu Item Name</mat-label>
+                <input matInput formControlName="name" required>
+                <mat-error *ngIf="menuItemForm.get('name')?.hasError('required')">
+                  Name is required
+                </mat-error>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="form-field-small">
+                <mat-label>POS Code</mat-label>
+                <input matInput formControlName="posCode">
+              </mat-form-field>
+            </div>
+
+            <!-- Category -->
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Category</mat-label>
+              <mat-select formControlName="categoryId" required>
+                <mat-option *ngFor="let category of categories" [value]="category.id">
+                  {{ category.name }}
+                </mat-option>
+              </mat-select>
+              <mat-error *ngIf="menuItemForm.get('categoryId')?.hasError('required')">
+                Category is required
+              </mat-error>
+            </mat-form-field>
+
+            <!-- Price & Food Cost Fields -->
+            <div class="form-row">
+              <mat-form-field appearance="outline" class="form-field-medium">
+                <mat-label>Retail Price (Excl. Tax)</mat-label>
+                <input matInput type="number" formControlName="retailPriceExclTax" min="0" step="0.01" required>
+                <mat-error *ngIf="menuItemForm.get('retailPriceExclTax')?.hasError('required')">
+                  Retail price is required
+                </mat-error>
+                <mat-error *ngIf="menuItemForm.get('retailPriceExclTax')?.hasError('min')">
+                  Cannot be negative
+                </mat-error>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="form-field-small">
+                <mat-label>Max Allowed Food Cost %</mat-label>
+                <input matInput type="number" formControlName="maxAllowedFoodCostPct" min="0" max="100" step="1">
+                <mat-hint>Value between 0-100 (e.g., 30 = 30%)</mat-hint>
+              </mat-form-field>
+            </div>
+
+            <!-- Modifier Groups -->
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Modifier Groups</mat-label>
+              <input matInput formControlName="modifierGroups" placeholder="Comma-separated modifier groups">
+            </mat-form-field>
+
+            <!-- Cost Summary -->
+            <div class="summary-section">
+              <div class="summary-row">
+                <span class="label">Total Cost:</span>
+                <span class="value">{{ menuItem.cost | currency }}</span>
+              </div>
+              <div class="summary-row">
+                <span class="label">Food Cost Percentage:</span>
+                <span class="value">{{ menuItem.foodCostPercentage | number:'1.1-1' }}%</span>
+              </div>
+            </div>
+          </div>
+        </mat-tab>
+
+        <!-- Components Tab -->
+        <mat-tab label="Components">
+          <div class="form-section">
+            <div class="section-header">
+              <h3>Menu Item Components</h3>
+              <button *ngIf="isEditMode" mat-raised-button color="primary" (click)="addNewLine()" [disabled]="isEditingLine">
+                <mat-icon>add</mat-icon> Add Component
+              </button>
+            </div>
+            
+            <app-menu-item-line
+              *ngIf="isEditingLine"
+              [line]="currentLine"
+              [isEditMode]="true"
+              (save)="saveLine($event)"
+              (cancel)="cancelLineEdit()">
+            </app-menu-item-line>
+            
+            <table *ngIf="!isEditingLine && menuItem.menuItemLines && menuItem.menuItemLines.length > 0" 
+                  mat-table [dataSource]="menuItem.menuItemLines" class="lines-table">
+              <ng-container matColumnDef="item">
+                <th mat-header-cell *matHeaderCellDef>Item</th>
+                <td mat-cell *matCellDef="let line">
+                  {{ line.inventoryItemName || line.subRecipeName || line.childMenuItemName || 'Unknown' }}
+                </td>
+              </ng-container>
+              
+              <ng-container matColumnDef="type">
+                <th mat-header-cell *matHeaderCellDef>Type</th>
+                <td mat-cell *matCellDef="let line">
+                  {{ line.inventoryItemId ? 'Inventory Item' : 
+                     (line.subRecipeId ? 'Sub-Recipe' : 
+                     (line.childMenuItemId ? 'Menu Item' : 'Unknown')) }}
+                </td>
+              </ng-container>
+              
+              <ng-container matColumnDef="quantity">
+                <th mat-header-cell *matHeaderCellDef>Quantity</th>
+                <td mat-cell *matCellDef="let line">{{ line.quantity }}</td>
+              </ng-container>
+              
+              <ng-container matColumnDef="wastage">
+                <th mat-header-cell *matHeaderCellDef>Wastage %</th>
+                <td mat-cell *matCellDef="let line">{{ line.wastagePercent }}%</td>
+              </ng-container>
+              
+              <ng-container matColumnDef="uom">
+                <th mat-header-cell *matHeaderCellDef>UOM</th>
+                <td mat-cell *matCellDef="let line">
+                  {{ line.uomAbbreviation || 'N/A' }}
+                </td>
+              </ng-container>
+              
+              <ng-container matColumnDef="cost">
+                <th mat-header-cell *matHeaderCellDef class="text-right">Cost</th>
+                <td mat-cell *matCellDef="let line" class="text-right">{{ line.lineCost | currency }}</td>
+              </ng-container>
+              
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef></th>
+                <td mat-cell *matCellDef="let line">
+                  <button *ngIf="isEditMode" mat-icon-button color="primary" (click)="editLine(line)" matTooltip="Edit">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button *ngIf="isEditMode" mat-icon-button color="warn" (click)="deleteLine(line)" matTooltip="Delete">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+              
+              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+            </table>
+            
+            <div *ngIf="!isEditingLine && (!menuItem.menuItemLines || menuItem.menuItemLines.length === 0)" class="no-lines">
+              <p>No components added to this menu item.</p>
+              <button *ngIf="isEditMode" mat-raised-button color="primary" (click)="addNewLine()">
+                <mat-icon>add</mat-icon> Add First Component
+              </button>
+            </div>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    </form>
+  </div>
+
+  <div *ngIf="!menuItem" class="loading-container">
+    <p>Loading menu item details...</p>
+  </div>
+
+  <div class="panel-footer">
+    <button mat-button (click)="onClose()">Close</button>
+    <button *ngIf="isEditMode" 
+            mat-raised-button 
+            color="primary" 
+            [disabled]="menuItemForm.invalid" 
+            (click)="saveMenuItem()">
+      Save Changes
+    </button>
+  </div>
+</div>

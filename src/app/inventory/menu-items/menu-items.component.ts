@@ -23,6 +23,7 @@ import { Category } from '../../models/Category';
 import { MenuItemsService } from '../../services/menu-items.service';
 import { CategoriesService } from '../../services/categories.service';
 import { AddMenuItemComponent } from '../add-menu-item/add-menu-item.component';
+import { MenuItemDetailComponent } from '../menu-item-detail/menu-item-detail.component';
 
 @Component({
   selector: 'app-menu-items',
@@ -46,21 +47,21 @@ import { AddMenuItemComponent } from '../add-menu-item/add-menu-item.component';
     MatChipsModule,
     MatTooltipModule,
     MatDialogModule,
-    AddMenuItemComponent
+    AddMenuItemComponent,
+    MenuItemDetailComponent
   ],
   templateUrl: './menu-items.component.html',
   styleUrl: './menu-items.component.scss'
 })
 export class MenuItemsComponent implements OnInit {
-  // Display columns for the table
+  // Display columns for the table - removing 'actions'
   displayedColumns: string[] = [
     'name',
     'category',
     'posCode',
     'cost',
     'foodCostPercentage',
-    'retailPriceExclTax',
-    'actions'
+    'retailPriceExclTax'
   ];
   
   // Data sources
@@ -135,6 +136,7 @@ export class MenuItemsComponent implements OnInit {
   selectMenuItem(menuItem: MenuItem): void {
     this.selectedMenuItem = menuItem;
     this.showDetailPanel = true;
+    this.editMode = false; // Start in view mode, not edit mode
     
     // Load full details including lines
     if (menuItem.id) {
@@ -265,5 +267,33 @@ export class MenuItemsComponent implements OnInit {
     // Set up edit mode
     this.editMode = true;
     this.selectedMenuItem = { ...menuItem };
+  }
+
+  // Handle save menu item event from detail panel
+  handleSaveMenuItem(updatedMenuItem: MenuItem): void {
+    // Find the item in the list and update it
+    const index = this.menuItems.findIndex(item => item.id === updatedMenuItem.id);
+    if (index !== -1) {
+      this.menuItems[index] = updatedMenuItem;
+    }
+    
+    // Also update in filtered list
+    const filteredIndex = this.filteredMenuItems.findIndex(item => item.id === updatedMenuItem.id);
+    if (filteredIndex !== -1) {
+      this.filteredMenuItems[filteredIndex] = updatedMenuItem;
+    }
+    
+    // Show success message
+    this.snackBar.open('Menu item updated successfully', 'Close', {
+      duration: 3000
+    });
+    
+    // Exit edit mode
+    this.editMode = false;
+  }
+
+  // Toggle edit mode
+  toggleEditMode(): void {
+    this.editMode = !this.editMode;
   }
 }
