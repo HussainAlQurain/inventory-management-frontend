@@ -179,6 +179,17 @@ export class MenuItemDetailComponent implements OnInit, OnChanges {
 
     const isNew = !line.id;
     
+    // For menu item type, ensure we use a standard UOM for "Each"
+    if (line.childMenuItemId) {
+      // Find the UOM for "Each" or use a default one
+      const eachUom = Array.from(this.uoms.values()).find(uom => 
+        uom.name.toLowerCase() === 'each' || uom.abbreviation?.toLowerCase() === 'ea');
+      
+      if (eachUom?.id) {
+        line.unitOfMeasureId = eachUom.id;
+      }
+    }
+    
     if (isNew) {
       // Add new line
       this.menuItemsService.addLineToMenuItem(this.menuItem.id, line).subscribe({
@@ -465,14 +476,16 @@ export class MenuItemDetailComponent implements OnInit, OnChanges {
         enhancedLine.subRecipeName = subRecipe?.name;
       }
       
-      // Add menu item name
+      // Add menu item name and set UOM to Each always for menu items
       if (line.childMenuItemId && this.menuItems.has(line.childMenuItemId)) {
         const menuItem = this.menuItems.get(line.childMenuItemId);
         enhancedLine.childMenuItemName = menuItem?.name;
-      }
-      
-      // Add UOM information
-      if (line.unitOfMeasureId && this.uoms.has(line.unitOfMeasureId)) {
+        // For menu item type, always set UOM display to "Each"
+        enhancedLine.uomName = "Each";
+        enhancedLine.uomAbbreviation = "EA";
+      } 
+      // Add UOM information for non-menu item types
+      else if (line.unitOfMeasureId && this.uoms.has(line.unitOfMeasureId)) {
         const uom = this.uoms.get(line.unitOfMeasureId);
         enhancedLine.uomName = uom?.name;
         enhancedLine.uomAbbreviation = uom?.abbreviation;

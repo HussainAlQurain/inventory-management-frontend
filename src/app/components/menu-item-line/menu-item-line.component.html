@@ -91,15 +91,26 @@
         <mat-error *ngIf="lineForm.get('wastagePercent')?.hasError('max')">Cannot exceed 100%</mat-error>
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="form-field-medium">
-        <mat-label>Unit of Measure</mat-label>
-        <mat-select formControlName="unitOfMeasureId">
-          <mat-option *ngFor="let uom of allUoms" [value]="uom.id">
-            {{ uom.name }} ({{ uom.abbreviation }})
-          </mat-option>
-        </mat-select>
-        <mat-error *ngIf="lineForm.get('unitOfMeasureId')?.hasError('required')">UOM is required</mat-error>
-      </mat-form-field>
+      <!-- Conditionally show UOM field or static "Each (EA)" for menu items -->
+      <ng-container *ngIf="lineType !== 'menuitem'; else menuItemUom">
+        <mat-form-field appearance="outline" class="form-field-medium">
+          <mat-label>Unit of Measure</mat-label>
+          <mat-select formControlName="unitOfMeasureId">
+            <mat-option *ngFor="let uom of allUoms" [value]="uom.id">
+              {{ uom.name }} ({{ uom.abbreviation }})
+            </mat-option>
+          </mat-select>
+          <mat-error *ngIf="lineForm.get('unitOfMeasureId')?.hasError('required')">UOM is required</mat-error>
+        </mat-form-field>
+      </ng-container>
+      
+      <ng-template #menuItemUom>
+        <mat-form-field appearance="outline" class="form-field-medium">
+          <mat-label>Unit of Measure</mat-label>
+          <input matInput value="Each (EA)" readonly disabled>
+          <mat-hint>Menu items always use Each (EA)</mat-hint>
+        </mat-form-field>
+      </ng-template>
     </div>
 
     <div class="form-row">

@@ -141,7 +141,12 @@
               <ng-container matColumnDef="uom">
                 <th mat-header-cell *matHeaderCellDef>UOM</th>
                 <td mat-cell *matCellDef="let line">
-                  {{ line.uomName ? line.uomName + ' (' + (line.uomAbbreviation || '') + ')' : 'N/A' }}
+                  <ng-container *ngIf="line.childMenuItemId; else regularUom">
+                    Each (EA)
+                  </ng-container>
+                  <ng-template #regularUom>
+                    {{ line.uomName ? line.uomName + ' (' + (line.uomAbbreviation || '') + ')' : 'N/A' }}
+                  </ng-template>
                 </td>
               </ng-container>
               

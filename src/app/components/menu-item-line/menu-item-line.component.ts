@@ -101,6 +101,18 @@ export class MenuItemLineComponent implements OnInit {
     this.lineForm.get('quantity')?.valueChanges.subscribe(() => this.onQuantityChange());
     this.lineForm.get('wastagePercent')?.valueChanges.subscribe(() => this.onWastageChange());
     this.lineForm.get('unitOfMeasureId')?.valueChanges.subscribe(() => this.recalculateCost());
+
+    // If editing existing line and it's a menu item type, handle UOM
+    if (this.line?.childMenuItemId) {
+      this.setEachUomForMenuItem();
+    }
+
+    // Set up a subscription to update UOM when the line type changes
+    this.lineForm.get('childMenuItemId')?.valueChanges.subscribe(value => {
+      if (value) {
+        this.setEachUomForMenuItem();
+      }
+    });
   }
 
   private loadUoms(): void {
@@ -229,16 +241,21 @@ export class MenuItemLineComponent implements OnInit {
       this.lineForm.get('childMenuItemId')?.setValue(undefined);
       this.subRecipeCtrl.setValue('');
       this.menuItemCtrl.setValue('');
+      this.lineForm.get('unitOfMeasureId')?.enable();
     } else if (type === 'subrecipe') {
       this.lineForm.get('inventoryItemId')?.setValue(undefined);
       this.lineForm.get('childMenuItemId')?.setValue(undefined);
       this.inventoryItemCtrl.setValue('');
       this.menuItemCtrl.setValue('');
+      this.lineForm.get('unitOfMeasureId')?.enable();
     } else {
       this.lineForm.get('inventoryItemId')?.setValue(undefined);
       this.lineForm.get('subRecipeId')?.setValue(undefined);
       this.inventoryItemCtrl.setValue('');
       this.subRecipeCtrl.setValue('');
+      
+      // For menu items, set UOM to "Each" automatically
+      this.setEachUomForMenuItem();
     }
 
     // Reset cost
@@ -290,8 +307,26 @@ export class MenuItemLineComponent implements OnInit {
     // Update the display control value with just the menu item name
     this.menuItemCtrl.setValue(menuItem.name, { emitEvent: false });
     
+    // For menu items, set UOM to "Each" automatically
+    this.setEachUomForMenuItem();
+    
     // Calculate cost immediately
     this.calculateMenuItemCost(menuItem);
+  }
+
+  // Helper method to set UOM to "Each" for menu items
+  private setEachUomForMenuItem(): void {
+    // Find the UOM for "Each" or use a default one
+    const eachUom = this.allUoms.find(uom => 
+      uom.name?.toLowerCase() === 'each' || uom.abbreviation?.toLowerCase() === 'ea');
+    
+    if (eachUom?.id) {
+      // Set UOM ID to Each but we'll hide the select component in the UI
+      this.lineForm.get('unitOfMeasureId')?.setValue(eachUom.id);
+    } else if (this.allUoms.length > 0) {
+      // If we can't find Each, use the first UOM (just to make sure there's a value)
+      this.lineForm.get('unitOfMeasureId')?.setValue(this.allUoms[0].id);
+    }
   }
 
   // Calculate inventory item cost
