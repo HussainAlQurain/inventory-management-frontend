@@ -190,6 +190,10 @@ export class MenuItemDetailComponent implements OnInit, OnChanges {
           this.isEditingLine = false;
           this.currentLine = undefined;
           this.updateMenuItemCosts();
+          
+          // Fetch data for the newly added line
+          this.fetchLineRelatedData(savedLine);
+          
           this.snackBar.open('Line added successfully', 'Close', { duration: 3000 });
         },
         error: (err) => {
@@ -208,6 +212,10 @@ export class MenuItemDetailComponent implements OnInit, OnChanges {
           this.isEditingLine = false;
           this.currentLine = undefined;
           this.updateMenuItemCosts();
+          
+          // Fetch data for the updated line
+          this.fetchLineRelatedData(updatedLine);
+          
           this.snackBar.open('Line updated successfully', 'Close', { duration: 3000 });
         },
         error: (err) => {
@@ -472,5 +480,82 @@ export class MenuItemDetailComponent implements OnInit, OnChanges {
       
       return enhancedLine;
     });
+  }
+
+  // New method to fetch related data for a single line
+  private fetchLineRelatedData(line: MenuItemLine): void {
+    const requests: Observable<any>[] = [];
+    
+    // Fetch inventory item if needed
+    if (line.inventoryItemId && !this.inventoryItems.has(line.inventoryItemId)) {
+      requests.push(
+        this.inventoryItemsService.getInventoryItemById(line.inventoryItemId).pipe(
+          switchMap((item: InventoryItem) => {
+            if (item && item.id) {
+              this.inventoryItems.set(item.id, item);
+            }
+            return of(true);
+          })
+        )
+      );
+    }
+    
+    // Fetch sub-recipe if needed
+    if (line.subRecipeId && !this.subRecipes.has(line.subRecipeId)) {
+      requests.push(
+        this.subRecipeService.getSubRecipeById(line.subRecipeId).pipe(
+          switchMap((subRecipe: SubRecipe) => {
+            if (subRecipe && subRecipe.id) {
+              this.subRecipes.set(subRecipe.id, subRecipe);
+            }
+            return of(true);
+          })
+        )
+      );
+    }
+    
+    // Fetch menu item if needed
+    if (line.childMenuItemId && !this.menuItems.has(line.childMenuItemId)) {
+      requests.push(
+        this.menuItemsService.getMenuItemById(line.childMenuItemId).pipe(
+          switchMap((menuItem: MenuItem) => {
+            if (menuItem && menuItem.id) {
+              this.menuItems.set(menuItem.id, menuItem);
+            }
+            return of(true);
+          })
+        )
+      );
+    }
+    
+    // Fetch UOM if needed
+    if (line.unitOfMeasureId && !this.uoms.has(line.unitOfMeasureId)) {
+      requests.push(
+        this.uomService.getUomById(line.unitOfMeasureId).pipe(
+          switchMap((uom: UnitOfMeasure) => {
+            if (uom && uom.id) {
+              this.uoms.set(uom.id, uom);
+            }
+            return of(true);
+          })
+        )
+      );
+    }
+    
+    // Execute all requests in parallel if needed
+    if (requests.length > 0) {
+      forkJoin(requests).subscribe({
+        next: () => {
+          // After fetching all related data, enhance the menu item lines
+          this.enhanceMenuItemLines();
+        },
+        error: (err) => {
+          console.error('Error loading related data for line:', err);
+        }
+      });
+    } else {
+      // If no requests needed, just enhance with existing data
+      this.enhanceMenuItemLines();
+    }
   }
 }
