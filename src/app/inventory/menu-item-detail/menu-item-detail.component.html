@@ -141,7 +141,7 @@
               <ng-container matColumnDef="uom">
                 <th mat-header-cell *matHeaderCellDef>UOM</th>
                 <td mat-cell *matCellDef="let line">
-                  {{ line.uomAbbreviation || 'N/A' }}
+                  {{ line.uomName ? line.uomName + ' (' + (line.uomAbbreviation || '') + ')' : 'N/A' }}
                 </td>
               </ng-container>
               

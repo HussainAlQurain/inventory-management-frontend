@@ -93,6 +93,7 @@ export class MenuItemsComponent implements OnInit {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
   @ViewChild(MatTable) table!: MatTable<MenuItem>;
+  @ViewChild(MenuItemDetailComponent) menuItemDetailComponent?: MenuItemDetailComponent;
 
   constructor(
     private menuItemsService: MenuItemsService,
@@ -150,6 +151,14 @@ export class MenuItemsComponent implements OnInit {
       next: (menuItem) => {
         this.selectedMenuItem = menuItem;
         this.isLoading = false;
+        
+        // Use the ViewChild reference instead of direct DOM manipulation
+        // Wait for change detection to complete
+        setTimeout(() => {
+          if (this.menuItemDetailComponent) {
+            this.menuItemDetailComponent.loadMenuItemDetails(id);
+          }
+        });
       },
       error: (error) => {
         console.error(`Error loading menu item details for ID ${id}:`, error);

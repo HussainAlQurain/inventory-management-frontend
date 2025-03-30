@@ -12,13 +12,22 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
+import { forkJoin, of, Observable } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
+
 import { MenuItem } from '../../models/MenuItem';
 import { MenuItemLine } from '../../models/MenuItemLine';
 import { Category } from '../../models/Category';
+import { InventoryItem } from '../../models/InventoryItem';
+import { SubRecipe } from '../../models/SubRecipe';
+import { UnitOfMeasure } from '../../models/UnitOfMeasure';
 
 import { MenuItemsService } from '../../services/menu-items.service';
 import { CategoriesService } from '../../services/categories.service';
 import { MenuItemLineComponent } from '../../components/menu-item-line/menu-item-line.component';
+import { InventoryItemsService } from '../../services/inventory-items-service.service';
+import { SubRecipeService } from '../../services/sub-recipe.service';
+import { UomService } from '../../services/uom.service';
 
 @Component({
   selector: 'app-menu-item-detail',
@@ -60,10 +69,19 @@ export class MenuItemDetailComponent implements OnInit, OnChanges {
     'item', 'type', 'quantity', 'wastage', 'uom', 'cost', 'actions'
   ];
 
+  // For data lookup
+  inventoryItems: Map<number, InventoryItem> = new Map();
+  subRecipes: Map<number, SubRecipe> = new Map();
+  menuItems: Map<number, MenuItem> = new Map();
+  uoms: Map<number, UnitOfMeasure> = new Map();
+
   constructor(
     private fb: FormBuilder,
     private menuItemsService: MenuItemsService,
     private categoriesService: CategoriesService,
+    private inventoryItemsService: InventoryItemsService,
+    private subRecipeService: SubRecipeService,
+    private uomService: UomService,
     private snackBar: MatSnackBar
   ) {
     this.menuItemForm = this.createForm();
@@ -74,6 +92,7 @@ export class MenuItemDetailComponent implements OnInit, OnChanges {
     if (this.menuItem) {
       this.initializeForm();
     }
+    this.loadUoms();
   }
 
   ngOnChanges(): void {
@@ -292,5 +311,166 @@ export class MenuItemDetailComponent implements OnInit, OnChanges {
 
   getCategoryName(categoryId: number): string {
     return this.categories.find(c => c.id === categoryId)?.name || 'Unknown';
+  }
+
+  loadMenuItemDetails(menuItemId: number): void {
+    this.menuItemsService.getMenuItemById(menuItemId).subscribe({
+      next: (menuItem) => {
+        this.menuItem = menuItem;
+        this.initializeForm();
+        
+        // Load related data for lines
+        this.loadRelatedData();
+      },
+      error: (err) => {
+        console.error(`Error loading menu item with ID ${menuItemId}:`, err);
+        this.snackBar.open('Error loading menu item details', 'Close', { duration: 3000 });
+      }
+    });
+  }
+  
+  private loadRelatedData(): void {
+    if (!this.menuItem || !this.menuItem.menuItemLines || this.menuItem.menuItemLines.length === 0) {
+      return;
+    }
+    
+    // Extract unique IDs to fetch
+    const inventoryItemIds: number[] = [];
+    const subRecipeIds: number[] = [];
+    const menuItemIds: number[] = [];
+    const uomIds: number[] = [];
+    
+    this.menuItem.menuItemLines.forEach(line => {
+      if (line.inventoryItemId) inventoryItemIds.push(line.inventoryItemId);
+      if (line.subRecipeId) subRecipeIds.push(line.subRecipeId);
+      if (line.childMenuItemId) menuItemIds.push(line.childMenuItemId);
+      if (line.unitOfMeasureId) uomIds.push(line.unitOfMeasureId);
+    });
+    
+    // Create observables for fetching data
+    const requests: Observable<boolean>[] = [];
+    
+    // Fetch inventory items
+    if (inventoryItemIds.length > 0) {
+      requests.push(this.fetchInventoryItems(inventoryItemIds));
+    }
+    
+    // Fetch sub-recipes
+    if (subRecipeIds.length > 0) {
+      requests.push(this.fetchSubRecipes(subRecipeIds));
+    }
+    
+    // Fetch menu items
+    if (menuItemIds.length > 0) {
+      requests.push(this.fetchMenuItems(menuItemIds));
+    }
+    
+    // Execute requests in parallel
+    if (requests.length > 0) {
+      forkJoin(requests).subscribe({
+        next: () => {
+          // Now enhance the lines with names
+          this.enhanceMenuItemLines();
+        },
+        error: (err) => {
+          console.error('Error loading related data:', err);
+        }
+      });
+    }
+  }
+  
+  private fetchInventoryItems(ids: number[]): Observable<boolean> {
+    // In a real app, you might want to make a batch request
+    // For now, we'll fetch items one by one
+    const requests = ids.map(id => this.inventoryItemsService.getInventoryItemById(id));
+    
+    return forkJoin(requests).pipe(
+      switchMap((items: InventoryItem[]) => {
+        items.forEach((item: InventoryItem) => {
+          if (item && item.id) {
+            this.inventoryItems.set(item.id, item);
+          }
+        });
+        return of(true);
+      })
+    );
+  }
+  
+  private fetchSubRecipes(ids: number[]): Observable<boolean> {
+    const requests = ids.map(id => this.subRecipeService.getSubRecipeById(id));
+    
+    return forkJoin(requests).pipe(
+      switchMap((subRecipes: SubRecipe[]) => {
+        subRecipes.forEach((subRecipe: SubRecipe) => {
+          if (subRecipe && subRecipe.id) {
+            this.subRecipes.set(subRecipe.id, subRecipe);
+          }
+        });
+        return of(true);
+      })
+    );
+  }
+  
+  private fetchMenuItems(ids: number[]): Observable<boolean> {
+    const requests = ids.map(id => this.menuItemsService.getMenuItemById(id));
+    
+    return forkJoin(requests).pipe(
+      switchMap((menuItems: MenuItem[]) => {
+        menuItems.forEach((menuItem: MenuItem) => {
+          if (menuItem && menuItem.id) {
+            this.menuItems.set(menuItem.id, menuItem);
+          }
+        });
+        return of(true);
+      })
+    );
+  }
+  
+  private loadUoms(): void {
+    this.uomService.getAllUoms().subscribe({
+      next: (uoms) => {
+        uoms.forEach(uom => {
+          if (uom.id) {
+            this.uoms.set(uom.id, uom);
+          }
+        });
+      },
+      error: (err) => console.error('Error loading UOMs:', err)
+    });
+  }
+  
+  private enhanceMenuItemLines(): void {
+    if (!this.menuItem?.menuItemLines) return;
+    
+    this.menuItem.menuItemLines = this.menuItem.menuItemLines.map(line => {
+      const enhancedLine = { ...line };
+      
+      // Add inventory item name
+      if (line.inventoryItemId && this.inventoryItems.has(line.inventoryItemId)) {
+        const item = this.inventoryItems.get(line.inventoryItemId);
+        enhancedLine.inventoryItemName = item?.name;
+      }
+      
+      // Add sub-recipe name
+      if (line.subRecipeId && this.subRecipes.has(line.subRecipeId)) {
+        const subRecipe = this.subRecipes.get(line.subRecipeId);
+        enhancedLine.subRecipeName = subRecipe?.name;
+      }
+      
+      // Add menu item name
+      if (line.childMenuItemId && this.menuItems.has(line.childMenuItemId)) {
+        const menuItem = this.menuItems.get(line.childMenuItemId);
+        enhancedLine.childMenuItemName = menuItem?.name;
+      }
+      
+      // Add UOM information
+      if (line.unitOfMeasureId && this.uoms.has(line.unitOfMeasureId)) {
+        const uom = this.uoms.get(line.unitOfMeasureId);
+        enhancedLine.uomName = uom?.name;
+        enhancedLine.uomAbbreviation = uom?.abbreviation;
+      }
+      
+      return enhancedLine;
+    });
   }
 }
