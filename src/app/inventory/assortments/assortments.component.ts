@@ -101,7 +101,10 @@ export class AssortmentsComponent implements OnInit {
 
   editAssortment(assortment: Assortment): void {
     const dialogRef = this.dialog.open(AssortmentDetailComponent, {
-      width: '800px',
+      width: '90%',
+      height: '90%',
+      maxWidth: '1200px',
+      maxHeight: '900px',
       data: { assortmentId: assortment.id }
     });
 

@@ -85,6 +85,38 @@ export class AssortmentDetailComponent implements OnInit {
   filteredSubRecipes: SubRecipe[] = [];
   filteredPurchaseOptions: PurchaseOptionSummaryDTO[] = [];
 
+  // Selection state tracking
+  selectionState = {
+    locations: 0, // 0: none, 1: filtered, 2: all
+    items: 0,
+    subRecipes: 0,
+    purchaseOptions: 0
+  };
+  
+  // Counts for each section
+  counts = {
+    locations: {
+      total: 0,
+      filtered: 0,
+      selected: 0
+    },
+    items: {
+      total: 0,
+      filtered: 0,
+      selected: 0
+    },
+    subRecipes: {
+      total: 0,
+      filtered: 0,
+      selected: 0
+    },
+    purchaseOptions: {
+      total: 0,
+      filtered: 0,
+      selected: 0
+    }
+  };
+
   constructor(
     private dialogRef: MatDialogRef<AssortmentDetailComponent>,
     @Inject(MAT_DIALOG_DATA) public data: { assortmentId: number },
@@ -184,6 +216,7 @@ export class AssortmentDetailComponent implements OnInit {
       next: (locations: Location[]) => {
         this.locations = locations;
         this.filteredLocations = locations;
+        this.updateCounts('locations');
       },
       error: (err: any) => console.error('Error loading locations:', err)
     });
@@ -194,6 +227,7 @@ export class AssortmentDetailComponent implements OnInit {
     this.filteredLocations = this.locations.filter(location => 
       location.name.toLowerCase().includes(filter)
     );
+    this.updateCounts('locations');
   }
 
   isLocationSelected(locationId: number | undefined): boolean {
@@ -263,6 +297,7 @@ export class AssortmentDetailComponent implements OnInit {
       next: (items: InventoryItem[]) => {
         this.inventoryItems = items;
         this.filteredItems = items;
+        this.updateCounts('items');
       },
       error: (err: any) => console.error('Error loading inventory items:', err)
     });
@@ -273,6 +308,7 @@ export class AssortmentDetailComponent implements OnInit {
     this.filteredItems = this.inventoryItems.filter(item => 
       item.name.toLowerCase().includes(filter)
     );
+    this.updateCounts('items');
   }
 
   isItemSelected(itemId: number | undefined): boolean {
@@ -341,6 +377,7 @@ export class AssortmentDetailComponent implements OnInit {
       next: (recipes: SubRecipe[]) => {
         this.subRecipes = recipes;
         this.filteredSubRecipes = recipes;
+        this.updateCounts('subRecipes');
       },
       error: (err: any) => console.error('Error loading sub-recipes:', err)
     });
@@ -351,6 +388,7 @@ export class AssortmentDetailComponent implements OnInit {
     this.filteredSubRecipes = this.subRecipes.filter(recipe => 
       recipe.name.toLowerCase().includes(filter)
     );
+    this.updateCounts('subRecipes');
   }
 
   isSubRecipeSelected(subRecipeId: number | undefined): boolean {
@@ -419,6 +457,7 @@ export class AssortmentDetailComponent implements OnInit {
       next: (options: PurchaseOptionSummaryDTO[]) => {
         this.purchaseOptions = options;
         this.filteredPurchaseOptions = options;
+        this.updateCounts('purchaseOptions');
       },
       error: (err: any) => console.error('Error loading purchase options:', err)
     });
@@ -430,6 +469,7 @@ export class AssortmentDetailComponent implements OnInit {
       (option.purchaseOptionNickname && option.purchaseOptionNickname.toLowerCase().includes(filter)) || 
       (option.inventoryItemName && option.inventoryItemName.toLowerCase().includes(filter))
     );
+    this.updateCounts('purchaseOptions');
   }
 
   isPurchaseOptionSelected(purchaseOptionId: number | undefined): boolean {
@@ -494,6 +534,132 @@ export class AssortmentDetailComponent implements OnInit {
 
   getPurchaseOptionName(option: PurchaseOptionSummaryDTO): string {
     return option.purchaseOptionNickname || option.inventoryItemName || `Purchase Option #${option.purchaseOptionId}`;
+  }
+
+  // New methods for tri-state selection
+  
+  toggleSelectionState(section: 'locations' | 'items' | 'subRecipes' | 'purchaseOptions'): void {
+    // Cycle through states: 0 (none) -> 1 (filtered) -> 2 (all) -> 0 (none)
+    this.selectionState[section] = (this.selectionState[section] + 1) % 3;
+    
+    // Clear current selection first
+    if (section === 'locations') {
+      this.selectedLocations = [];
+    } else if (section === 'items') {
+      this.selectedItems = [];
+    } else if (section === 'subRecipes') {
+      this.selectedSubRecipes = [];
+    } else if (section === 'purchaseOptions') {
+      this.selectedPurchaseOptions = [];
+    }
+    
+    // Apply new selection based on state
+    switch (this.selectionState[section]) {
+      case 0: // None selected
+        break;
+      case 1: // Filtered items
+        if (section === 'locations') {
+          this.selectedLocations = this.filteredLocations
+            .filter(location => !this.isLocationSelected(location.id!))
+            .map(location => location.id!)
+            .filter(id => id !== undefined);
+        } else if (section === 'items') {
+          this.selectedItems = this.filteredItems
+            .filter(item => !this.isItemSelected(item.id!))
+            .map(item => item.id!)
+            .filter(id => id !== undefined);
+        } else if (section === 'subRecipes') {
+          this.selectedSubRecipes = this.filteredSubRecipes
+            .filter(recipe => !this.isSubRecipeSelected(recipe.id!))
+            .map(recipe => recipe.id!)
+            .filter(id => id !== undefined);
+        } else if (section === 'purchaseOptions') {
+          this.selectedPurchaseOptions = this.filteredPurchaseOptions
+            .filter(option => !this.isPurchaseOptionSelected(option.purchaseOptionId))
+            .map(option => option.purchaseOptionId)
+            .filter(id => id !== undefined);
+        }
+        break;
+      case 2: // All items
+        if (section === 'locations') {
+          this.selectedLocations = this.locations
+            .filter(location => !this.isLocationSelected(location.id!))
+            .map(location => location.id!)
+            .filter(id => id !== undefined);
+        } else if (section === 'items') {
+          this.selectedItems = this.inventoryItems
+            .filter(item => !this.isItemSelected(item.id!))
+            .map(item => item.id!)
+            .filter(id => id !== undefined);
+        } else if (section === 'subRecipes') {
+          this.selectedSubRecipes = this.subRecipes
+            .filter(recipe => !this.isSubRecipeSelected(recipe.id!))
+            .map(recipe => recipe.id!)
+            .filter(id => id !== undefined);
+        } else if (section === 'purchaseOptions') {
+          this.selectedPurchaseOptions = this.purchaseOptions
+            .filter(option => !this.isPurchaseOptionSelected(option.purchaseOptionId))
+            .map(option => option.purchaseOptionId)
+            .filter(id => id !== undefined);
+        }
+        break;
+    }
+    
+    // Update counts after selection
+    this.updateCounts(section);
+  }
+  
+  updateCounts(section: 'locations' | 'items' | 'subRecipes' | 'purchaseOptions'): void {
+    switch (section) {
+      case 'locations':
+        this.counts.locations = {
+          total: this.locations.length,
+          filtered: this.filteredLocations.length,
+          selected: this.selectedLocations.length
+        };
+        break;
+      case 'items':
+        this.counts.items = {
+          total: this.inventoryItems.length,
+          filtered: this.filteredItems.length,
+          selected: this.selectedItems.length
+        };
+        break;
+      case 'subRecipes':
+        this.counts.subRecipes = {
+          total: this.subRecipes.length,
+          filtered: this.filteredSubRecipes.length,
+          selected: this.selectedSubRecipes.length
+        };
+        break;
+      case 'purchaseOptions':
+        this.counts.purchaseOptions = {
+          total: this.purchaseOptions.length,
+          filtered: this.filteredPurchaseOptions.length,
+          selected: this.selectedPurchaseOptions.length
+        };
+        break;
+    }
+  }
+  
+  // Get selection state label
+  getSelectionStateLabel(section: 'locations' | 'items' | 'subRecipes' | 'purchaseOptions'): string {
+    switch (this.selectionState[section]) {
+      case 0: return 'Select All';
+      case 1: return 'Select All (Filtered Only)';
+      case 2: return 'Unselect All';
+      default: return 'Select All';
+    }
+  }
+  
+  // Get selection state icon
+  getSelectionStateIcon(section: 'locations' | 'items' | 'subRecipes' | 'purchaseOptions'): string {
+    switch (this.selectionState[section]) {
+      case 0: return 'check_box_outline_blank';
+      case 1: return 'indeterminate_check_box';
+      case 2: return 'check_box';
+      default: return 'check_box_outline_blank';
+    }
   }
 
   // Close the dialog

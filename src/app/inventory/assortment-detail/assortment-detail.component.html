@@ -1,62 +1,76 @@
 <div class="assortment-detail-container">
-    <div class="dialog-header">
-      <ng-container *ngIf="!nameEdit; else editNameTemplate">
-        <h2>{{ assortment?.name }}</h2>
-        <button mat-icon-button (click)="nameEdit = true">
-          <mat-icon>edit</mat-icon>
-        </button>
-      </ng-container>
-      <ng-template #editNameTemplate>
-        <div class="edit-name-container">
-          <mat-form-field appearance="outline">
-            <input matInput [(ngModel)]="newName" placeholder="Assortment Name">
-          </mat-form-field>
-          <button mat-icon-button color="primary" (click)="saveNameChanges()">
-            <mat-icon>check</mat-icon>
-          </button>
-          <button mat-icon-button (click)="cancelNameEdit()">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-      </ng-template>
-      <button mat-icon-button (click)="close()">
-        <mat-icon>close</mat-icon>
+  <div class="dialog-header">
+    <ng-container *ngIf="!nameEdit; else editNameTemplate">
+      <h2>{{ assortment?.name }}</h2>
+      <button mat-icon-button (click)="nameEdit = true" matTooltip="Edit assortment name">
+        <mat-icon>edit</mat-icon>
       </button>
-    </div>
-  
-    <mat-divider></mat-divider>
-  
-    <div class="dialog-content">
-      <div *ngIf="isLoading" class="loading-overlay">
-        <mat-spinner diameter="40"></mat-spinner>
+    </ng-container>
+    <ng-template #editNameTemplate>
+      <div class="edit-name-container">
+        <mat-form-field appearance="outline">
+          <mat-label>Assortment Name</mat-label>
+          <input matInput [(ngModel)]="newName" placeholder="Assortment Name">
+        </mat-form-field>
+        <button mat-icon-button color="primary" (click)="saveNameChanges()" matTooltip="Save name">
+          <mat-icon>check</mat-icon>
+        </button>
+        <button mat-icon-button (click)="cancelNameEdit()" matTooltip="Cancel">
+          <mat-icon>close</mat-icon>
+        </button>
       </div>
-  
-      <mat-tab-group>
-        <!-- Locations Tab -->
-        <mat-tab label="Locations">
-          <div class="tab-content">
-            <div class="tab-header">
-              <h3>Manage Locations</h3>
-              <div class="count-badge">{{ assortment?.locationIds?.length || 0 }} locations</div>
-            </div>
-  
-            <div class="search-bar">
-              <mat-form-field appearance="outline" class="search-field">
-                <mat-label>Search Locations</mat-label>
-                <input matInput [(ngModel)]="locationFilter" (keyup)="filterLocations()" placeholder="Search...">
-                <button *ngIf="locationFilter" matSuffix mat-icon-button aria-label="Clear" (click)="locationFilter=''; filterLocations()">
-                  <mat-icon>close</mat-icon>
-                </button>
-              </mat-form-field>
-              <button mat-raised-button color="primary" [disabled]="selectedLocations.length === 0" (click)="addLocations()">
-                Add Selected
+    </ng-template>
+    <button mat-icon-button (click)="close()" matTooltip="Close and return to assortments">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <div class="dialog-content">
+    <div *ngIf="isLoading" class="loading-overlay">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+
+    <mat-tab-group>
+      <!-- Locations Tab -->
+      <mat-tab label="Locations">
+        <div class="tab-content">
+          <div class="tab-header">
+            <h3>Manage Locations</h3>
+            <div class="count-badge">{{ assortment?.locationIds?.length || 0 }} locations</div>
+          </div>
+
+          <div class="search-bar">
+            <mat-form-field appearance="outline" class="search-field">
+              <mat-label>Search Locations</mat-label>
+              <input matInput [(ngModel)]="locationFilter" (keyup)="filterLocations()" placeholder="Search...">
+              <button *ngIf="locationFilter" matSuffix mat-icon-button aria-label="Clear" (click)="locationFilter=''; filterLocations()">
+                <mat-icon>close</mat-icon>
               </button>
-            </div>
-  
-            <div class="content-split">
-              <!-- Available Locations -->
-              <div class="content-section">
-                <h4>Available Locations</h4>
+              <mat-hint *ngIf="locationFilter">Showing {{ filteredLocations.length }} of {{ locations.length }} locations</mat-hint>
+            </mat-form-field>
+            
+            <button mat-stroked-button color="primary" class="selection-toggle" (click)="toggleSelectionState('locations')">
+              <mat-icon>{{ getSelectionStateIcon('locations') }}</mat-icon>
+              {{ getSelectionStateLabel('locations') }}
+            </button>
+            
+            <span class="selection-counts">
+              <strong>{{ selectedLocations.length }}</strong> selected
+            </span>
+            
+            <button mat-raised-button color="primary" [disabled]="selectedLocations.length === 0" (click)="addLocations()">
+              <mat-icon>add</mat-icon> Add Selected
+            </button>
+          </div>
+
+          <div class="content-split">
+            <!-- Available Locations -->
+            <div class="content-section">
+              <h4 class="section-header">
+                Available Locations 
+                <span class="section-count">{{ filteredLocations.length }} locations</span>
+              </h4>
+              <div class="section-content">
                 <mat-selection-list #availableLocations>
                   <mat-list-option *ngFor="let location of filteredLocations" 
                                   [value]="location.id!" 
@@ -67,56 +81,77 @@
                   </mat-list-option>
                 </mat-selection-list>
                 <div *ngIf="filteredLocations.length === 0" class="no-data-message">
-                  <p>No locations found</p>
+                  <p>No locations found. Try adjusting your search.</p>
                 </div>
               </div>
-  
-              <!-- Selected Locations -->
-              <div class="content-section">
-                <h4>Selected Locations</h4>
+            </div>
+
+            <!-- Selected Locations -->
+            <div class="content-section">
+              <h4 class="section-header">
+                Selected Locations
+                <span class="section-count">{{ assortment?.locationIds?.length || 0 }} assigned</span>
+              </h4>
+              <div class="section-content">
                 <mat-list>
                   <ng-container *ngFor="let locationId of assortment?.locationIds || []">
                     <mat-list-item *ngIf="getLocationById(locationId)" class="selected-item">
-                      {{ getLocationById(locationId)?.name }}
-                      <button mat-icon-button color="warn" (click)="removeLocation(locationId)">
+                      <span class="item-name">{{ getLocationById(locationId)?.name }}</span>
+                      <button mat-icon-button color="warn" (click)="removeLocation(locationId)" matTooltip="Remove location">
                         <mat-icon>delete</mat-icon>
                       </button>
                     </mat-list-item>
                   </ng-container>
                 </mat-list>
                 <div *ngIf="!assortment?.locationIds?.length" class="no-data-message">
-                  <p>No locations assigned</p>
+                  <p>No locations assigned to this assortment yet.</p>
                 </div>
               </div>
             </div>
           </div>
-        </mat-tab>
-  
-        <!-- Inventory Items Tab -->
-        <mat-tab label="Inventory Items">
-          <div class="tab-content">
-            <div class="tab-header">
-              <h3>Manage Inventory Items</h3>
-              <div class="count-badge">{{ assortment?.itemIds?.length || 0 }} items</div>
-            </div>
-  
-            <div class="search-bar">
-              <mat-form-field appearance="outline" class="search-field">
-                <mat-label>Search Items</mat-label>
-                <input matInput [(ngModel)]="itemFilter" (keyup)="filterItems()" placeholder="Search...">
-                <button *ngIf="itemFilter" matSuffix mat-icon-button aria-label="Clear" (click)="itemFilter=''; filterItems()">
-                  <mat-icon>close</mat-icon>
-                </button>
-              </mat-form-field>
-              <button mat-raised-button color="primary" [disabled]="selectedItems.length === 0" (click)="addItems()">
-                Add Selected
+        </div>
+      </mat-tab>
+
+      <!-- Inventory Items Tab -->
+      <mat-tab label="Inventory Items">
+        <div class="tab-content">
+          <div class="tab-header">
+            <h3>Manage Inventory Items</h3>
+            <div class="count-badge">{{ assortment?.itemIds?.length || 0 }} items</div>
+          </div>
+
+          <div class="search-bar">
+            <mat-form-field appearance="outline" class="search-field">
+              <mat-label>Search Items</mat-label>
+              <input matInput [(ngModel)]="itemFilter" (keyup)="filterItems()" placeholder="Search...">
+              <button *ngIf="itemFilter" matSuffix mat-icon-button aria-label="Clear" (click)="itemFilter=''; filterItems()">
+                <mat-icon>close</mat-icon>
               </button>
-            </div>
-  
-            <div class="content-split">
-              <!-- Available Items -->
-              <div class="content-section">
-                <h4>Available Items</h4>
+              <mat-hint *ngIf="itemFilter">Showing {{ filteredItems.length }} of {{ inventoryItems.length }} items</mat-hint>
+            </mat-form-field>
+
+            <button mat-stroked-button color="primary" class="selection-toggle" (click)="toggleSelectionState('items')">
+              <mat-icon>{{ getSelectionStateIcon('items') }}</mat-icon>
+              {{ getSelectionStateLabel('items') }}
+            </button>
+            
+            <span class="selection-counts">
+              <strong>{{ selectedItems.length }}</strong> selected
+            </span>
+            
+            <button mat-raised-button color="primary" [disabled]="selectedItems.length === 0" (click)="addItems()">
+              <mat-icon>add</mat-icon> Add Selected
+            </button>
+          </div>
+
+          <div class="content-split">
+            <!-- Available Items -->
+            <div class="content-section">
+              <h4 class="section-header">
+                Available Items
+                <span class="section-count">{{ filteredItems.length }} items</span>
+              </h4>
+              <div class="section-content">
                 <mat-selection-list #availableItems>
                   <mat-list-option *ngFor="let item of filteredItems" 
                                   [value]="item.id!" 
@@ -127,56 +162,77 @@
                   </mat-list-option>
                 </mat-selection-list>
                 <div *ngIf="filteredItems.length === 0" class="no-data-message">
-                  <p>No items found</p>
+                  <p>No items found. Try adjusting your search.</p>
                 </div>
               </div>
-  
-              <!-- Selected Items -->
-              <div class="content-section">
-                <h4>Selected Items</h4>
+            </div>
+
+            <!-- Selected Items -->
+            <div class="content-section">
+              <h4 class="section-header">
+                Selected Items
+                <span class="section-count">{{ assortment?.itemIds?.length || 0 }} assigned</span>
+              </h4>
+              <div class="section-content">
                 <mat-list>
                   <ng-container *ngFor="let itemId of assortment?.itemIds || []">
                     <mat-list-item *ngIf="getItemById(itemId)" class="selected-item">
-                      {{ getItemById(itemId)?.name }}
-                      <button mat-icon-button color="warn" (click)="removeItem(itemId)">
+                      <span class="item-name">{{ getItemById(itemId)?.name }}</span>
+                      <button mat-icon-button color="warn" (click)="removeItem(itemId)" matTooltip="Remove item">
                         <mat-icon>delete</mat-icon>
                       </button>
                     </mat-list-item>
                   </ng-container>
                 </mat-list>
                 <div *ngIf="!assortment?.itemIds?.length" class="no-data-message">
-                  <p>No inventory items assigned</p>
+                  <p>No inventory items assigned to this assortment yet.</p>
                 </div>
               </div>
             </div>
           </div>
-        </mat-tab>
-  
-        <!-- Sub-Recipes Tab -->
-        <mat-tab label="Sub-Recipes & Preps">
-          <div class="tab-content">
-            <div class="tab-header">
-              <h3>Manage Sub-Recipes & Preparations</h3>
-              <div class="count-badge">{{ assortment?.subRecipeIds?.length || 0 }} recipes</div>
-            </div>
-  
-            <div class="search-bar">
-              <mat-form-field appearance="outline" class="search-field">
-                <mat-label>Search Sub-Recipes</mat-label>
-                <input matInput [(ngModel)]="subRecipeFilter" (keyup)="filterSubRecipes()" placeholder="Search...">
-                <button *ngIf="subRecipeFilter" matSuffix mat-icon-button aria-label="Clear" (click)="subRecipeFilter=''; filterSubRecipes()">
-                  <mat-icon>close</mat-icon>
-                </button>
-              </mat-form-field>
-              <button mat-raised-button color="primary" [disabled]="selectedSubRecipes.length === 0" (click)="addSubRecipes()">
-                Add Selected
+        </div>
+      </mat-tab>
+
+      <!-- Sub-Recipes Tab -->
+      <mat-tab label="Sub-Recipes & Preps">
+        <div class="tab-content">
+          <div class="tab-header">
+            <h3>Manage Sub-Recipes & Preparations</h3>
+            <div class="count-badge">{{ assortment?.subRecipeIds?.length || 0 }} recipes</div>
+          </div>
+
+          <div class="search-bar">
+            <mat-form-field appearance="outline" class="search-field">
+              <mat-label>Search Sub-Recipes</mat-label>
+              <input matInput [(ngModel)]="subRecipeFilter" (keyup)="filterSubRecipes()" placeholder="Search...">
+              <button *ngIf="subRecipeFilter" matSuffix mat-icon-button aria-label="Clear" (click)="subRecipeFilter=''; filterSubRecipes()">
+                <mat-icon>close</mat-icon>
               </button>
-            </div>
-  
-            <div class="content-split">
-              <!-- Available Sub-Recipes -->
-              <div class="content-section">
-                <h4>Available Sub-Recipes</h4>
+              <mat-hint *ngIf="subRecipeFilter">Showing {{ filteredSubRecipes.length }} of {{ subRecipes.length }} sub-recipes</mat-hint>
+            </mat-form-field>
+
+            <button mat-stroked-button color="primary" class="selection-toggle" (click)="toggleSelectionState('subRecipes')">
+              <mat-icon>{{ getSelectionStateIcon('subRecipes') }}</mat-icon>
+              {{ getSelectionStateLabel('subRecipes') }}
+            </button>
+            
+            <span class="selection-counts">
+              <strong>{{ selectedSubRecipes.length }}</strong> selected
+            </span>
+            
+            <button mat-raised-button color="primary" [disabled]="selectedSubRecipes.length === 0" (click)="addSubRecipes()">
+              <mat-icon>add</mat-icon> Add Selected
+            </button>
+          </div>
+
+          <div class="content-split">
+            <!-- Available Sub-Recipes -->
+            <div class="content-section">
+              <h4 class="section-header">
+                Available Sub-Recipes
+                <span class="section-count">{{ filteredSubRecipes.length }} recipes</span>
+              </h4>
+              <div class="section-content">
                 <mat-selection-list #availableSubRecipes>
                   <mat-list-option *ngFor="let recipe of filteredSubRecipes" 
                                   [value]="recipe.id!" 
@@ -187,56 +243,77 @@
                   </mat-list-option>
                 </mat-selection-list>
                 <div *ngIf="filteredSubRecipes.length === 0" class="no-data-message">
-                  <p>No sub-recipes found</p>
+                  <p>No sub-recipes found. Try adjusting your search.</p>
                 </div>
               </div>
-  
-              <!-- Selected Sub-Recipes -->
-              <div class="content-section">
-                <h4>Selected Sub-Recipes</h4>
+            </div>
+
+            <!-- Selected Sub-Recipes -->
+            <div class="content-section">
+              <h4 class="section-header">
+                Selected Sub-Recipes
+                <span class="section-count">{{ assortment?.subRecipeIds?.length || 0 }} assigned</span>
+              </h4>
+              <div class="section-content">
                 <mat-list>
                   <ng-container *ngFor="let recipeId of assortment?.subRecipeIds || []">
                     <mat-list-item *ngIf="getSubRecipeById(recipeId)" class="selected-item">
-                      {{ getSubRecipeById(recipeId)?.name }}
-                      <button mat-icon-button color="warn" (click)="removeSubRecipe(recipeId)">
+                      <span class="item-name">{{ getSubRecipeById(recipeId)?.name }}</span>
+                      <button mat-icon-button color="warn" (click)="removeSubRecipe(recipeId)" matTooltip="Remove sub-recipe">
                         <mat-icon>delete</mat-icon>
                       </button>
                     </mat-list-item>
                   </ng-container>
                 </mat-list>
                 <div *ngIf="!assortment?.subRecipeIds?.length" class="no-data-message">
-                  <p>No sub-recipes assigned</p>
+                  <p>No sub-recipes assigned to this assortment yet.</p>
                 </div>
               </div>
             </div>
           </div>
-        </mat-tab>
-  
-        <!-- Purchase Options Tab -->
-        <mat-tab label="Purchase Options">
-          <div class="tab-content">
-            <div class="tab-header">
-              <h3>Manage Purchase Options</h3>
-              <div class="count-badge">{{ assortment?.purchaseOptionIds?.length || 0 }} purchase options</div>
-            </div>
-  
-            <div class="search-bar">
-              <mat-form-field appearance="outline" class="search-field">
-                <mat-label>Search Purchase Options</mat-label>
-                <input matInput [(ngModel)]="purchaseOptionFilter" (keyup)="filterPurchaseOptions()" placeholder="Search...">
-                <button *ngIf="purchaseOptionFilter" matSuffix mat-icon-button aria-label="Clear" (click)="purchaseOptionFilter=''; filterPurchaseOptions()">
-                  <mat-icon>close</mat-icon>
-                </button>
-              </mat-form-field>
-              <button mat-raised-button color="primary" [disabled]="selectedPurchaseOptions.length === 0" (click)="addPurchaseOptions()">
-                Add Selected
+        </div>
+      </mat-tab>
+
+      <!-- Purchase Options Tab -->
+      <mat-tab label="Purchase Options">
+        <div class="tab-content">
+          <div class="tab-header">
+            <h3>Manage Purchase Options</h3>
+            <div class="count-badge">{{ assortment?.purchaseOptionIds?.length || 0 }} purchase options</div>
+          </div>
+
+          <div class="search-bar">
+            <mat-form-field appearance="outline" class="search-field">
+              <mat-label>Search Purchase Options</mat-label>
+              <input matInput [(ngModel)]="purchaseOptionFilter" (keyup)="filterPurchaseOptions()" placeholder="Search...">
+              <button *ngIf="purchaseOptionFilter" matSuffix mat-icon-button aria-label="Clear" (click)="purchaseOptionFilter=''; filterPurchaseOptions()">
+                <mat-icon>close</mat-icon>
               </button>
-            </div>
-  
-            <div class="content-split">
-              <!-- Available Purchase Options -->
-              <div class="content-section">
-                <h4>Available Purchase Options</h4>
+              <mat-hint *ngIf="purchaseOptionFilter">Showing {{ filteredPurchaseOptions.length }} of {{ purchaseOptions.length }} purchase options</mat-hint>
+            </mat-form-field>
+
+            <button mat-stroked-button color="primary" class="selection-toggle" (click)="toggleSelectionState('purchaseOptions')">
+              <mat-icon>{{ getSelectionStateIcon('purchaseOptions') }}</mat-icon>
+              {{ getSelectionStateLabel('purchaseOptions') }}
+            </button>
+            
+            <span class="selection-counts">
+              <strong>{{ selectedPurchaseOptions.length }}</strong> selected
+            </span>
+            
+            <button mat-raised-button color="primary" [disabled]="selectedPurchaseOptions.length === 0" (click)="addPurchaseOptions()">
+              <mat-icon>add</mat-icon> Add Selected
+            </button>
+          </div>
+
+          <div class="content-split">
+            <!-- Available Purchase Options -->
+            <div class="content-section">
+              <h4 class="section-header">
+                Available Purchase Options
+                <span class="section-count">{{ filteredPurchaseOptions.length }} options</span>
+              </h4>
+              <div class="section-content">
                 <mat-selection-list #availablePurchaseOptions>
                   <mat-list-option *ngFor="let option of filteredPurchaseOptions" 
                                   [value]="option.purchaseOptionId" 
@@ -247,36 +324,40 @@
                   </mat-list-option>
                 </mat-selection-list>
                 <div *ngIf="filteredPurchaseOptions.length === 0" class="no-data-message">
-                  <p>No purchase options found</p>
+                  <p>No purchase options found. Try adjusting your search.</p>
                 </div>
               </div>
-  
-              <!-- Selected Purchase Options -->
-              <div class="content-section">
-                <h4>Selected Purchase Options</h4>
+            </div>
+
+            <!-- Selected Purchase Options -->
+            <div class="content-section">
+              <h4 class="section-header">
+                Selected Purchase Options
+                <span class="section-count">{{ assortment?.purchaseOptionIds?.length || 0 }} assigned</span>
+              </h4>
+              <div class="section-content">
                 <mat-list>
                   <ng-container *ngFor="let optionId of assortment?.purchaseOptionIds || []">
                     <mat-list-item *ngIf="getPurchaseOptionById(optionId)" class="selected-item">
-                      {{ getPurchaseOptionName(getPurchaseOptionById(optionId)!) }}
-                      <button mat-icon-button color="warn" (click)="removePurchaseOption(optionId)">
+                      <span class="item-name">{{ getPurchaseOptionName(getPurchaseOptionById(optionId)!) }}</span>
+                      <button mat-icon-button color="warn" (click)="removePurchaseOption(optionId)" matTooltip="Remove purchase option">
                         <mat-icon>delete</mat-icon>
                       </button>
                     </mat-list-item>
                   </ng-container>
                 </mat-list>
                 <div *ngIf="!assortment?.purchaseOptionIds?.length" class="no-data-message">
-                  <p>No purchase options assigned</p>
+                  <p>No purchase options assigned to this assortment yet.</p>
                 </div>
               </div>
             </div>
           </div>
-        </mat-tab>
-      </mat-tab-group>
-    </div>
-  
-    <mat-divider></mat-divider>
-  
-    <div class="dialog-actions">
-      <button mat-raised-button color="primary" (click)="close()">Done</button>
-    </div>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
   </div>
+
+  <div class="dialog-actions">
+    <button mat-raised-button color="primary" (click)="close()">Done</button>
+  </div>
+</div>
