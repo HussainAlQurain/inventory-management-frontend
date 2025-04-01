@@ -1,0 +1,26 @@
+<h2 mat-dialog-title>Add New Assortment</h2>
+<mat-dialog-content>
+  <p>Create a new assortment by entering a name. You can add items, locations, and other details later.</p>
+  
+  <div *ngIf="errorMessage" class="error-message">
+    {{ errorMessage }}
+  </div>
+  
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>Assortment Name</mat-label>
+    <input matInput [(ngModel)]="assortmentName" required placeholder="Enter name" [disabled]="isSubmitting">
+  </mat-form-field>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()" [disabled]="isSubmitting">Cancel</button>
+  <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="!assortmentName.trim() || isSubmitting">
+    <ng-container *ngIf="isSubmitting">
+      <mat-spinner diameter="20" class="spinner-button"></mat-spinner>
+      Creating...
+    </ng-container>
+    <ng-container *ngIf="!isSubmitting">
+      Create
+    </ng-container>
+  </button>
+</mat-dialog-actions>

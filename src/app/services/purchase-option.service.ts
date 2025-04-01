@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 import { PurchaseOption } from '../models/PurchaseOption';
+import { PurchaseOptionSummaryDTO } from '../models/PurchaseOptionSummaryDTO';
 import { CompaniesService } from './companies.service';
 import { Observable } from 'rxjs';
 
@@ -16,6 +17,14 @@ export class PurchaseOptionService {
     private http: HttpClient,
     private companiesService: CompaniesService
   ) {}
+
+  /**
+   * Get all purchase options for the currently selected company
+   */
+  getPurchaseOptions(): Observable<PurchaseOptionSummaryDTO[]> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    return this.http.get<PurchaseOptionSummaryDTO[]>(`${this.baseUrl}/company/${companyId}`);
+  }
 
   updatePriceManually(purchaseOptionId: number, newPrice: number): Observable<PurchaseOption> {
     const companyId = this.companiesService.getSelectedCompanyId();
