@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, Inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
@@ -125,7 +125,8 @@ export class AssortmentDetailComponent implements OnInit {
     private inventoryItemsService: InventoryItemsService,
     private subRecipeService: SubRecipeService,
     private purchaseOptionService: PurchaseOptionService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private cdr: ChangeDetectorRef // Add ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -228,6 +229,8 @@ export class AssortmentDetailComponent implements OnInit {
       location.name.toLowerCase().includes(filter)
     );
     this.updateCounts('locations');
+    // Reset selection state when filter changes
+    this.selectionState.locations = 0;
   }
 
   isLocationSelected(locationId: number | undefined): boolean {
@@ -240,10 +243,11 @@ export class AssortmentDetailComponent implements OnInit {
     
     const index = this.selectedLocations.indexOf(locationId);
     if (index === -1) {
-      this.selectedLocations.push(locationId);
+      this.selectedLocations = [...this.selectedLocations, locationId];
     } else {
-      this.selectedLocations.splice(index, 1);
+      this.selectedLocations = this.selectedLocations.filter(id => id !== locationId);
     }
+    this.updateCounts('locations');
   }
 
   addLocations(): void {
@@ -309,6 +313,8 @@ export class AssortmentDetailComponent implements OnInit {
       item.name.toLowerCase().includes(filter)
     );
     this.updateCounts('items');
+    // Reset selection state when filter changes
+    this.selectionState.items = 0;
   }
 
   isItemSelected(itemId: number | undefined): boolean {
@@ -320,10 +326,11 @@ export class AssortmentDetailComponent implements OnInit {
     if (itemId === undefined) return;
     const index = this.selectedItems.indexOf(itemId);
     if (index === -1) {
-      this.selectedItems.push(itemId);
+      this.selectedItems = [...this.selectedItems, itemId];
     } else {
-      this.selectedItems.splice(index, 1);
+      this.selectedItems = this.selectedItems.filter(id => id !== itemId);
     }
+    this.updateCounts('items');
   }
 
   addItems(): void {
@@ -389,6 +396,8 @@ export class AssortmentDetailComponent implements OnInit {
       recipe.name.toLowerCase().includes(filter)
     );
     this.updateCounts('subRecipes');
+    // Reset selection state when filter changes
+    this.selectionState.subRecipes = 0;
   }
 
   isSubRecipeSelected(subRecipeId: number | undefined): boolean {
@@ -400,10 +409,11 @@ export class AssortmentDetailComponent implements OnInit {
     if (subRecipeId === undefined) return;
     const index = this.selectedSubRecipes.indexOf(subRecipeId);
     if (index === -1) {
-      this.selectedSubRecipes.push(subRecipeId);
+      this.selectedSubRecipes = [...this.selectedSubRecipes, subRecipeId];
     } else {
-      this.selectedSubRecipes.splice(index, 1);
+      this.selectedSubRecipes = this.selectedSubRecipes.filter(id => id !== subRecipeId);
     }
+    this.updateCounts('subRecipes');
   }
 
   addSubRecipes(): void {
@@ -470,6 +480,8 @@ export class AssortmentDetailComponent implements OnInit {
       (option.inventoryItemName && option.inventoryItemName.toLowerCase().includes(filter))
     );
     this.updateCounts('purchaseOptions');
+    // Reset selection state when filter changes
+    this.selectionState.purchaseOptions = 0;
   }
 
   isPurchaseOptionSelected(purchaseOptionId: number | undefined): boolean {
@@ -481,10 +493,11 @@ export class AssortmentDetailComponent implements OnInit {
     if (purchaseOptionId === undefined) return;
     const index = this.selectedPurchaseOptions.indexOf(purchaseOptionId);
     if (index === -1) {
-      this.selectedPurchaseOptions.push(purchaseOptionId);
+      this.selectedPurchaseOptions = [...this.selectedPurchaseOptions, purchaseOptionId];
     } else {
-      this.selectedPurchaseOptions.splice(index, 1);
+      this.selectedPurchaseOptions = this.selectedPurchaseOptions.filter(id => id !== purchaseOptionId);
     }
+    this.updateCounts('purchaseOptions');
   }
 
   addPurchaseOptions(): void {
@@ -554,59 +567,62 @@ export class AssortmentDetailComponent implements OnInit {
     }
     
     // Apply new selection based on state
-    switch (this.selectionState[section]) {
-      case 0: // None selected
-        break;
-      case 1: // Filtered items
-        if (section === 'locations') {
-          this.selectedLocations = this.filteredLocations
-            .filter(location => !this.isLocationSelected(location.id!))
-            .map(location => location.id!)
-            .filter(id => id !== undefined);
-        } else if (section === 'items') {
-          this.selectedItems = this.filteredItems
-            .filter(item => !this.isItemSelected(item.id!))
-            .map(item => item.id!)
-            .filter(id => id !== undefined);
-        } else if (section === 'subRecipes') {
-          this.selectedSubRecipes = this.filteredSubRecipes
-            .filter(recipe => !this.isSubRecipeSelected(recipe.id!))
-            .map(recipe => recipe.id!)
-            .filter(id => id !== undefined);
-        } else if (section === 'purchaseOptions') {
-          this.selectedPurchaseOptions = this.filteredPurchaseOptions
-            .filter(option => !this.isPurchaseOptionSelected(option.purchaseOptionId))
-            .map(option => option.purchaseOptionId)
-            .filter(id => id !== undefined);
-        }
-        break;
-      case 2: // All items
-        if (section === 'locations') {
-          this.selectedLocations = this.locations
-            .filter(location => !this.isLocationSelected(location.id!))
-            .map(location => location.id!)
-            .filter(id => id !== undefined);
-        } else if (section === 'items') {
-          this.selectedItems = this.inventoryItems
-            .filter(item => !this.isItemSelected(item.id!))
-            .map(item => item.id!)
-            .filter(id => id !== undefined);
-        } else if (section === 'subRecipes') {
-          this.selectedSubRecipes = this.subRecipes
-            .filter(recipe => !this.isSubRecipeSelected(recipe.id!))
-            .map(recipe => recipe.id!)
-            .filter(id => id !== undefined);
-        } else if (section === 'purchaseOptions') {
-          this.selectedPurchaseOptions = this.purchaseOptions
-            .filter(option => !this.isPurchaseOptionSelected(option.purchaseOptionId))
-            .map(option => option.purchaseOptionId)
-            .filter(id => id !== undefined);
-        }
-        break;
-    }
-    
-    // Update counts after selection
-    this.updateCounts(section);
+    setTimeout(() => {
+      switch (this.selectionState[section]) {
+        case 0: // None selected
+          break;
+        case 1: // Filtered items
+          if (section === 'locations') {
+            this.selectedLocations = this.filteredLocations
+              .filter(location => !this.isLocationSelected(location.id!))
+              .map(location => location.id!)
+              .filter(id => id !== undefined);
+          } else if (section === 'items') {
+            this.selectedItems = this.filteredItems
+              .filter(item => !this.isItemSelected(item.id!))
+              .map(item => item.id!)
+              .filter(id => id !== undefined);
+          } else if (section === 'subRecipes') {
+            this.selectedSubRecipes = this.filteredSubRecipes
+              .filter(recipe => !this.isSubRecipeSelected(recipe.id!))
+              .map(recipe => recipe.id!)
+              .filter(id => id !== undefined);
+          } else if (section === 'purchaseOptions') {
+            this.selectedPurchaseOptions = this.filteredPurchaseOptions
+              .filter(option => !this.isPurchaseOptionSelected(option.purchaseOptionId))
+              .map(option => option.purchaseOptionId)
+              .filter(id => id !== undefined);
+          }
+          break;
+        case 2: // All items
+          if (section === 'locations') {
+            this.selectedLocations = this.locations
+              .filter(location => !this.isLocationSelected(location.id!))
+              .map(location => location.id!)
+              .filter(id => id !== undefined);
+          } else if (section === 'items') {
+            this.selectedItems = this.inventoryItems
+              .filter(item => !this.isItemSelected(item.id!))
+              .map(item => item.id!)
+              .filter(id => id !== undefined);
+          } else if (section === 'subRecipes') {
+            this.selectedSubRecipes = this.subRecipes
+              .filter(recipe => !this.isSubRecipeSelected(recipe.id!))
+              .map(recipe => recipe.id!)
+              .filter(id => id !== undefined);
+          } else if (section === 'purchaseOptions') {
+            this.selectedPurchaseOptions = this.purchaseOptions
+              .filter(option => !this.isPurchaseOptionSelected(option.purchaseOptionId))
+              .map(option => option.purchaseOptionId)
+              .filter(id => id !== undefined);
+          }
+          break;
+      }
+      
+      // Update counts after selection
+      this.updateCounts(section);
+      this.cdr.detectChanges();
+    });
   }
   
   updateCounts(section: 'locations' | 'items' | 'subRecipes' | 'purchaseOptions'): void {

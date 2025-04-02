@@ -42,7 +42,7 @@
           <div class="search-bar">
             <mat-form-field appearance="outline" class="search-field">
               <mat-label>Search Locations</mat-label>
-              <input matInput [(ngModel)]="locationFilter" (keyup)="filterLocations()" placeholder="Search...">
+              <input matInput [(ngModel)]="locationFilter" (ngModelChange)="filterLocations()" placeholder="Search...">
               <button *ngIf="locationFilter" matSuffix mat-icon-button aria-label="Clear" (click)="locationFilter=''; filterLocations()">
                 <mat-icon>close</mat-icon>
               </button>
@@ -71,12 +71,12 @@
                 <span class="section-count">{{ filteredLocations.length }} locations</span>
               </h4>
               <div class="section-content">
-                <mat-selection-list #availableLocations>
+                <mat-selection-list #locationSelectionList>
                   <mat-list-option *ngFor="let location of filteredLocations" 
-                                  [value]="location.id!" 
+                                  [value]="location.id" 
                                   [disabled]="isLocationSelected(location.id!)"
-                                  (selectedChange)="toggleLocationSelection(location.id!)"
-                                  [selected]="selectedLocations.includes(location.id!)">
+                                  [selected]="selectedLocations.includes(location.id!)"
+                                  (click)="toggleLocationSelection(location.id!)">
                     {{ location.name }}
                   </mat-list-option>
                 </mat-selection-list>
@@ -123,7 +123,7 @@
           <div class="search-bar">
             <mat-form-field appearance="outline" class="search-field">
               <mat-label>Search Items</mat-label>
-              <input matInput [(ngModel)]="itemFilter" (keyup)="filterItems()" placeholder="Search...">
+              <input matInput [(ngModel)]="itemFilter" (ngModelChange)="filterItems()" placeholder="Search...">
               <button *ngIf="itemFilter" matSuffix mat-icon-button aria-label="Clear" (click)="itemFilter=''; filterItems()">
                 <mat-icon>close</mat-icon>
               </button>
@@ -152,12 +152,12 @@
                 <span class="section-count">{{ filteredItems.length }} items</span>
               </h4>
               <div class="section-content">
-                <mat-selection-list #availableItems>
+                <mat-selection-list #itemSelectionList>
                   <mat-list-option *ngFor="let item of filteredItems" 
-                                  [value]="item.id!" 
+                                  [value]="item.id" 
                                   [disabled]="isItemSelected(item.id!)"
-                                  (selectedChange)="toggleItemSelection(item.id!)"
-                                  [selected]="selectedItems.includes(item.id!)">
+                                  [selected]="selectedItems.includes(item.id!)"
+                                  (click)="toggleItemSelection(item.id!)">
                     {{ item.name }}
                   </mat-list-option>
                 </mat-selection-list>
