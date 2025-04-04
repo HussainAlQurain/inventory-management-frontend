@@ -8,8 +8,28 @@
     </div>
   </div>
 
-  <div class="filters-panel mat-elevation-z1">
+  <!-- Filters Summary Bar - Always visible -->
+  <div class="filters-summary" (click)="toggleFiltersPanel()">
+    <div class="summary-content">
+      <div class="location-summary">
+        <mat-icon>location_on</mat-icon>
+        <span>{{ getSelectedLocationName() || 'Select Location' }}</span>
+      </div>
+      <div class="date-summary">
+        <mat-icon>date_range</mat-icon>
+        <span *ngIf="selectedDateRange">{{ selectedDateRange }}: {{ getFormattedDateRange() }}</span>
+        <span *ngIf="!selectedDateRange">Select Date Range</span>
+      </div>
+    </div>
+    <button mat-icon-button class="toggle-filters-btn">
+      <mat-icon>{{ showFilters ? 'expand_less' : 'expand_more' }}</mat-icon>
+    </button>
+  </div>
+
+  <!-- Collapsible Filters Panel -->
+  <div class="filters-panel mat-elevation-z1" [class.expanded]="showFilters" [class.collapsed]="!showFilters">
     <div class="filter-section">
+      <div class="section-title">Location</div>
       <mat-form-field appearance="outline">
         <mat-label>Select Location</mat-label>
         <mat-select [(ngModel)]="selectedLocationId" (selectionChange)="onLocationChange()">
@@ -21,22 +41,19 @@
     </div>
 
     <div class="filter-section">
+      <div class="section-title">Date Range</div>
       <div class="date-range-container">
+        <!-- Date Presets -->
         <div class="date-presets">
-          <button mat-button [matMenuTriggerFor]="dateRangeMenu">
-            <span>{{ selectedDateRange || 'Select Date Range' }}</span>
-            <mat-icon>arrow_drop_down</mat-icon>
-          </button>
-          <mat-menu #dateRangeMenu="matMenu">
-            <button mat-menu-item *ngFor="let option of dateRangeOptions" 
-                    (click)="applyDateRange(option)">
-              {{ option.label }}
-            </button>
-            <mat-divider></mat-divider>
-            <button mat-menu-item [disabled]="true" style="opacity: 0.6">Custom Range</button>
-          </mat-menu>
+          <div *ngFor="let option of dateRangeOptions" 
+               class="preset-btn"
+               [class.selected]="selectedDateRange === option.label"
+               (click)="applyDateRange(option)">
+            {{ option.label }}
+          </div>
         </div>
 
+        <!-- Custom Date Range -->
         <div class="custom-date-range">
           <mat-form-field appearance="outline">
             <mat-label>Start Date</mat-label>
@@ -54,79 +71,98 @@
             <mat-datepicker #endDatePicker></mat-datepicker>
           </mat-form-field>
 
-          <button mat-raised-button color="primary" (click)="confirmCustomDateRange()">Apply</button>
-          <button *ngIf="selectedDateRange" mat-button (click)="clearDateFilter()">Clear</button>
+          <div class="date-range-actions">
+            <button mat-stroked-button (click)="clearDateFilter()" *ngIf="startDate || endDate">Clear</button>
+            <button mat-raised-button color="primary" (click)="confirmCustomDateRange()">Apply</button>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
   <div class="table-container">
+    <!-- Loading Indicator -->
     <div *ngIf="isLoading" class="loading-container">
       <mat-spinner diameter="50"></mat-spinner>
+      <p>Loading inventory counts...</p>
     </div>
     
+    <!-- Error State -->
     <div *ngIf="loadingError" class="error-container">
+      <mat-icon color="warn" style="font-size: 48px; height: 48px; width: 48px;">error_outline</mat-icon>
       <p class="error-message">{{ loadingError }}</p>
       <button mat-raised-button color="primary" (click)="loadInventoryCounts()">Retry</button>
     </div>
     
+    <!-- Empty State -->
     <div *ngIf="!isLoading && !loadingError && dataSource.data.length === 0" class="no-data-container">
+      <mat-icon style="font-size: 48px; height: 48px; width: 48px; color: #9e9e9e;">inventory_2</mat-icon>
       <p>No inventory count sessions found for the selected criteria.</p>
       <button mat-raised-button color="primary" (click)="addNewCountSession()">Create Your First Count Session</button>
     </div>
     
-    <table *ngIf="!isLoading && !loadingError && dataSource.data.length > 0" 
-           mat-table [dataSource]="dataSource" matSort class="inventory-counts-table">
+    <!-- Data Table -->
+    <ng-container *ngIf="!isLoading && !loadingError && dataSource.data.length > 0">
+      <div class="table-header">
+        <h2>Inventory Count Sessions</h2>
+        <span class="count-badge">{{ dataSource.data.length }} sessions</span>
+      </div>
       
-      <!-- Count Date Column -->
-      <ng-container matColumnDef="countDate">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>Count Date</th>
-        <td mat-cell *matCellDef="let session">{{ formatCountDate(session.countDate, session.dayPart) }}</td>
-      </ng-container>
+      <table mat-table [dataSource]="dataSource" matSort class="inventory-counts-table">
+        <!-- Count Date Column -->
+        <ng-container matColumnDef="countDate">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Count Date</th>
+          <td mat-cell *matCellDef="let session">{{ formatCountDate(session.countDate, session.dayPart) }}</td>
+        </ng-container>
 
-      <!-- Location Column -->
-      <ng-container matColumnDef="location">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>Location</th>
-        <td mat-cell *matCellDef="let session">{{ session.locationName }}</td>
-      </ng-container>
+        <!-- Location Column -->
+        <ng-container matColumnDef="location">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Location</th>
+          <td mat-cell *matCellDef="let session">{{ session.locationName }}</td>
+        </ng-container>
 
-      <!-- Value Column -->
-      <ng-container matColumnDef="value">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>Value</th>
-        <td mat-cell *matCellDef="let session">{{ session.valueOfCount | currency }}</td>
-      </ng-container>
+        <!-- Value Column -->
+        <ng-container matColumnDef="value">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Value</th>
+          <td mat-cell *matCellDef="let session" class="value-cell">{{ session.valueOfCount | currency }}</td>
+        </ng-container>
 
-      <!-- Description Column -->
-      <ng-container matColumnDef="description">
-        <th mat-header-cell *matHeaderCellDef>Description</th>
-        <td mat-cell *matCellDef="let session">{{ session.description }}</td>
-      </ng-container>
+        <!-- Description Column -->
+        <ng-container matColumnDef="description">
+          <th mat-header-cell *matHeaderCellDef>Description</th>
+          <td mat-cell *matCellDef="let session" class="description-cell" [matTooltip]="session.description">
+            {{ session.description }}
+          </td>
+        </ng-container>
 
-      <!-- Locked Status Column -->
-      <ng-container matColumnDef="locked">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>Locked</th>
-        <td mat-cell *matCellDef="let session">
-          <mat-chip-option [selected]="session.locked" [disabled]="true" color="primary">
-            {{ session.locked ? 'Yes' : 'No' }}
-          </mat-chip-option>
-        </td>
-      </ng-container>
+        <!-- Locked Status Column -->
+        <ng-container matColumnDef="locked">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+          <td mat-cell *matCellDef="let session" class="status-cell">
+            <mat-chip-option [selected]="session.locked" [disabled]="true" 
+                         [color]="session.locked ? 'warn' : 'primary'">
+              {{ session.locked ? 'Locked' : 'Open' }}
+            </mat-chip-option>
+          </td>
+        </ng-container>
 
-      <!-- Actions Column -->
-      <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef></th>
-        <td mat-cell *matCellDef="let session">
-          <button mat-icon-button color="primary" (click)="viewCountDetails(session)" matTooltip="View details">
-            <mat-icon>visibility</mat-icon>
-          </button>
-        </td>
-      </ng-container>
+        <!-- Actions Column -->
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let session" class="actions-cell">
+            <button mat-icon-button color="primary" (click)="viewCountDetails(session); $event.stopPropagation()" 
+                    matTooltip="View details">
+              <mat-icon>visibility</mat-icon>
+            </button>
+          </td>
+        </ng-container>
 
-      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns" class="inventory-count-row"></tr>
-    </table>
+        <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns" class="inventory-count-row" 
+            (click)="viewCountDetails(row)"></tr>
+      </table>
 
-    <mat-paginator [pageSizeOptions]="[10, 25, 50, 100]" showFirstLastButtons></mat-paginator>
+      <mat-paginator [pageSizeOptions]="[10, 25, 50, 100]" showFirstLastButtons></mat-paginator>
+    </ng-container>
   </div>
 </div>
