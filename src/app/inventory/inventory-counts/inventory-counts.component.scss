@@ -1,0 +1,113 @@
+.inventory-counts-container {
+  padding: 20px;
+  max-width: 100%;
+  box-sizing: border-box;
+  
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+
+    .page-title {
+      font-size: 24px;
+      font-weight: 500;
+      margin: 0;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+    }
+  }
+
+  .filters-panel {
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    padding: 16px;
+    margin-bottom: 20px;
+
+    .filter-section {
+      margin-bottom: 16px;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    .date-range-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+
+      .date-presets {
+        display: flex;
+        align-items: center;
+        
+        button {
+          min-width: 200px;
+          justify-content: flex-start;
+          border: 1px solid #e0e0e0;
+          border-radius: 4px;
+        }
+      }
+
+      .custom-date-range {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+        
+        mat-form-field {
+          width: 150px;
+        }
+
+        .date-range-separator {
+          margin: 0 10px;
+        }
+      }
+    }
+
+    mat-form-field {
+      min-width: 200px;
+    }
+  }
+  
+  .table-container {
+    position: relative;
+    min-height: 400px;
+    overflow: auto;
+  }
+  
+  .inventory-counts-table {
+    width: 100%;
+    
+    .inventory-count-row {
+      cursor: pointer;
+      transition: background-color 0.2s;
+      
+      &:hover {
+        background-color: rgba(0, 0, 0, 0.04);
+      }
+    }
+  }
+  
+  .loading-container, .error-container, .no-data-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    gap: 16px;
+  }
+  
+  .error-message {
+    color: #f44336;
+    margin-bottom: 16px;
+    font-size: 16px;
+  }
+}
+
+mat-paginator {
+  margin-top: 16px;
+}
