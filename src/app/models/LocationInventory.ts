@@ -3,6 +3,7 @@ export interface LocationInventory {
   inventoryItemId: number;
   locationId: number;
   location?: { id: number; name: string };
+  locationName?: string;
   minOnHand?: number;
   parLevel?: number;
   onHand?: number;

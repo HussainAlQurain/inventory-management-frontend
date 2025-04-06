@@ -348,7 +348,10 @@ export class InventoryItemDetailModalComponent implements OnInit {
     this.inventoryItemLocationService.getItemLocations(itemId).subscribe({
       next: (list) => {
         this.locationInventory = list.map(dto => ({
-          location: dto.location ? { id: dto.location.id, name: dto.location.name } : { id: 0, name: 'Unknown' },
+          location: { 
+            id: dto.locationId, 
+            name: dto.locationName || 'Unknown' 
+          },
           quantity: dto.quantity || 0,
           value: dto.value || 0
         }));
