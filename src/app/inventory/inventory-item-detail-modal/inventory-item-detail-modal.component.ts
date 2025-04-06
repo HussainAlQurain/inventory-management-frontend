@@ -23,6 +23,9 @@ import { InventoryItemLocationService } from '../../services/inventory-item-loca
 // Import the service for partial update of the item
 import { InventoryItemsService } from '../../services/inventory-items-service.service';
 
+// Import the CountUomPreferencesService
+import { CountUomPreferencesService, CountUomPreference } from '../../services/count-uom-preferences.service';
+
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -36,6 +39,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { CompaniesService } from '../../services/companies.service';
 import { PriceHistoryDialogComponent } from '../price-history-dialog/price-history-dialog.component';
 import { UomDialogComponent } from '../uom-dialog/uom-dialog.component';
@@ -74,7 +78,8 @@ import { LocationInventory } from '../../models/LocationInventory';
     MatRadioModule,
     MatSelectModule,
     MatTooltipModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatProgressSpinnerModule
   ],
 })
 export class InventoryItemDetailModalComponent implements OnInit {
@@ -86,6 +91,13 @@ export class InventoryItemDetailModalComponent implements OnInit {
 
   /** Display table of on-hand by location. */
   locationInventory: { location: { id: number; name: string }; quantity: number; value: number }[] = [];
+  
+  // Counting UOM preferences properties
+  countingUomPreferences: CountUomPreference[] = [];
+  availableCountingUoms: UnitOfMeasure[] = [];
+  selectedCountingUomId: number | null = null;
+  isDefaultCountingUom = false;
+  loadingCountUoms = false;
 
   constructor(
     public dialogRef: MatDialogRef<InventoryItemDetailModalComponent>,
@@ -101,7 +113,8 @@ export class InventoryItemDetailModalComponent implements OnInit {
     private locationService: LocationService,
     private companiesService: CompaniesService,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private countUomPreferencesService: CountUomPreferencesService
   ) { }
 
   ngOnInit(): void {
@@ -132,6 +145,9 @@ export class InventoryItemDetailModalComponent implements OnInit {
       console.log('New supplier received:', newSupplier);
       // Use the new supplier
     }
+
+    // Load counting UOM preferences
+    this.loadCountingUomPreferences();
   }
 
   private loadAllUoms() {
@@ -633,5 +649,127 @@ export class InventoryItemDetailModalComponent implements OnInit {
       option.orderingUom = found;
       option.orderingUomId = found.id;
     }
+  }
+
+  private loadCountingUomPreferences() {
+    if (!this.item.id) return;
+    
+    this.loadingCountUoms = true;
+    
+    // Load existing counting UOM preferences for this item
+    this.countUomPreferencesService.getInventoryItemCountUomPreferences(this.item.id)
+      .subscribe({
+        next: (preferences) => {
+          this.countingUomPreferences = preferences;
+          
+          // Load available UOMs that can be added
+          this.loadAvailableCountingUoms();
+        },
+        error: (err) => {
+          console.error('Error loading counting UOM preferences:', err);
+          this.loadingCountUoms = false;
+          this.snackBar.open('Failed to load counting UOM preferences', 'Close', {
+            duration: 3000
+          });
+        }
+      });
+  }
+
+  loadAvailableCountingUoms() {
+    if (!this.item.id) return;
+    
+    this.countUomPreferencesService.getAvailableUomsForItem(this.item.id)
+      .subscribe({
+        next: (uoms) => {
+          this.availableCountingUoms = uoms;
+          this.loadingCountUoms = false;
+        },
+        error: (err) => {
+          console.error('Error loading available UOMs:', err);
+          this.loadingCountUoms = false;
+          this.snackBar.open('Failed to load available counting UOMs', 'Close', {
+            duration: 3000
+          });
+        }
+      });
+  }
+
+  addCountingUomPreference() {
+    if (!this.item.id || !this.selectedCountingUomId) return;
+    
+    this.loadingCountUoms = true;
+    
+    this.countUomPreferencesService.addUomPreferenceToItem(
+      this.item.id,
+      this.selectedCountingUomId,
+      this.isDefaultCountingUom
+    ).subscribe({
+      next: (addedPreference) => {
+        // Add the new preference to the list
+        this.countingUomPreferences.push(addedPreference);
+        
+        // If this was set as default, update other preferences to reflect that
+        if (this.isDefaultCountingUom) {
+          this.countingUomPreferences.forEach(pref => {
+            if (pref.id !== addedPreference.id) {
+              pref.defaultUom = false;
+            }
+          });
+        }
+        
+        // Reset selection
+        this.selectedCountingUomId = null;
+        this.isDefaultCountingUom = false;
+        
+        // Refresh available UOMs
+        this.loadAvailableCountingUoms();
+        
+        this.snackBar.open('Counting UOM added successfully', 'Close', {
+          duration: 3000
+        });
+      },
+      error: (err) => {
+        console.error('Error adding counting UOM preference:', err);
+        this.loadingCountUoms = false;
+        this.snackBar.open('Failed to add counting UOM', 'Close', {
+          duration: 3000
+        });
+      }
+    });
+  }
+
+  removeCountingUomPreference(uomId: number) {
+    if (!this.item.id) return;
+    
+    this.loadingCountUoms = true;
+    
+    this.countUomPreferencesService.removeUomPreferenceFromItem(this.item.id, uomId)
+      .subscribe({
+        next: () => {
+          // Remove the preference from the list
+          this.countingUomPreferences = this.countingUomPreferences.filter(
+            pref => pref.countUomId !== uomId
+          );
+          
+          // Refresh available UOMs
+          this.loadAvailableCountingUoms();
+          
+          this.snackBar.open('Counting UOM removed successfully', 'Close', {
+            duration: 3000
+          });
+        },
+        error: (err) => {
+          console.error('Error removing counting UOM preference:', err);
+          this.loadingCountUoms = false;
+          this.snackBar.open('Failed to remove counting UOM', 'Close', {
+            duration: 3000
+          });
+        }
+      });
+  }
+
+  getUomNameById(uomId: number): string {
+    const uom = this.allUoms.find(u => u.id === uomId);
+    return uom ? `${uom.name} ${uom.abbreviation ? `(${uom.abbreviation})` : ''}` : 'Unknown UOM';
   }
 }
