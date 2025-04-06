@@ -1,6 +1,6 @@
 import { Component, OnInit, ViewChild, AfterViewInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatSortModule, MatSort } from '@angular/material/sort';
 import { MatPaginatorModule, MatPaginator } from '@angular/material/paginator';
@@ -18,13 +18,16 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { Router } from '@angular/router';
 
 import { InventoryCountService } from '../../services/inventory-count.service';
 import { LocationService } from '../../services/location.service';
-import { InventoryCountSession } from '../../models/InventoryCountSession';
+import { InventoryCountSession, DayPart } from '../../models/InventoryCountSession';
 import { Location } from '../../models/Location';
 import { catchError, finalize } from 'rxjs/operators';
 import { of } from 'rxjs';
+import { CreateCountSessionComponent } from './create-count-session/create-count-session.component';
 
 // Interface for date range options
 interface DateRangeOption {
@@ -56,7 +59,8 @@ interface DateRangeOption {
     MatMenuModule,
     MatTooltipModule,
     MatChipsModule,
-    MatDividerModule
+    MatDividerModule,
+    MatDialogModule
   ],
   providers: [DatePipe],
   templateUrl: './inventory-counts.component.html',
@@ -91,7 +95,9 @@ export class InventoryCountsComponent implements OnInit, AfterViewInit {
     private inventoryCountService: InventoryCountService,
     private locationService: LocationService,
     private snackBar: MatSnackBar,
-    private datePipe: DatePipe
+    private datePipe: DatePipe,
+    private dialog: MatDialog,
+    private router: Router
   ) { }
 
   ngOnInit(): void {
@@ -288,17 +294,60 @@ export class InventoryCountsComponent implements OnInit, AfterViewInit {
   }
 
   addNewCountSession(): void {
-    // TODO: Implement functionality to add new inventory count session
-    this.snackBar.open('Add inventory count session functionality will be implemented later', 'Close', {
-      duration: 3000
+    const dialogRef = this.dialog.open(CreateCountSessionComponent, {
+      width: '600px',
+      data: { 
+        locations: this.locations,
+        selectedLocationId: this.selectedLocationId 
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.isLoading = true;
+        
+        // Format date for API
+        const formattedDate = this.datePipe.transform(result.countDate, 'yyyy-MM-dd');
+        
+        const newSession: Partial<InventoryCountSession> = {
+          countDate: formattedDate || '',
+          dayPart: result.dayPart,
+          description: result.description,
+          locationId: result.locationId,
+          locked: false
+        };
+        
+        this.inventoryCountService.createInventoryCountSession(result.locationId, newSession)
+          .pipe(
+            catchError(err => {
+              console.error('Error creating inventory count session:', err);
+              this.snackBar.open('Failed to create inventory count session. Please try again.', 'Close', {
+                duration: 5000
+              });
+              return of(null);
+            }),
+            finalize(() => {
+              this.isLoading = false;
+            })
+          )
+          .subscribe(session => {
+            if (session) {
+              this.snackBar.open('Inventory count session created successfully!', 'Close', {
+                duration: 3000
+              });
+              
+              // Navigate to the edit page for the new session
+              this.router.navigate(['/inventory/counts/edit', result.locationId, session.id]);
+            }
+          });
+      }
     });
   }
 
   viewCountDetails(countSession: InventoryCountSession): void {
-    // TODO: Implement functionality to view count details
-    this.snackBar.open(`Viewing details for count session from ${this.formatCountDate(countSession.countDate, countSession.dayPart)}`, 'Close', {
-      duration: 3000
-    });
+    if (!this.selectedLocationId || !countSession.id) return;
+    
+    this.router.navigate(['/inventory/counts/edit', this.selectedLocationId, countSession.id]);
   }
 
   // Toggle the filters panel visibility
@@ -330,5 +379,77 @@ export class InventoryCountsComponent implements OnInit, AfterViewInit {
     }
     
     return formattedRange;
+  }
+  
+  // Lock an inventory count session
+  lockCountSession(session: InventoryCountSession, event: Event): void {
+    event.stopPropagation(); // Prevent row click event
+    
+    if (!this.selectedLocationId || !session.id) return;
+    
+    this.isLoading = true;
+    
+    this.inventoryCountService.lockInventoryCountSession(this.selectedLocationId, session.id)
+      .pipe(
+        catchError(err => {
+          console.error('Error locking inventory count session:', err);
+          this.snackBar.open('Failed to lock inventory count session. Please try again.', 'Close', {
+            duration: 5000
+          });
+          return of(null);
+        }),
+        finalize(() => {
+          this.isLoading = false;
+        })
+      )
+      .subscribe(result => {
+        if (result) {
+          // Update the session in the data source
+          const updatedSessions = this.dataSource.data.map(s => 
+            s.id === session.id ? { ...s, locked: true, lockedDate: result.lockedDate } : s
+          );
+          this.dataSource.data = updatedSessions;
+          
+          this.snackBar.open('Inventory count session locked successfully!', 'Close', {
+            duration: 3000
+          });
+        }
+      });
+  }
+  
+  // Unlock an inventory count session
+  unlockCountSession(session: InventoryCountSession, event: Event): void {
+    event.stopPropagation(); // Prevent row click event
+    
+    if (!this.selectedLocationId || !session.id) return;
+    
+    this.isLoading = true;
+    
+    this.inventoryCountService.unlockInventoryCountSession(this.selectedLocationId, session.id)
+      .pipe(
+        catchError(err => {
+          console.error('Error unlocking inventory count session:', err);
+          this.snackBar.open('Failed to unlock inventory count session. Please try again.', 'Close', {
+            duration: 5000
+          });
+          return of(null);
+        }),
+        finalize(() => {
+          this.isLoading = false;
+        })
+      )
+      .subscribe(result => {
+        if (result) {
+          // Update the session in the data source
+          const updatedSessions = this.dataSource.data.map(s => 
+            s.id === session.id ? { ...s, locked: false, lockedDate: undefined } : s
+          );
+          this.dataSource.data = updatedSessions;
+          
+          this.snackBar.open('Inventory count session unlocked successfully!', 'Close', {
+            duration: 3000
+          });
+        }
+      });
   }
 }

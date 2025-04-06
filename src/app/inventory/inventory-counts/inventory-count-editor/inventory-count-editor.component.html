@@ -1,0 +1,217 @@
+<div class="inventory-count-editor">
+  <!-- Header section -->
+  <div class="page-header">
+    <div class="header-left">
+      <button mat-icon-button (click)="navigateBack()" class="back-button" matTooltip="Return to Inventory Counts">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h1 class="page-title">{{ session?.locked ? 'View' : 'Edit' }} Inventory Count Session</h1>
+      
+      <!-- Status chip -->
+      <div class="status-chip">
+        <mat-chip-option [selected]="session?.locked === true" [disabled]="true" 
+                      [color]="session?.locked === true ? 'warn' : 'primary'">
+          {{ session?.locked === true ? 'Locked' : 'Open' }}
+        </mat-chip-option>
+      </div>
+    </div>
+    
+    <!-- Action buttons -->
+    <div class="header-actions">
+      <ng-container *ngIf="session?.locked === true">
+        <button mat-stroked-button color="primary" (click)="unlockSession()" [disabled]="isLoading">
+          <mat-icon>lock_open</mat-icon>
+          Unlock Session
+        </button>
+      </ng-container>
+      <ng-container *ngIf="session && session.locked !== true">
+        <button mat-stroked-button color="warn" (click)="lockSession()" [disabled]="isLoading">
+          <mat-icon>lock</mat-icon>
+          Lock Session
+        </button>
+        <button mat-raised-button color="primary" (click)="updateSessionDetails()" 
+                [disabled]="sessionForm.invalid || isLoading || sessionForm.pristine">
+          <mat-icon>save</mat-icon>
+          Save Changes
+        </button>
+      </ng-container>
+    </div>
+  </div>
+
+  <!-- Loading spinner -->
+  <div *ngIf="isLoading" class="loading-container">
+    <mat-spinner diameter="40"></mat-spinner>
+  </div>
+
+  <!-- Error message -->
+  <div *ngIf="loadingError" class="error-message">
+    <mat-icon color="warn">error_outline</mat-icon>
+    <span>{{ loadingError }}</span>
+    <button mat-raised-button color="primary" (click)="loadSessionData()">Retry</button>
+  </div>
+
+  <!-- Session data -->
+  <ng-container *ngIf="session && !isLoading && !loadingError">
+    <div class="session-container">
+      <!-- Session details section -->
+      <form [formGroup]="sessionForm" class="session-details-form">
+        <mat-card>
+          <mat-card-header>
+            <mat-card-title>Session Details</mat-card-title>
+            <mat-card-subtitle *ngIf="session.locked === true">
+              Locked on {{ session.lockedDate | date:'medium' }}
+            </mat-card-subtitle>
+          </mat-card-header>
+          
+          <mat-card-content>
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Count Date</mat-label>
+                <input matInput [matDatepicker]="countDatePicker" formControlName="countDate">
+                <mat-datepicker-toggle matSuffix [for]="countDatePicker"></mat-datepicker-toggle>
+                <mat-datepicker #countDatePicker></mat-datepicker>
+              </mat-form-field>
+              
+              <mat-form-field appearance="outline">
+                <mat-label>Day Part</mat-label>
+                <mat-select formControlName="dayPart">
+                  <mat-option *ngFor="let option of dayPartOptions" [value]="option">
+                    {{ option }}
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+            
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Description</mat-label>
+              <textarea matInput formControlName="description" rows="2"></textarea>
+            </mat-form-field>
+            
+            <div class="location-info">
+              <strong>Location:</strong> {{ session.locationName }}
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </form>
+      
+      <!-- Counts section -->
+      <mat-card class="count-items-card">
+        <mat-card-header>
+          <mat-card-title>Inventory Count Items</mat-card-title>
+          <mat-card-subtitle *ngIf="session.locked === true">
+            This count session is locked. Counts cannot be modified.
+          </mat-card-subtitle>
+          <mat-card-subtitle *ngIf="countItemGroups.length > 0" class="count-summary">
+            {{ countItemGroups.length }} items to count ({{ countLines.length }} total count lines)
+          </mat-card-subtitle>
+        </mat-card-header>
+        
+        <mat-card-content>
+          <!-- Items list -->
+          <div class="items-list">
+            <ng-container *ngIf="countItemGroups.length === 0">
+              <div class="no-items-message">
+                <mat-icon>info</mat-icon>
+                <p>No inventory items found for this count session.</p>
+              </div>
+            </ng-container>
+            
+            <table class="items-table" *ngIf="countItemGroups.length > 0">
+              <thead>
+                <tr>
+                  <th class="item-column">Item</th>
+                  <th class="uom-columns" *ngFor="let uom of availableUoms">
+                    {{ uom.name }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Group headers for inventory items -->
+                <ng-container *ngIf="hasItemType('inventory')">
+                  <tr class="item-type-header">
+                    <td [colSpan]="1 + availableUoms.length" class="type-header">
+                      <mat-icon>inventory_2</mat-icon>
+                      <span>Inventory Items</span>
+                    </td>
+                  </tr>
+                </ng-container>
+                
+                <!-- Inventory items -->
+                <ng-container *ngFor="let itemGroup of countItemGroups">
+                  <ng-container *ngIf="isInventoryType(itemGroup.itemType)">
+                    <tr [class.subrecipe-row]="isSubrecipeType(itemGroup.itemType)">
+                      <td class="item-name">
+                        <div class="item-name-container">
+                          <mat-icon [matTooltip]="getItemTooltip(itemGroup.itemType)">
+                            {{ getItemTypeIcon(itemGroup.itemType) }}
+                          </mat-icon>
+                          <span>{{ itemGroup.name }}</span>
+                        </div>
+                      </td>
+                      
+                      <ng-container *ngFor="let uom of availableUoms">
+                        <td class="count-cell">
+                          <ng-container *ngIf="uom.id && getUomForItem(itemGroup, uom.id) as uomData">
+                            <mat-form-field appearance="outline" class="count-input">
+                              <input matInput type="number" min="0" step="0.01" 
+                                    [(ngModel)]="uomData.countedQuantity"
+                                    [disabled]="session.locked === true"
+                                    (blur)="updateCountLine(uomData.lineId!, itemGroup, uom.id, uomData.countedQuantity)">
+                            </mat-form-field>
+                          </ng-container>
+                          
+                          <span *ngIf="uom.id && !getUomForItem(itemGroup, uom.id)" class="dash">-</span>
+                        </td>
+                      </ng-container>
+                    </tr>
+                  </ng-container>
+                </ng-container>
+                
+                <!-- Group headers for sub-recipes -->
+                <ng-container *ngIf="hasItemType('subrecipe')">
+                  <tr class="item-type-header">
+                    <td [colSpan]="1 + availableUoms.length" class="type-header subrecipe-header">
+                      <mat-icon>receipt</mat-icon>
+                      <span>Sub-Recipes</span>
+                    </td>
+                  </tr>
+                </ng-container>
+                
+                <!-- Sub-recipes -->
+                <ng-container *ngFor="let itemGroup of countItemGroups">
+                  <ng-container *ngIf="isSubrecipeType(itemGroup.itemType)">
+                    <tr [class.subrecipe-row]="isSubrecipeType(itemGroup.itemType)">
+                      <td class="item-name">
+                        <div class="item-name-container">
+                          <mat-icon [matTooltip]="getItemTooltip(itemGroup.itemType)">
+                            {{ getItemTypeIcon(itemGroup.itemType) }}
+                          </mat-icon>
+                          <span>{{ itemGroup.name }}</span>
+                        </div>
+                      </td>
+                      
+                      <ng-container *ngFor="let uom of availableUoms">
+                        <td class="count-cell">
+                          <ng-container *ngIf="uom.id && getUomForItem(itemGroup, uom.id) as uomData">
+                            <mat-form-field appearance="outline" class="count-input">
+                              <input matInput type="number" min="0" step="0.01" 
+                                    [(ngModel)]="uomData.countedQuantity"
+                                    [disabled]="session.locked === true"
+                                    (blur)="updateCountLine(uomData.lineId!, itemGroup, uom.id, uomData.countedQuantity)">
+                            </mat-form-field>
+                          </ng-container>
+                          
+                          <span *ngIf="uom.id && !getUomForItem(itemGroup, uom.id)" class="dash">-</span>
+                        </td>
+                      </ng-container>
+                    </tr>
+                  </ng-container>
+                </ng-container>
+              </tbody>
+            </table>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </ng-container>
+</div>

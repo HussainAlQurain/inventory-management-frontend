@@ -1,0 +1,23 @@
+.full-width {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+h2 {
+  margin-bottom: 24px;
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+mat-dialog-content {
+  padding-top: 8px;
+}
+
+mat-dialog-actions {
+  padding: 16px 0;
+}

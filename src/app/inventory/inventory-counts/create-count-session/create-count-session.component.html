@@ -1,0 +1,58 @@
+<h2 mat-dialog-title>Create New Count Session</h2>
+
+<form [formGroup]="countSessionForm" (ngSubmit)="onSubmitClick()">
+  <div mat-dialog-content>
+    <!-- Location Selection -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Location</mat-label>
+      <mat-select formControlName="locationId" required>
+        <mat-option *ngFor="let location of data.locations" [value]="location.id">
+          {{ location.name }}
+        </mat-option>
+      </mat-select>
+      <mat-error *ngIf="countSessionForm.get('locationId')?.hasError('required')">
+        Location is required
+      </mat-error>
+    </mat-form-field>
+
+    <!-- Count Date -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Count Date</mat-label>
+      <input matInput [matDatepicker]="countDatePicker" formControlName="countDate" required [max]="maxDate">
+      <mat-datepicker-toggle matSuffix [for]="countDatePicker"></mat-datepicker-toggle>
+      <mat-datepicker #countDatePicker></mat-datepicker>
+      <mat-error *ngIf="countSessionForm.get('countDate')?.hasError('required')">
+        Count date is required
+      </mat-error>
+    </mat-form-field>
+
+    <!-- Day Part -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Day Part</mat-label>
+      <mat-select formControlName="dayPart" required>
+        <mat-option *ngFor="let option of dayPartOptions" [value]="option">
+          {{ option }}
+        </mat-option>
+      </mat-select>
+      <mat-error *ngIf="countSessionForm.get('dayPart')?.hasError('required')">
+        Day part is required
+      </mat-error>
+    </mat-form-field>
+
+    <!-- Description -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Description (Optional)</mat-label>
+      <textarea matInput formControlName="description" rows="3" 
+                placeholder="Enter description or notes about this count session"></textarea>
+      <mat-error *ngIf="countSessionForm.get('description')?.hasError('maxlength')">
+        Description cannot exceed 500 characters
+      </mat-error>
+    </mat-form-field>
+  </div>
+
+  <div mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="onCancelClick()">Cancel</button>
+    <button mat-raised-button color="primary" type="submit" 
+            [disabled]="countSessionForm.invalid">Create</button>
+  </div>
+</form>

@@ -1,0 +1,304 @@
+.inventory-count-editor {
+  padding: 24px;
+  max-width: 100%;
+  box-sizing: border-box;
+  
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    
+    .header-left {
+      display: flex;
+      align-items: center;
+      
+      .back-button {
+        margin-right: 16px;
+      }
+      
+      .page-title {
+        font-size: 24px;
+        font-weight: 500;
+        margin: 0;
+        color: #2c3e50;
+      }
+      
+      .status-chip {
+        margin-left: 16px;
+      }
+    }
+    
+    .header-actions {
+      display: flex;
+      gap: 12px;
+      
+      button {
+        padding: 0 16px;
+        height: 42px;
+        
+        .mat-icon {
+          margin-right: 8px;
+        }
+      }
+    }
+  }
+  
+  .loading-container {
+    display: flex;
+    justify-content: center;
+    padding: 40px;
+  }
+  
+  .error-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 40px;
+    text-align: center;
+    background-color: #fff3f3;
+    border-radius: 8px;
+    
+    mat-icon {
+      font-size: 48px;
+      height: 48px;
+      width: 48px;
+    }
+    
+    span {
+      font-size: 16px;
+      color: #f44336;
+    }
+  }
+  
+  .session-container {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    
+    .session-details-form {
+      mat-card {
+        padding: 16px;
+      }
+      
+      mat-card-header {
+        margin-bottom: 16px;
+      }
+      
+      .form-row {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 16px;
+        
+        mat-form-field {
+          flex: 1;
+        }
+      }
+      
+      .full-width {
+        width: 100%;
+      }
+      
+      .location-info {
+        margin-top: 16px;
+        padding: 12px;
+        background-color: #f5f7fa;
+        border-radius: 6px;
+        font-size: 15px;
+      }
+    }
+    
+    .count-items-card {
+      padding: 16px;
+      
+      mat-card-header {
+        margin-bottom: 16px;
+        
+        .count-summary {
+          margin-top: 8px;
+        }
+      }
+      
+      .items-list {
+        margin-top: 16px;
+        
+        .no-items-message {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 40px;
+          gap: 16px;
+          background-color: #f5f7fa;
+          border-radius: 8px;
+          
+          mat-icon {
+            font-size: 48px;
+            height: 48px;
+            width: 48px;
+            color: #9e9e9e;
+          }
+          
+          p {
+            color: #616161;
+            font-size: 16px;
+          }
+        }
+        
+        .items-table {
+          width: 100%;
+          border-collapse: collapse;
+          
+          th {
+            text-align: left;
+            padding: 12px;
+            background-color: #f5f7fa;
+            border-bottom: 1px solid #e0e0e0;
+            font-weight: 500;
+            color: #2c3e50;
+          }
+          
+          td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #eeeeee;
+            vertical-align: middle;
+          }
+          
+          .item-column {
+            min-width: 200px;
+            width: 30%;
+          }
+          
+          .item-name {
+            font-weight: 500;
+            
+            .item-name-container {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              
+              mat-icon {
+                color: #5c6bc0;
+                font-size: 20px;
+                width: 20px;
+                height: 20px;
+              }
+            }
+          }
+          
+          .uom-columns {
+            min-width: 120px;
+          }
+          
+          .item-type-header {
+            .type-header {
+              padding: 12px;
+              background-color: #eef2f7;
+              color: #455a64;
+              font-weight: 500;
+              font-size: 15px;
+              
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              
+              mat-icon {
+                color: #455a64;
+              }
+              
+              &.subrecipe-header {
+                background-color: #f5f0e6;
+                color: #795548;
+                
+                mat-icon {
+                  color: #795548;
+                }
+              }
+            }
+          }
+          
+          .subrecipe-row {
+            background-color: #fffbf5;
+            
+            .item-name-container {
+              mat-icon {
+                color: #ff9800;
+              }
+            }
+          }
+          
+          .count-cell {
+            text-align: center;
+            
+            .count-input {
+              width: 100px;
+              margin: 0;
+              
+              ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+                display: none;
+              }
+              
+              ::ng-deep .mat-mdc-form-field-infix {
+                padding: 8px 0;
+                min-height: unset;
+              }
+            }
+            
+            .dash {
+              color: #9e9e9e;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .inventory-count-editor {
+    padding: 16px;
+    
+    .page-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+      
+      .header-left {
+        flex-direction: column;
+        align-items: flex-start;
+        
+        .status-chip {
+          margin-left: 0;
+          margin-top: 8px;
+        }
+      }
+      
+      .header-actions {
+        width: 100%;
+      }
+    }
+    
+    .session-container {
+      .session-details-form {
+        .form-row {
+          flex-direction: column;
+          gap: 0;
+        }
+      }
+      
+      .count-items-card {
+        .items-list {
+          overflow-x: auto;
+          
+          .items-table {
+            .count-cell {
+              .count-input {
+                width: 80px;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

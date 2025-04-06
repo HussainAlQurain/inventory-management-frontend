@@ -179,8 +179,8 @@ export class SubRecipeService {
     );
   }
 
-  // Get simple sub-recipe info (just name and basic fields)
-  private getSimpleSubRecipe(id: number): Observable<SubRecipe | null> {
+  // Changed from private to public so it can be accessed from other components
+  getSimpleSubRecipe(id: number): Observable<SubRecipe | null> {
     const companyId = this.companiesService.getSelectedCompanyId();
     if (!companyId) {
       return of(null);
