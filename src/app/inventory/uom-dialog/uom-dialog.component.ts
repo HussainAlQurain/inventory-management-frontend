@@ -54,7 +54,7 @@ export class UomDialogComponent implements OnInit {
     this.uomForm = this.fb.group({
       name: ['', Validators.required],
       abbreviation: ['', Validators.required],
-      conversionFactor: [1, [Validators.required, Validators.min(0.01)]],
+      conversionFactor: [1, [Validators.required, Validators.min(0.000000000000001)]],
       categoryName: ['', Validators.required]
     });
 
