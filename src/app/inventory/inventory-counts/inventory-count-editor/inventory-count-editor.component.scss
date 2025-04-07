@@ -193,7 +193,7 @@
             z-index: 10;
             
             th {
-              text-align: left;
+              text-align: center; // Change from left to center alignment
               padding: 12px;
               background-color: #f5f7fa;
               border-bottom: 1px solid #e0e0e0;
@@ -211,6 +211,7 @@
           .item-column {
             min-width: 200px;
             width: 30%;
+            text-align: left; // Explicitly set left alignment for item column
           }
           
           .item-name {
@@ -232,7 +233,7 @@
           
           .uom-columns {
             min-width: 120px;
-            text-align: center;
+            text-align: center; // Ensure center alignment for UOM column headers
           }
           
           .item-type-header {
@@ -276,12 +277,12 @@
           }
           
           .count-cell {
-            text-align: center;
+            text-align: center; // Ensure center alignment for count cells
             
             .input-with-uom {
               display: flex;
               align-items: center;
-              justify-content: center;
+              justify-content: center; // Ensure center alignment for input + UOM
               gap: 6px;
               
               .count-input {
