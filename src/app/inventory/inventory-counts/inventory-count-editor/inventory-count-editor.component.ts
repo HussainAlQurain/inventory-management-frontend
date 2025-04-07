@@ -28,6 +28,7 @@ import { InventoryItem } from '../../../models/InventoryItem';
 import { UnitOfMeasure } from '../../../models/UnitOfMeasure';
 import { SubRecipe } from '../../../models/SubRecipe';
 import { catchError, finalize, forkJoin, of, Observable, tap } from 'rxjs';
+import { LocationService } from '../../../services/location.service';
 
 // First, update the interface to use a proper TypeScript string literal union type
 interface CountItemUomGroup {
@@ -110,7 +111,8 @@ export class InventoryCountEditorComponent implements OnInit {
     private uomService: UomService,
     private snackBar: MatSnackBar,
     private datePipe: DatePipe,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private locationService: LocationService
   ) { }
 
   ngOnInit(): void {
@@ -152,6 +154,10 @@ export class InventoryCountEditorComponent implements OnInit {
           this.loadingError = 'Failed to load count session details';
           return of(null);
         })),
+        location: this.locationService.getLocationById(this.locationId).pipe(catchError(err => {
+          console.log('Error loading location data:', err);
+          return of(null);
+        })),
       uoms: this.uomService.getAllUoms()
         .pipe(catchError(err => {
           console.error('Error loading UOMs:', err);
@@ -165,6 +171,10 @@ export class InventoryCountEditorComponent implements OnInit {
       if (results.session) {
         this.session = results.session;
         this.availableUoms = results.uoms;
+        // Add location name to session
+        if (results.location) {
+          this.session.locationName = results.location.name;
+        }
         
         // The session already contains the lines
         if (this.session.lines) {
