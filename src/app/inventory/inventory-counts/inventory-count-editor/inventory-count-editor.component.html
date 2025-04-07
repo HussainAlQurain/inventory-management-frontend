@@ -53,46 +53,52 @@
   <!-- Session data -->
   <ng-container *ngIf="session && !isLoading && !loadingError">
     <div class="session-container">
-      <!-- Session details section -->
-      <form [formGroup]="sessionForm" class="session-details-form">
-        <mat-card>
-          <mat-card-header>
-            <mat-card-title>Session Details</mat-card-title>
-            <mat-card-subtitle *ngIf="session.locked === true">
-              Locked on {{ session.lockedDate | date:'medium' }}
-            </mat-card-subtitle>
-          </mat-card-header>
-          
-          <mat-card-content>
-            <div class="form-row">
-              <mat-form-field appearance="outline">
-                <mat-label>Count Date</mat-label>
-                <input matInput [matDatepicker]="countDatePicker" formControlName="countDate">
-                <mat-datepicker-toggle matSuffix [for]="countDatePicker"></mat-datepicker-toggle>
-                <mat-datepicker #countDatePicker></mat-datepicker>
-              </mat-form-field>
-              
-              <mat-form-field appearance="outline">
-                <mat-label>Day Part</mat-label>
-                <mat-select formControlName="dayPart">
-                  <mat-option *ngFor="let option of dayPartOptions" [value]="option">
-                    {{ option }}
-                  </mat-option>
-                </mat-select>
-              </mat-form-field>
-            </div>
-            
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Description</mat-label>
-              <textarea matInput formControlName="description" rows="2"></textarea>
+      <!-- Session details section - collapsed to a compact panel -->
+      <mat-expansion-panel class="session-details-panel" [expanded]="false">
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            Session Details
+          </mat-panel-title>
+          <mat-panel-description>
+            <span>{{ session.locationName || 'Unknown Location' }} - {{ session.countDate | date:'mediumDate' }} ({{ session.dayPart }})</span>
+            <span *ngIf="session.locked === true" class="locked-tag">Locked</span>
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+      
+        <form [formGroup]="sessionForm" class="session-details-form">
+          <div class="form-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Count Date</mat-label>
+              <input matInput [matDatepicker]="countDatePicker" formControlName="countDate">
+              <mat-datepicker-toggle matSuffix [for]="countDatePicker"></mat-datepicker-toggle>
+              <mat-datepicker #countDatePicker></mat-datepicker>
             </mat-form-field>
             
-            <div class="location-info">
-              <strong>Location:</strong> {{ session.locationName }}
-            </div>
-          </mat-card-content>
-        </mat-card>
-      </form>
+            <mat-form-field appearance="outline">
+              <mat-label>Day Part</mat-label>
+              <mat-select formControlName="dayPart">
+                <mat-option *ngFor="let option of dayPartOptions" [value]="option">
+                  {{ option }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+          
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Description</mat-label>
+            <textarea matInput formControlName="description" rows="2"></textarea>
+          </mat-form-field>
+          
+          <div class="location-info">
+            <strong>Location:</strong> {{ session.locationName }}
+          </div>
+          
+          <div *ngIf="session.locked === true" class="locked-info">
+            <mat-icon color="warn">lock</mat-icon>
+            <span>Locked on {{ session.lockedDate | date:'medium' }}</span>
+          </div>
+        </form>
+      </mat-expansion-panel>
       
       <!-- Counts section -->
       <mat-card class="count-items-card">
@@ -117,7 +123,7 @@
             </ng-container>
             
             <table class="items-table" *ngIf="countItemGroups.length > 0">
-              <thead>
+              <thead class="sticky-header">
                 <tr>
                   <th class="item-column">Item</th>
                   <th class="uom-columns" *ngFor="let uom of availableUoms">
@@ -152,12 +158,15 @@
                       <ng-container *ngFor="let uom of availableUoms">
                         <td class="count-cell">
                           <ng-container *ngIf="uom.id && getUomForItem(itemGroup, uom.id) as uomData">
-                            <mat-form-field appearance="outline" class="count-input">
-                              <input matInput type="number" min="0" step="0.01" 
-                                    [(ngModel)]="uomData.countedQuantity"
-                                    [disabled]="session.locked === true"
-                                    (blur)="updateCountLine(uomData.lineId!, itemGroup, uom.id, uomData.countedQuantity)">
-                            </mat-form-field>
+                            <div class="input-with-uom">
+                              <mat-form-field appearance="outline" class="count-input">
+                                <input matInput type="number" min="0" step="0.01" 
+                                      [(ngModel)]="uomData.countedQuantity"
+                                      [disabled]="session.locked === true"
+                                      (blur)="updateCountLine(uomData.lineId!, itemGroup, uom.id, uomData.countedQuantity)">
+                              </mat-form-field>
+                              <span class="uom-abbr" [matTooltip]="uom.name">{{ uom.abbreviation }}</span>
+                            </div>
                           </ng-container>
                           
                           <span *ngIf="uom.id && !getUomForItem(itemGroup, uom.id)" class="dash">-</span>
@@ -193,12 +202,15 @@
                       <ng-container *ngFor="let uom of availableUoms">
                         <td class="count-cell">
                           <ng-container *ngIf="uom.id && getUomForItem(itemGroup, uom.id) as uomData">
-                            <mat-form-field appearance="outline" class="count-input">
-                              <input matInput type="number" min="0" step="0.01" 
-                                    [(ngModel)]="uomData.countedQuantity"
-                                    [disabled]="session.locked === true"
-                                    (blur)="updateCountLine(uomData.lineId!, itemGroup, uom.id, uomData.countedQuantity)">
-                            </mat-form-field>
+                            <div class="input-with-uom">
+                              <mat-form-field appearance="outline" class="count-input">
+                                <input matInput type="number" min="0" step="0.01" 
+                                      [(ngModel)]="uomData.countedQuantity"
+                                      [disabled]="session.locked === true"
+                                      (blur)="updateCountLine(uomData.lineId!, itemGroup, uom.id, uomData.countedQuantity)">
+                              </mat-form-field>
+                              <span class="uom-abbr" [matTooltip]="uom.name">{{ uom.abbreviation }}</span>
+                            </div>
                           </ng-container>
                           
                           <span *ngIf="uom.id && !getUomForItem(itemGroup, uom.id)" class="dash">-</span>

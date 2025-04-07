@@ -75,16 +75,37 @@
   .session-container {
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 16px; // Reduced gap to save vertical space
+    
+    // New styles for the collapsible session details panel
+    .session-details-panel {
+      ::ng-deep .mat-expansion-panel-header {
+        padding: 0 16px;
+        height: 54px;
+        
+        .mat-expansion-panel-header-title {
+          color: #2c3e50;
+          font-weight: 500;
+        }
+        
+        .mat-expansion-panel-header-description {
+          justify-content: space-between;
+          align-items: center;
+          margin-right: 0;
+          
+          .locked-tag {
+            background-color: #f44336;
+            color: white;
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 4px;
+          }
+        }
+      }
+    }
     
     .session-details-form {
-      mat-card {
-        padding: 16px;
-      }
-      
-      mat-card-header {
-        margin-bottom: 16px;
-      }
+      padding: 8px 16px 16px;
       
       .form-row {
         display: flex;
@@ -107,10 +128,25 @@
         border-radius: 6px;
         font-size: 15px;
       }
+      
+      .locked-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 12px;
+        padding: 8px 12px;
+        background-color: #fff0f0;
+        border-radius: 4px;
+        color: #f44336;
+        font-size: 14px;
+      }
     }
     
     .count-items-card {
+      flex: 1;
       padding: 16px;
+      // Ensure this card takes most of the space
+      min-height: calc(100vh - 200px);
       
       mat-card-header {
         margin-bottom: 16px;
@@ -122,6 +158,8 @@
       
       .items-list {
         margin-top: 16px;
+        max-height: calc(100vh - 260px);
+        overflow-y: auto;
         
         .no-items-message {
           display: flex;
@@ -149,13 +187,19 @@
           width: 100%;
           border-collapse: collapse;
           
-          th {
-            text-align: left;
-            padding: 12px;
-            background-color: #f5f7fa;
-            border-bottom: 1px solid #e0e0e0;
-            font-weight: 500;
-            color: #2c3e50;
+          .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            
+            th {
+              text-align: left;
+              padding: 12px;
+              background-color: #f5f7fa;
+              border-bottom: 1px solid #e0e0e0;
+              font-weight: 500;
+              color: #2c3e50;
+            }
           }
           
           td {
@@ -188,6 +232,7 @@
           
           .uom-columns {
             min-width: 120px;
+            text-align: center;
           }
           
           .item-type-header {
@@ -197,6 +242,9 @@
               color: #455a64;
               font-weight: 500;
               font-size: 15px;
+              position: sticky;
+              top: 42px; // Position just below the header row
+              z-index: 5;
               
               display: flex;
               align-items: center;
@@ -230,17 +278,40 @@
           .count-cell {
             text-align: center;
             
-            .count-input {
-              width: 100px;
-              margin: 0;
+            .input-with-uom {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 6px;
               
-              ::ng-deep .mat-mdc-form-field-subscript-wrapper {
-                display: none;
+              .count-input {
+                width: 80px;
+                margin: 0;
+                
+                ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+                  display: none;
+                }
+                
+                ::ng-deep .mat-mdc-form-field-infix {
+                  padding: 8px 0;
+                  min-height: unset;
+                }
+                
+                input {
+                  text-align: right;
+                }
               }
               
-              ::ng-deep .mat-mdc-form-field-infix {
-                padding: 8px 0;
-                min-height: unset;
+              .uom-abbr {
+                font-size: 13px;
+                color: #616161;
+                background-color: #f5f5f5;
+                padding: 2px 6px;
+                border-radius: 4px;
+                min-width: 24px;
+                text-align: center;
+                border: 1px solid #e0e0e0;
+                cursor: help;
               }
             }
             
@@ -292,8 +363,15 @@
           
           .items-table {
             .count-cell {
-              .count-input {
-                width: 80px;
+              .input-with-uom {
+                .count-input {
+                  width: 60px;
+                }
+                
+                .uom-abbr {
+                  min-width: 16px;
+                  padding: 2px 4px;
+                }
               }
             }
           }

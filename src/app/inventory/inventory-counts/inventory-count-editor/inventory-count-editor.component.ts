@@ -29,6 +29,7 @@ import { UnitOfMeasure } from '../../../models/UnitOfMeasure';
 import { SubRecipe } from '../../../models/SubRecipe';
 import { catchError, finalize, forkJoin, of, Observable, tap } from 'rxjs';
 import { LocationService } from '../../../services/location.service';
+import { MatExpansionModule } from '@angular/material/expansion';
 
 // First, update the interface to use a proper TypeScript string literal union type
 interface CountItemUomGroup {
@@ -39,6 +40,7 @@ interface CountItemUomGroup {
   uoms: {
     uomId: number;
     uomName: string;
+    uomAbbreviation?: string; // Add abbreviation
     lineId?: number;
     countedQuantity: number;
   }[];
@@ -68,7 +70,8 @@ interface CountItemUomGroup {
     MatCheckboxModule,
     MatTooltipModule,
     MatChipsModule,
-    MatDialogModule
+    MatDialogModule,
+    MatExpansionModule
   ],
   providers: [DatePipe],
   templateUrl: './inventory-count-editor.component.html',
@@ -320,6 +323,7 @@ export class InventoryCountEditorComponent implements OnInit {
             group.uoms.push({
               uomId: line.countUomId,
               uomName: uom.name,
+              uomAbbreviation: uom.abbreviation || uom.name.substring(0, 3),
               lineId: line.id,
               countedQuantity: line.countedQuantity || 0
             });
@@ -351,6 +355,7 @@ export class InventoryCountEditorComponent implements OnInit {
             group.uoms.push({
               uomId: line.countUomId,
               uomName: uom.name,
+              uomAbbreviation: uom.abbreviation || uom.name.substring(0, 3),
               lineId: line.id,
               countedQuantity: line.countedQuantity || 0
             });
