@@ -1,4 +1,4 @@
-import { Component, OnInit, NgZone } from '@angular/core';
+import { Component, OnInit, NgZone, Inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -8,15 +8,19 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router } from '@angular/router';
-import { OrderService } from '../../services/order.service';
+import { OrderService, OrderItemReceipt } from '../../services/order.service';
 import { InventoryItemsService } from '../../services/inventory-items-service.service';
 import { OrderSummary } from '../../models/OrderSummary';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { switchMap, catchError, finalize, map, forkJoin, of } from 'rxjs';
-import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatDialogModule, MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { FormsModule } from '@angular/forms';
 
 // Extended interface for order details with items
 export interface OrderDetail extends OrderSummary {
@@ -37,6 +41,14 @@ export interface OrderItemDetail {
   total: number;
   uomName: string;
   productCode?: string; // Will be populated from inventory item lookup
+}
+
+// Interface for receiving items
+export interface ReceiveItemData extends OrderItemDetail {
+  receivedQty: number;
+  finalPrice: number;
+  includeInReceipt: boolean;
+  priceChanged: boolean;
 }
 
 // Dialog component for sending order
@@ -81,6 +93,348 @@ export class SendOrderDialogComponent {
   }
 }
 
+// Dialog component for receiving order
+@Component({
+  selector: 'receive-order-dialog',
+  standalone: true,
+  imports: [
+    CommonModule,
+    FormsModule,
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    MatIconModule,
+    MatTableModule,
+    MatCheckboxModule,
+    MatTooltipModule,
+    MatSlideToggleModule
+  ],
+  template: `
+    <h2 mat-dialog-title>Receive Order #{{ orderNumber }}</h2>
+    <mat-dialog-content>
+      <p class="instruction-text">
+        Review your order items below. You can adjust quantities, update prices, or exclude items from receipt.
+      </p>
+      
+      <!-- Price Update Option -->
+      <div class="update-price-option">
+        <div class="option-content">
+          <mat-slide-toggle [(ngModel)]="updatePriceOptions" color="primary">
+            Update inventory prices when changed
+          </mat-slide-toggle>
+          <mat-icon 
+            matTooltip="When enabled, changes to item prices will update the purchase option and inventory item prices"
+            class="info-icon">info</mat-icon>
+        </div>
+        <div class="price-hint" *ngIf="hasPriceChanges()">
+          <mat-icon color="accent">notification_important</mat-icon>
+          <span>Price changes detected. Select whether to update inventory prices.</span>
+        </div>
+      </div>
+
+      <!-- Items Table -->
+      <div class="table-container">
+        <table mat-table [dataSource]="items" class="receive-items-table">
+          <!-- Include Checkbox Column -->
+          <ng-container matColumnDef="include">
+            <th mat-header-cell *matHeaderCellDef>
+              <div class="header-cell-content">Include</div>
+            </th>
+            <td mat-cell *matCellDef="let item">
+              <mat-checkbox [(ngModel)]="item.includeInReceipt" 
+                          color="primary"></mat-checkbox>
+            </td>
+          </ng-container>
+          
+          <!-- Product Name Column -->
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef>
+              <div class="header-cell-content">Product</div>
+            </th>
+            <td mat-cell *matCellDef="let item">
+              <div class="product-name">{{ item.inventoryItemName }}</div>
+              <div class="product-code" *ngIf="item.productCode">{{ item.productCode }}</div>
+            </td>
+          </ng-container>
+          
+          <!-- Ordered Qty Column -->
+          <ng-container matColumnDef="ordered">
+            <th mat-header-cell *matHeaderCellDef>
+              <div class="header-cell-content">Ordered</div>
+            </th>
+            <td mat-cell *matCellDef="let item">
+              <div class="quantity-display">
+                {{ item.quantity }} <span class="uom-label">{{ item.uomName }}</span>
+              </div>
+            </td>
+          </ng-container>
+          
+          <!-- Received Qty Column -->
+          <ng-container matColumnDef="received">
+            <th mat-header-cell *matHeaderCellDef>
+              <div class="header-cell-content">Received</div>
+            </th>
+            <td mat-cell *matCellDef="let item">
+              <mat-form-field appearance="outline" class="qty-input">
+                <input matInput type="number" [(ngModel)]="item.receivedQty" 
+                      [disabled]="!item.includeInReceipt" 
+                      min="0" step="0.001">
+              </mat-form-field>
+              <span class="uom-label">{{ item.uomName }}</span>
+            </td>
+          </ng-container>
+          
+          <!-- Price Column -->
+          <ng-container matColumnDef="price">
+            <th mat-header-cell *matHeaderCellDef>
+              <div class="header-cell-content">Price</div>
+            </th>
+            <td mat-cell *matCellDef="let item">
+              <div class="price-field">
+                <mat-form-field appearance="outline" class="price-input">
+                  <input matInput type="number" [(ngModel)]="item.finalPrice" 
+                        [disabled]="!item.includeInReceipt" 
+                        min="0" step="0.01"
+                        (ngModelChange)="onPriceChange(item)">
+                </mat-form-field>
+                <mat-icon *ngIf="item.priceChanged" 
+                        matTooltip="Price changed from original {{ item.price | currency }}"
+                        color="accent" class="price-changed-icon">
+                  price_change
+                </mat-icon>
+              </div>
+            </td>
+          </ng-container>
+          
+          <!-- Total Column -->
+          <ng-container matColumnDef="total">
+            <th mat-header-cell *matHeaderCellDef>
+              <div class="header-cell-content align-right">Total</div>
+            </th>
+            <td mat-cell *matCellDef="let item" class="align-right">
+              {{ (item.includeInReceipt ? item.receivedQty * item.finalPrice : 0) | currency }}
+            </td>
+          </ng-container>
+
+          <!-- Row Definitions -->
+          <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+              [class.disabled-row]="!row.includeInReceipt"></tr>
+        </table>
+      </div>
+      
+      <div class="receipt-summary">
+        <div class="summary-item">
+          <span class="label">Total Items:</span>
+          <span class="value">{{ getTotalIncludedItems() }}</span>
+        </div>
+        <div class="summary-item">
+          <span class="label">Total Value:</span>
+          <span class="value">{{ getTotalValue() | currency }}</span>
+        </div>
+      </div>
+    </mat-dialog-content>
+    
+    <mat-dialog-actions align="end">
+      <button mat-button mat-dialog-close>Cancel</button>
+      <button mat-raised-button color="primary" 
+             [mat-dialog-close]="getReceiptData()"
+             [disabled]="getTotalIncludedItems() === 0">
+        <mat-icon>inventory</mat-icon> Receive Items
+      </button>
+    </mat-dialog-actions>
+  `,
+  styles: [`
+    .instruction-text {
+      margin-bottom: 16px;
+      font-size: 16px;
+    }
+    
+    .table-container {
+      max-height: 400px;
+      overflow: auto;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+    
+    .receive-items-table {
+      width: 100%;
+    }
+    
+    .header-cell-content {
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    
+    .align-right {
+      text-align: right;
+    }
+    
+    .qty-input, .price-input {
+      width: 80px;
+      margin-right: 8px;
+    }
+    
+    .uom-label {
+      color: rgba(0, 0, 0, 0.6);
+      font-size: 14px;
+    }
+    
+    .price-changed-icon {
+      vertical-align: middle;
+    }
+    
+    .product-name {
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    
+    .product-code {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.6);
+    }
+    
+    .update-price-option {
+      background-color: #f5f5f5;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .option-content {
+      display: flex;
+      align-items: center;
+    }
+    
+    .info-icon {
+      margin-left: 8px;
+      font-size: 18px;
+      color: rgba(0, 0, 0, 0.54);
+    }
+    
+    .price-hint {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background-color: rgba(255, 152, 0, 0.1);
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    
+    .disabled-row {
+      background-color: rgba(0, 0, 0, 0.04);
+      color: rgba(0, 0, 0, 0.38);
+    }
+    
+    .price-field {
+      display: flex;
+      align-items: center;
+    }
+    
+    .quantity-display {
+      padding: 4px 0;
+    }
+    
+    .receipt-summary {
+      margin-top: 20px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 32px;
+      background-color: #f5f5f5;
+      padding: 16px;
+      border-radius: 8px;
+    }
+    
+    .summary-item {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    
+    .summary-item .label {
+      font-weight: 500;
+      color: rgba(0, 0, 0, 0.7);
+    }
+    
+    .summary-item .value {
+      font-weight: 700;
+      font-size: 18px;
+    }
+    
+    mat-dialog-actions button {
+      min-width: 120px;
+    }
+  `]
+})
+export class ReceiveOrderDialogComponent {
+  orderNumber: string;
+  items: ReceiveItemData[] = [];
+  updatePriceOptions = false;
+  displayedColumns: string[] = ['include', 'name', 'ordered', 'received', 'price', 'total'];
+
+  constructor(
+    @Inject(MAT_DIALOG_DATA) public data: { order: OrderDetail },
+    private dialogRef: MatDialogRef<ReceiveOrderDialogComponent>
+  ) {
+    this.orderNumber = data.order.orderNumber;
+    
+    // Initialize items for receipt
+    if (data.order.items && data.order.items.length > 0) {
+      this.items = data.order.items.map(item => ({
+        ...item,
+        receivedQty: item.quantity, // Initialize with ordered quantity 
+        finalPrice: item.price,     // Initialize with original price
+        includeInReceipt: true,     // Include by default
+        priceChanged: false         // Track price changes
+      }));
+    }
+  }
+
+  onPriceChange(item: ReceiveItemData): void {
+    // Set priceChanged flag if price differs from original
+    item.priceChanged = item.finalPrice !== item.price;
+  }
+
+  hasPriceChanges(): boolean {
+    return this.items.some(item => item.priceChanged);
+  }
+
+  getTotalIncludedItems(): number {
+    return this.items.filter(item => item.includeInReceipt).length;
+  }
+
+  getTotalValue(): number {
+    return this.items.reduce((total, item) => {
+      if (item.includeInReceipt) {
+        return total + (item.receivedQty * item.finalPrice);
+      }
+      return total;
+    }, 0);
+  }
+
+  getReceiptData(): { items: OrderItemReceipt[], updatePrices: boolean } {
+    const receiptItems = this.items
+      .filter(item => item.includeInReceipt)
+      .map(item => ({
+        orderItemId: item.orderItemId,
+        receivedQty: item.receivedQty,
+        finalPrice: item.finalPrice
+      }));
+      
+    return {
+      items: receiptItems,
+      updatePrices: this.updatePriceOptions
+    };
+  }
+}
+
 @Component({
   selector: 'app-order-details',
   standalone: true,
@@ -94,7 +448,14 @@ export class SendOrderDialogComponent {
     MatChipsModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
-    MatDialogModule
+    MatDialogModule,
+    FormsModule,
+    ReactiveFormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatCheckboxModule,
+    MatTooltipModule,
+    MatSlideToggleModule
   ],
   providers: [DatePipe],
   templateUrl: './order-details.component.html',
@@ -283,9 +644,56 @@ export class OrderDetailsComponent implements OnInit {
   receiveOrder(): void {
     if (!this.order) return;
     
-    // TODO: Implement receive order functionality with dialog
-    this.snackBar.open('Receive order functionality will be implemented in the next phase', 'Close', {
-      duration: 3000
+    // Calculate dialog width based on screen size (70% of viewport width)
+    const screenWidth = window.innerWidth;
+    const dialogWidth = Math.min(Math.round(screenWidth * 0.7), 1200) + 'px';
+    
+    const dialogRef = this.dialog.open(ReceiveOrderDialogComponent, {
+      width: dialogWidth,
+      maxWidth: '95vw',
+      height: 'auto',
+      maxHeight: '90vh',
+      data: { order: this.order },
+      panelClass: 'receive-order-dialog'
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.isReceiving = true;
+
+        // Call the service to receive the order
+        this.orderService.receiveOrder(
+          this.orderId,
+          result.items,
+          result.updatePrices
+        ).subscribe({
+          next: (updatedOrder) => {
+            console.log('Order received successfully:', updatedOrder);
+            this.order = updatedOrder;
+            this.snackBar.open('Order received successfully', 'Close', {
+              duration: 3000
+            });
+          },
+          error: (err) => {
+            console.error('Error receiving order:', err);
+
+            let errorMessage = 'Failed to receive order. Please try again.';
+            if (err.error && err.error.debugMessage) {
+              errorMessage = err.error.debugMessage;
+            } else if (err.error && err.error.message) {
+              errorMessage = err.error.message;
+            }
+
+            this.snackBar.open(errorMessage, 'Close', {
+              duration: 6000,
+              panelClass: ['error-snackbar']
+            });
+          },
+          complete: () => {
+            this.isReceiving = false;
+          }
+        });
+      }
     });
   }
   

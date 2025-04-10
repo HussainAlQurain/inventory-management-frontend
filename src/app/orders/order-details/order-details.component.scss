@@ -198,6 +198,55 @@
       }
     }
   }
+
+  // Modal error-related classes
+  :host ::ng-deep .error-snackbar {
+    background-color: #f44336;
+    color: white;
+
+    .mat-simple-snackbar-action {
+      color: white;
+    }
+  }
+}
+
+// Dialog styling (for receive orders dialog)
+::ng-deep .mat-dialog-container {
+  .receive-items-table {
+    width: 100%;
+    
+    .mat-form-field-wrapper {
+      padding-bottom: 0;
+    }
+    
+    .mat-form-field-infix {
+      width: auto;
+    }
+    
+    .disabled-row {
+      opacity: 0.6;
+    }
+    
+    input:disabled {
+      color: rgba(0, 0, 0, 0.38);
+    }
+  }
+  
+  .price-changed-icon {
+    color: #ff9800;
+    vertical-align: middle;
+    font-size: 18px;
+    margin-left: 4px;
+  }
+  
+  .update-price-option {
+    background-color: #f5f5f5;
+    padding: 8px 16px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+  }
 }
 
 // Responsive styles
