@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable, of } from 'rxjs';
+import { map, Observable, of } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Supplier, SupplierEmail, SupplierPhone } from '../models/Supplier';
 import { CompaniesService } from './companies.service';
@@ -20,12 +20,54 @@ export class SupplierService {
 
   getAllSuppliers(): Observable<Supplier[]> {
     const companyId = this.companiesService.getSelectedCompanyId();
-    return this.http.get<Supplier[]>(`${this.baseUrl}/company/${companyId}`);
+    return this.http.get<Supplier[]>(`${this.baseUrl}/company/${companyId}`)
+    .pipe(
+      map(suppliers => suppliers.map(supplier => {
+        // Normalize the data structure
+        if (supplier.orderEmails && !supplier.emails) {
+          supplier.emails = supplier.orderEmails.map(email => ({
+            ...email,
+            isDefault: email.default
+          }));
+        }
+        
+        if (supplier.orderPhones && !supplier.phones) {
+          supplier.phones = supplier.orderPhones.map(phone => ({
+            ...phone,
+            isDefault: phone.default
+          }));
+        }
+        
+        return supplier;
+      }))
+    );
+
   }
 
   getSupplierById(id: number): Observable<Supplier> {
     const companyId = this.companiesService.getSelectedCompanyId();
-    return this.http.get<Supplier>(`${this.baseUrl}/${id}/company/${companyId}`);
+    return this.http.get<Supplier>(`${this.baseUrl}/${id}/company/${companyId}`)
+    .pipe(
+      map(supplier => {
+        // Normalize the data structure by copying orderEmails to emails and orderPhones to phones
+        if (supplier.orderEmails && !supplier.emails) {
+          supplier.emails = supplier.orderEmails.map(email => ({
+            ...email,
+            isDefault: email.default // Copy default to isDefault for UI
+          }));
+        }
+        
+        if (supplier.orderPhones && !supplier.phones) {
+          supplier.phones = supplier.orderPhones.map(phone => ({
+            ...phone,
+            isDefault: phone.default // Copy default to isDefault for UI
+          }));
+        }
+        
+        return supplier;
+      })
+    );
+
   }
 
   createSupplier(supplier: Supplier): Observable<Supplier> {
@@ -134,6 +176,26 @@ export class SupplierService {
     }
     const companyId = this.companiesService.getSelectedCompanyId();
     // Update the endpoint to match the backend controller method
-    return this.http.get<Supplier[]>(`${this.baseUrl}/company/${companyId}/search?search=${term}`);
+    return this.http.get<Supplier[]>(`${this.baseUrl}/company/${companyId}/search?search=${term}`)
+    .pipe(
+      map(suppliers => suppliers.map(supplier => {
+        // Normalize the data structure
+        if (supplier.orderEmails && !supplier.emails) {
+          supplier.emails = supplier.orderEmails.map(email => ({
+            ...email,
+            isDefault: email.default
+          }));
+        }
+        
+        if (supplier.orderPhones && !supplier.phones) {
+          supplier.phones = supplier.orderPhones.map(phone => ({
+            ...phone,
+            isDefault: phone.default
+          }));
+        }
+        
+        return supplier;
+      }))
+    );
   }
 }
