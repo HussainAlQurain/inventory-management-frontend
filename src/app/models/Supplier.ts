@@ -25,12 +25,14 @@ export interface SupplierEmail {
   id?: number;
   email: string;
   isDefault: boolean;
-  locationId?: number;
+  default?: boolean;   // This will be used for API communication
+  locationId?: number | null;
 }
 
 export interface SupplierPhone {
   id?: number;
   phoneNumber: string;
   isDefault: boolean;
-  locationId?: number;
+  default?: boolean;   // This will be used for API communication
+  locationId?: number | null;
 }

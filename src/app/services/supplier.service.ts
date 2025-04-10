@@ -4,6 +4,7 @@ import { Observable, of } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Supplier, SupplierEmail, SupplierPhone } from '../models/Supplier';
 import { CompaniesService } from './companies.service';
+import { LocationService } from './location.service';
 
 @Injectable({
   providedIn: 'root'
@@ -13,7 +14,8 @@ export class SupplierService {
 
   constructor(
     private http: HttpClient,
-    private companiesService: CompaniesService
+    private companiesService: CompaniesService,
+    private locationService: LocationService
   ) { }
 
   getAllSuppliers(): Observable<Supplier[]> {
@@ -28,12 +30,54 @@ export class SupplierService {
 
   createSupplier(supplier: Supplier): Observable<Supplier> {
     const companyId = this.companiesService.getSelectedCompanyId();
-    return this.http.post<Supplier>(`${this.baseUrl}/company/${companyId}`, supplier);
+    const locationId = this.locationService.getSelectedLocationId();
+    const apiSupplier = { ...supplier };
+    
+    // Transform emails (ensure locationId is set)
+    if (apiSupplier.emails && apiSupplier.emails.length > 0) {
+      apiSupplier.emails = apiSupplier.emails.map((email: SupplierEmail) => ({
+        ...email,
+        locationId: email.locationId || locationId,
+        default: email.isDefault
+      }));      
+    }
+    
+    // Transform phones (ensure locationId is set)
+    if (apiSupplier.phones && apiSupplier.phones.length > 0) {
+      apiSupplier.phones = apiSupplier.phones.map((phone: SupplierPhone) => ({
+        ...phone,
+        locationId: phone.locationId || locationId,
+        default: phone.isDefault
+      }));
+    }
+    
+    return this.http.post<Supplier>(`${this.baseUrl}/company/${companyId}`, apiSupplier);
+
   }
 
   updateSupplier(supplier: Partial<Supplier>): Observable<Supplier> {
     const companyId = this.companiesService.getSelectedCompanyId();
-    return this.http.patch<Supplier>(`${this.baseUrl}/${supplier.id}/company/${companyId}`, supplier);
+    const locationId = this.locationService.getSelectedLocationId();
+    const apiSupplier = { ...supplier };
+    
+    // Transform emails (ensure locationId is set)
+    if (apiSupplier.emails && apiSupplier.emails.length > 0) {
+      apiSupplier.emails = apiSupplier.emails.map((email: SupplierEmail) => ({
+        ...email,
+        locationId: email.locationId || locationId,
+        default: email.isDefault
+      }));      
+    }
+    
+    // Transform phones (ensure locationId is set)
+    if (apiSupplier.phones && apiSupplier.phones.length > 0) {
+      apiSupplier.phones = apiSupplier.phones.map((phone: SupplierPhone) => ({
+        ...phone,
+        locationId: phone.locationId || locationId,
+        default: phone.isDefault
+      }));
+    }
+    return this.http.patch<Supplier>(`${this.baseUrl}/${supplier.id}/company/${companyId}`, apiSupplier);
   }
 
   deleteSupplier(id: number): Observable<void> {
