@@ -1,0 +1,234 @@
+.order-details-container {
+  padding: 24px;
+  max-width: 100%;
+  box-sizing: border-box;
+  
+  .loading-overlay {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+  }
+  
+  .error-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 40px;
+    text-align: center;
+    
+    mat-icon {
+      font-size: 48px;
+      height: 48px;
+      width: 48px;
+      color: #f44336;
+    }
+    
+    p {
+      color: #f44336;
+      font-size: 16px;
+    }
+  }
+  
+  .details-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      
+      h1 {
+        margin: 0;
+        font-size: 24px;
+      }
+    }
+    
+    .header-actions {
+      display: flex;
+      gap: 12px;
+      
+      button {
+        border-radius: 8px;
+        
+        .mat-icon {
+          margin-right: 8px;
+        }
+      }
+    }
+  }
+  
+  .status-chip {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: capitalize;
+    
+    &.status-draft {
+      background-color: #e0e0e0;
+      color: #616161;
+    }
+    
+    &.status-pending {
+      background-color: #e3f2fd;
+      color: #1565c0;
+    }
+    
+    &.status-approved {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+    }
+    
+    &.status-sent {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+    }
+    
+    &.status-viewed {
+      background-color: #e1f5fe;
+      color: #0277bd;
+    }
+    
+    &.status-delivered {
+      background-color: #e3f2fd;
+      color: #1565c0;
+    }
+    
+    &.status-received {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+      font-weight: 700;
+    }
+    
+    &.status-cancelled {
+      background-color: #ffebee;
+      color: #c62828;
+    }
+  }
+  
+  .order-summary-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+    
+    .summary-card {
+      background-color: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      
+      .info-row {
+        display: flex;
+        margin-bottom: 12px;
+        
+        .info-label {
+          flex: 0 0 140px;
+          font-weight: 500;
+          color: #546e7a;
+        }
+        
+        .info-value {
+          flex: 1;
+          color: #263238;
+        }
+        
+        &:last-child {
+          margin-bottom: 0;
+        }
+      }
+    }
+  }
+  
+  .order-items-section {
+    margin-top: 30px;
+    
+    h2 {
+      font-size: 20px;
+      margin-bottom: 16px;
+      color: #2c3e50;
+    }
+    
+    .empty-items-message {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 30px;
+      background-color: #f5f5f5;
+      border-radius: 8px;
+      
+      mat-icon {
+        font-size: 48px;
+        height: 48px;
+        width: 48px;
+        color: #78909c;
+        margin-bottom: 16px;
+      }
+      
+      p {
+        font-size: 16px;
+        color: #546e7a;
+      }
+    }
+    
+    .items-table {
+      width: 100%;
+      background-color: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      overflow: hidden;
+      
+      .align-right {
+        text-align: right;
+      }
+      
+      .footer-row {
+        font-weight: 700;
+        background-color: #f5f5f5;
+      }
+      
+      th.mat-header-cell {
+        color: #546e7a;
+        font-weight: 500;
+        background-color: #fafafa;
+      }
+    }
+  }
+}
+
+// Responsive styles
+@media (max-width: 1024px) {
+  .order-details-container {
+    .order-summary-cards {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    
+    .details-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+      
+      .header-actions {
+        width: 100%;
+        flex-wrap: wrap;
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .order-details-container {
+    padding: 16px;
+    
+    .details-header {
+      .header-left {
+        flex-wrap: wrap;
+      }
+    }
+  }
+}

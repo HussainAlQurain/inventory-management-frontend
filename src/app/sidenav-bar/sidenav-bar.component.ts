@@ -23,7 +23,7 @@ export class SidenavBarComponent {
       title: 'Orders',
       icon: 'shopping_cart',
       submenus: [
-        { id: 0, title: 'Orders List', route: '/orders/list' },
+        { id: 0, title: 'Orders List', route: '/orders' },
         { id: 1, title: 'Pending Approval', route: '/orders/pending' },
       ],
     },

@@ -336,12 +336,15 @@ export class OrdersComponent implements OnInit, AfterViewInit {
 
   // Actions
   viewOrderDetails(order: OrderSummary): void {
-    // Navigate to order details page (to be implemented)
-    // this.router.navigate(['/orders', order.id]);
-    console.log('View order details:', order);
-    this.snackBar.open('Order details view will be implemented in the next phase', 'Close', {
-      duration: 3000
-    });
+    // Navigate to order details page
+    const orderId = order.id || order.orderId;
+    if (orderId) {
+      this.router.navigate(['/orders', orderId]);
+    } else {
+      this.snackBar.open('Cannot view order: Missing order ID', 'Close', {
+        duration: 3000
+      });
+    }
   }
 
   createNewOrder(): void {

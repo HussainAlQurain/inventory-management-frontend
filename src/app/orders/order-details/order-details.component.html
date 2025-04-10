@@ -1,0 +1,146 @@
+<div class="order-details-container">
+  <!-- Loading indicator -->
+  <div *ngIf="isLoading" class="loading-overlay">
+    <mat-spinner diameter="40"></mat-spinner>
+  </div>
+  
+  <!-- Error message -->
+  <div *ngIf="error && !isLoading" class="error-message">
+    <mat-icon color="warn">error_outline</mat-icon>
+    <p>{{ error }}</p>
+    <button mat-raised-button color="primary" (click)="goBack()">Go Back</button>
+  </div>
+  
+  <!-- Order details content when loaded -->
+  <div *ngIf="order && !isLoading" class="order-details-content">
+    <div class="details-header">
+      <div class="header-left">
+        <button mat-icon-button color="primary" (click)="goBack()" aria-label="Back to orders">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        <h1>Order #{{ order.orderNumber }}</h1>
+        <span class="status-chip" [ngClass]="getStatusClass(order.status)">
+          {{ order.status }}
+        </span>
+      </div>
+      <div class="header-actions">
+        <button *ngIf="canReceiveOrder()" mat-raised-button color="primary" (click)="receiveOrder()">
+          <mat-icon>move_to_inbox</mat-icon>
+          Receive Order
+        </button>
+        <button *ngIf="canEditOrder()" mat-raised-button color="accent" (click)="editOrder()">
+          <mat-icon>edit</mat-icon>
+          Edit Order
+        </button>
+        <button mat-raised-button (click)="printOrder()">
+          <mat-icon>print</mat-icon>
+          Print
+        </button>
+      </div>
+    </div>
+    
+    <div class="order-summary-cards">
+      <mat-card class="summary-card">
+        <mat-card-content>
+          <div class="info-row">
+            <div class="info-label">Items:</div>
+            <div class="info-value">{{ totalItems }} items</div>
+          </div>
+          <div class="info-row">
+            <div class="info-label">Total excl. tax:</div>
+            <div class="info-value">{{ grandTotal | currency }}</div>
+          </div>
+          <div class="info-row">
+            <div class="info-label">Sent by:</div>
+            <div class="info-value">{{ order.buyerLocationName }}
+              <!-- TODO: Change to actual user who sent the order when available -->
+            </div>
+          </div>
+          <div class="info-row">
+            <div class="info-label">Order sent date:</div>
+            <div class="info-value">{{ order.sentDate ? (order.sentDate | date:'MMM d, y') : 'Not sent' }}</div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+      
+      <mat-card class="summary-card">
+        <mat-card-content>
+          <div class="info-row">
+            <div class="info-label">Supplier:</div>
+            <div class="info-value">{{ order.supplierName }}</div>
+          </div>
+          <div class="info-row">
+            <div class="info-label">Delivery date:</div>
+            <div class="info-value">{{ order.deliveryDate ? (order.deliveryDate | date:'MMM d, y') : 'Not scheduled' }}</div>
+          </div>
+          <div class="info-row">
+            <div class="info-label">Buyer:</div>
+            <div class="info-value">{{ order.buyerLocationName }}</div>
+          </div>
+          <div class="info-row">
+            <div class="info-label">Comments:</div>
+            <div class="info-value">{{ order.comments || 'None' }}</div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+    
+    <div class="order-items-section">
+      <h2>Order Items</h2>
+      
+      <div *ngIf="!order.items || order.items.length === 0" class="empty-items-message">
+        <mat-icon>info</mat-icon>
+        <p>This order has no items</p>
+      </div>
+      
+      <table mat-table [dataSource]="order.items || []" class="items-table" *ngIf="order.items && order.items.length > 0">
+        <!-- Product Name Column -->
+        <ng-container matColumnDef="productName">
+          <th mat-header-cell *matHeaderCellDef>Product</th>
+          <td mat-cell *matCellDef="let item">{{ item.inventoryItemName }}</td>
+          <td mat-footer-cell *matFooterCellDef>Total</td>
+        </ng-container>
+        
+        <!-- Product Code Column -->
+        <ng-container matColumnDef="productCode">
+          <th mat-header-cell *matHeaderCellDef>Product Code</th>
+          <td mat-cell *matCellDef="let item">{{ item.productCode || 'N/A' }}</td>
+          <td mat-footer-cell *matFooterCellDef></td>
+        </ng-container>
+        
+        <!-- Unit of Ordering Column -->
+        <ng-container matColumnDef="unitOfOrdering">
+          <th mat-header-cell *matHeaderCellDef>Unit</th>
+          <td mat-cell *matCellDef="let item">{{ item.uomName }}</td>
+          <td mat-footer-cell *matFooterCellDef></td>
+        </ng-container>
+        
+        <!-- Quantity Column -->
+        <ng-container matColumnDef="quantity">
+          <th mat-header-cell *matHeaderCellDef class="align-right">Quantity</th>
+          <td mat-cell *matCellDef="let item" class="align-right">{{ item.quantity }}</td>
+          <td mat-footer-cell *matFooterCellDef class="align-right">{{ totalItems }}</td>
+        </ng-container>
+        
+        <!-- Price Column -->
+        <ng-container matColumnDef="price">
+          <th mat-header-cell *matHeaderCellDef class="align-right">Price</th>
+          <td mat-cell *matCellDef="let item" class="align-right">{{ item.price | currency }}</td>
+          <td mat-footer-cell *matFooterCellDef></td>
+        </ng-container>
+        
+        <!-- Total Column -->
+        <ng-container matColumnDef="total">
+          <th mat-header-cell *matHeaderCellDef class="align-right">Total</th>
+          <td mat-cell *matCellDef="let item" class="align-right">{{ item.total | currency }}</td>
+          <td mat-footer-cell *matFooterCellDef class="align-right">{{ grandTotal | currency }}</td>
+        </ng-container>
+        
+        <!-- Row definitions -->
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+        <tr mat-footer-row *matFooterRowDef="displayedColumns" class="footer-row"></tr>
+      </table>
+    </div>
+  </div>
+</div>

@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { OrderSummary } from '../models/OrderSummary';
 import { CompaniesService } from './companies.service';
+import { OrderDetail } from '../orders/order-details/order-details.component';
 
 @Injectable({
   providedIn: 'root'
@@ -41,14 +42,22 @@ export class OrderService {
   }
 
   /**
-   * Get a specific purchase order by ID
+   * Get a specific purchase order by ID with detailed information including line items
    * @param orderId Purchase order ID
-   * @returns Observable of OrderSummary
+   * @returns Observable of OrderDetail
    */
-  getPurchaseOrderById(orderId: number): Observable<OrderSummary> {
+  getPurchaseOrderById(orderId: number): Observable<OrderDetail> {
     const companyId = this.companiesService.getSelectedCompanyId() || 1;
-    return this.http.get<OrderSummary>(
+    return this.http.get<OrderDetail>(
       `${this.apiUrl}/companies/${companyId}/purchase-orders/${orderId}`
+    ).pipe(
+      map(response => {
+        // Ensure we have an id field that matches the orderId field
+        if (response.orderId && !response.id) {
+          response.id = response.orderId;
+        }
+        return response;
+      })
     );
   }
 
@@ -90,6 +99,19 @@ export class OrderService {
     return this.http.patch<OrderSummary>(
       `${this.apiUrl}/companies/${companyId}/purchase-orders/${orderId}/status`, 
       { status }
+    );
+  }
+
+  /**
+   * Receive an order (mark as received)
+   * @param orderId ID of the order to receive
+   * @returns Observable of updated OrderSummary
+   */
+  receiveOrder(orderId: number): Observable<OrderSummary> {
+    const companyId = this.companiesService.getSelectedCompanyId() || 1;
+    return this.http.post<OrderSummary>(
+      `${this.apiUrl}/companies/${companyId}/purchase-orders/${orderId}/receive`,
+      {}
     );
   }
 }

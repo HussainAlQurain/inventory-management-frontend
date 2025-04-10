@@ -1,5 +1,6 @@
 export interface OrderSummary {
     id?: number;
+    orderId?: number;
     orderNumber: string;
     sentDate?: string;
     deliveryDate?: string;
@@ -10,5 +11,5 @@ export interface OrderSummary {
     comments?: string;
 }
 
-// Common order statuses
-export type OrderStatus = 'Draft' | 'Pending' | 'Sent' | 'Partially Received' | 'Received' | 'Cancelled';
+// Common order statuses from backend
+export type OrderStatus = 'DRAFT' | 'CREATED' | 'SUBMITTED_FOR_APPROVAL' | 'APPROVED' | 'SENT' | 'VIEWED_BY_SUPPLIER' | 'DELIVERED' | 'COMPLETED' | 'CANCELLED';
