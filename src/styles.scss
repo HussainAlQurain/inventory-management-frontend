@@ -33,3 +33,13 @@ html, body { height: 100%;  margin: 0; padding: 0; }
 .mat-mdc-dialog-container {
   z-index: 1300 !important;
 }
+
+// Add the error snackbar styling
+.error-snackbar {
+  background-color: #f44336 !important;
+  color: white !important;
+  
+  .mat-simple-snackbar-action {
+    color: white !important;
+  }
+}

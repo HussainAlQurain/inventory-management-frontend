@@ -24,14 +24,25 @@
         </span>
       </div>
       <div class="header-actions">
-        <button *ngIf="canReceiveOrder()" mat-raised-button color="primary" (click)="receiveOrder()">
-          <mat-icon>move_to_inbox</mat-icon>
-          Receive Order
+        <!-- Send Order Button - visible for draft orders -->
+        <button *ngIf="canSendOrder()" mat-raised-button color="accent" (click)="sendOrder()" [disabled]="isSending">
+          <mat-icon>send</mat-icon>
+          {{ isSending ? 'Sending...' : 'Send Order' }}
         </button>
+        
+        <!-- Receive Order Button - visible for sent orders -->
+        <button *ngIf="canReceiveOrder()" mat-raised-button color="primary" (click)="receiveOrder()" [disabled]="isReceiving">
+          <mat-icon>move_to_inbox</mat-icon>
+          {{ isReceiving ? 'Receiving...' : 'Receive Order' }}
+        </button>
+        
+        <!-- Edit Button - always shown but does nothing in this phase -->
         <button *ngIf="canEditOrder()" mat-raised-button color="accent" (click)="editOrder()">
           <mat-icon>edit</mat-icon>
           Edit Order
         </button>
+        
+        <!-- Print Button - always visible -->
         <button mat-raised-button (click)="printOrder()">
           <mat-icon>print</mat-icon>
           Print

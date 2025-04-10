@@ -6,6 +6,13 @@ import { OrderSummary } from '../models/OrderSummary';
 import { CompaniesService } from './companies.service';
 import { OrderDetail } from '../orders/order-details/order-details.component';
 
+// Define an interface for order item receipt
+export interface OrderItemReceipt {
+  orderItemId: number;
+  receivedQty: number;
+  finalPrice: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -103,15 +110,59 @@ export class OrderService {
   }
 
   /**
-   * Receive an order (mark as received)
-   * @param orderId ID of the order to receive
-   * @returns Observable of updated OrderSummary
+   * Send an order to the supplier
+   * @param orderId ID of the order to send
+   * @param comments Optional comments for the order
+   * @returns Observable of updated OrderDetail
    */
-  receiveOrder(orderId: number): Observable<OrderSummary> {
+  sendOrder(orderId: number, comments?: string): Observable<OrderDetail> {
     const companyId = this.companiesService.getSelectedCompanyId() || 1;
-    return this.http.post<OrderSummary>(
+    
+    let params = new HttpParams();
+    if (comments) {
+      params = params.set('comments', comments);
+    }
+    
+    return this.http.patch<OrderDetail>(
+      `${this.apiUrl}/companies/${companyId}/purchase-orders/${orderId}/send`,
+      null, // No body needed for this PATCH request
+      { params }
+    ).pipe(
+      map(response => {
+        // Ensure we have an id field that matches the orderId field
+        if (response.orderId && !response.id) {
+          response.id = response.orderId;
+        }
+        return response;
+      })
+    );
+  }
+
+  /**
+   * Receive an order with specified quantities and prices
+   * @param orderId ID of the order to receive
+   * @param items Array of order items with received quantities and final prices
+   * @param updateOptionPrice Whether to update inventory item and purchase option prices
+   * @returns Observable of updated OrderDetail
+   */
+  receiveOrder(orderId: number, items: OrderItemReceipt[], updateOptionPrice: boolean = false): Observable<OrderDetail> {
+    const companyId = this.companiesService.getSelectedCompanyId() || 1;
+    
+    let params = new HttpParams();
+    params = params.set('updateOptionPrice', updateOptionPrice.toString());
+    
+    return this.http.patch<OrderDetail>(
       `${this.apiUrl}/companies/${companyId}/purchase-orders/${orderId}/receive`,
-      {}
+      items,
+      { params }
+    ).pipe(
+      map(response => {
+        // Ensure we have an id field that matches the orderId field
+        if (response.orderId && !response.id) {
+          response.id = response.orderId;
+        }
+        return response;
+      })
     );
   }
 }

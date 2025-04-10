@@ -13,6 +13,10 @@ import { InventoryItemsService } from '../../services/inventory-items-service.se
 import { OrderSummary } from '../../models/OrderSummary';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { switchMap, catchError, finalize, map, forkJoin, of } from 'rxjs';
+import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 
 // Extended interface for order details with items
 export interface OrderDetail extends OrderSummary {
@@ -35,6 +39,48 @@ export interface OrderItemDetail {
   productCode?: string; // Will be populated from inventory item lookup
 }
 
+// Dialog component for sending order
+@Component({
+  selector: 'send-order-dialog',
+  standalone: true,
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule
+  ],
+  template: `
+    <h2 mat-dialog-title>Send Order to Supplier</h2>
+    <mat-dialog-content>
+      <form [formGroup]="sendOrderForm">
+        <mat-form-field appearance="fill" style="width: 100%">
+          <mat-label>Additional Comments (Optional)</mat-label>
+          <textarea matInput formControlName="comments" rows="4" 
+                   placeholder="Add any comments for the supplier..."></textarea>
+        </mat-form-field>
+      </form>
+      <p>Are you sure you want to send this order to the supplier?</p>
+      <p>The order status will be updated to "SENT".</p>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button mat-dialog-close>Cancel</button>
+      <button mat-raised-button color="primary" [mat-dialog-close]="sendOrderForm.value" 
+              [disabled]="sendOrderForm.invalid">Send Order</button>
+    </mat-dialog-actions>
+  `
+})
+export class SendOrderDialogComponent {
+  sendOrderForm: FormGroup;
+
+  constructor(private fb: FormBuilder) {
+    this.sendOrderForm = this.fb.group({
+      comments: ['']
+    });
+  }
+}
+
 @Component({
   selector: 'app-order-details',
   standalone: true,
@@ -47,7 +93,8 @@ export interface OrderItemDetail {
     MatDividerModule,
     MatChipsModule,
     MatProgressSpinnerModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatDialogModule
   ],
   providers: [DatePipe],
   templateUrl: './order-details.component.html',
@@ -65,6 +112,10 @@ export class OrderDetailsComponent implements OnInit {
   // Totals
   totalItems = 0;
   grandTotal = 0;
+  
+  // Processing state for operations
+  isSending = false;
+  isReceiving = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -73,7 +124,8 @@ export class OrderDetailsComponent implements OnInit {
     private inventoryItemsService: InventoryItemsService,
     private snackBar: MatSnackBar,
     private datePipe: DatePipe,
-    private ngZone: NgZone
+    private ngZone: NgZone,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -180,10 +232,58 @@ export class OrderDetailsComponent implements OnInit {
     }
   }
   
+  sendOrder(): void {
+    if (!this.order) return;
+    
+    const dialogRef = this.dialog.open(SendOrderDialogComponent, {
+      width: '500px'
+    });
+    
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.isSending = true;
+        
+        // Call the service to send the order
+        this.orderService.sendOrder(
+          this.orderId, 
+          result.comments
+        ).subscribe({
+          next: (updatedOrder) => {
+            console.log('Order sent successfully:', updatedOrder);
+            this.order = updatedOrder;
+            this.snackBar.open('Order sent successfully to supplier', 'Close', {
+              duration: 3000
+            });
+          },
+          error: (err) => {
+            console.error('Error sending order:', err);
+            
+            // Extract the specific error message from the response if available
+            let errorMessage = 'Failed to send order. Please try again.';
+            
+            if (err.error && err.error.debugMessage) {
+              errorMessage = err.error.debugMessage;
+            } else if (err.error && err.error.message) {
+              errorMessage = err.error.message;
+            }
+            
+            this.snackBar.open(errorMessage, 'Close', {
+              duration: 6000,
+              panelClass: ['error-snackbar']
+            });
+          },
+          complete: () => {
+            this.isSending = false;
+          }
+        });
+      }
+    });
+  }
+  
   receiveOrder(): void {
     if (!this.order) return;
     
-    // TODO: Implement receive order functionality
+    // TODO: Implement receive order functionality with dialog
     this.snackBar.open('Receive order functionality will be implemented in the next phase', 'Close', {
       duration: 3000
     });
@@ -193,7 +293,7 @@ export class OrderDetailsComponent implements OnInit {
     if (!this.order) return;
     
     // TODO: Implement edit order functionality
-    this.snackBar.open('Edit order functionality will be implemented in the next phase', 'Close', {
+    this.snackBar.open('Edit order functionality will be implemented in a future phase', 'Close', {
       duration: 3000
     });
   }
@@ -202,7 +302,7 @@ export class OrderDetailsComponent implements OnInit {
     if (!this.order) return;
     
     // TODO: Implement print order functionality
-    this.snackBar.open('Print order functionality will be implemented in the next phase', 'Close', {
+    this.snackBar.open('Print order functionality will be implemented in a future phase', 'Close', {
       duration: 3000
     });
   }
@@ -211,9 +311,14 @@ export class OrderDetailsComponent implements OnInit {
     this.router.navigate(['/orders']);
   }
   
+  canSendOrder(): boolean {
+    if (!this.order) return false;
+    return ['DRAFT', 'CREATED'].includes(this.order.status.toUpperCase());
+  }
+  
   canReceiveOrder(): boolean {
     if (!this.order) return false;
-    return ['SENT', 'DRAFT'].includes(this.order.status.toUpperCase());
+    return ['SENT', 'VIEWED_BY_SUPPLIER', 'DELIVERED'].includes(this.order.status.toUpperCase());
   }
   
   canEditOrder(): boolean {
