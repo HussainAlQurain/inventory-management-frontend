@@ -721,12 +721,12 @@ export class OrderDetailsComponent implements OnInit {
   
   canSendOrder(): boolean {
     if (!this.order) return false;
-    return ['DRAFT', 'CREATED'].includes(this.order.status.toUpperCase());
+    return ['DRAFT', 'CREATED', 'APPROVED'].includes(this.order.status.toUpperCase());
   }
   
   canReceiveOrder(): boolean {
     if (!this.order) return false;
-    return ['SENT', 'VIEWED_BY_SUPPLIER', 'DELIVERED'].includes(this.order.status.toUpperCase());
+    return ['DRAFT', 'SENT', 'VIEWED_BY_SUPPLIER', 'APPROVED'].includes(this.order.status.toUpperCase());
   }
   
   canEditOrder(): boolean {
