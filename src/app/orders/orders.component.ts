@@ -348,12 +348,7 @@ export class OrdersComponent implements OnInit, AfterViewInit {
   }
 
   createNewOrder(): void {
-    // Navigate to create order page (to be implemented)
-    // this.router.navigate(['/orders/create']);
-    console.log('Create new order');
-    this.snackBar.open('Create order functionality will be implemented in the next phase', 'Close', {
-      duration: 3000
-    });
+    this.router.navigate(['/orders/create']);
   }
 
   receiveOrder(order: OrderSummary, event: Event): void {

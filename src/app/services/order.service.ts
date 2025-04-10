@@ -6,6 +6,21 @@ import { OrderSummary } from '../models/OrderSummary';
 import { CompaniesService } from './companies.service';
 import { OrderDetail } from '../orders/order-details/order-details.component';
 
+// Interface for order item creation
+export interface OrderItemCreate {
+  inventoryItemId: number;
+  quantity: number;
+}
+
+// Interface for creating a new order
+export interface CreateOrderRequest {
+  buyerLocationId: number;
+  supplierId: number;
+  createdByUserId?: number;
+  comments?: string;
+  items: OrderItemCreate[];
+}
+
 // Define an interface for order item receipt
 export interface OrderItemReceipt {
   orderItemId: number;
@@ -78,6 +93,27 @@ export class OrderService {
     return this.http.post<OrderSummary>(
       `${this.apiUrl}/companies/${companyId}/purchase-orders`, 
       order
+    );
+  }
+
+  /**
+   * Create a new purchase order with items
+   * @param orderRequest The order creation request with items
+   * @returns Observable of created OrderDetail
+   */
+  createPurchaseOrderWithItems(orderRequest: CreateOrderRequest): Observable<OrderDetail> {
+    const companyId = this.companiesService.getSelectedCompanyId() || 1;
+    return this.http.post<OrderDetail>(
+      `${this.apiUrl}/companies/${companyId}/purchase-orders`,
+      orderRequest
+    ).pipe(
+      map(response => {
+        // Ensure we have an id field that matches the orderId field
+        if (response.orderId && !response.id) {
+          response.id = response.orderId;
+        }
+        return response;
+      })
     );
   }
 
