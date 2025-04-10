@@ -34,12 +34,17 @@ html, body { height: 100%;  margin: 0; padding: 0; }
   z-index: 1300 !important;
 }
 
-// Add the error snackbar styling
+// Add the error snackbar styling with stronger selectors
 .error-snackbar {
-  background-color: #f44336 !important;
-  color: white !important;
+  .mdc-snackbar__surface {
+    background-color: #f44336 !important;
+  }
   
-  .mat-simple-snackbar-action {
+  .mat-mdc-snack-bar-label, .mdc-snackbar__label {
+    color: white !important;
+  }
+  
+  .mat-mdc-snack-bar-actions .mdc-button__label {
     color: white !important;
   }
 }
