@@ -6,6 +6,7 @@ import { MenuItemsComponent } from './inventory/menu-items/menu-items.component'
 import { AssortmentsComponent } from './inventory/assortments/assortments.component';
 import { InventoryCountsComponent } from './inventory/inventory-counts/inventory-counts.component';
 import { InventoryCountEditorComponent } from './inventory/inventory-counts/inventory-count-editor/inventory-count-editor.component';
+import { OrdersComponent } from './orders/orders.component';
 
 export const routes: Routes = [
     { path: '', component: HomeComponent,
@@ -16,6 +17,7 @@ export const routes: Routes = [
             { path: 'inventory/assortments', component: AssortmentsComponent },
             { path: 'inventory/counts', component: InventoryCountsComponent },
             { path: 'inventory/counts/edit/:locationId/:sessionId', component: InventoryCountEditorComponent },
+            { path: 'orders/list', component: OrdersComponent },
             // Add other routes as children here
             { path: '', redirectTo: 'inventory/inventory-items', pathMatch: 'full' },
         ]
