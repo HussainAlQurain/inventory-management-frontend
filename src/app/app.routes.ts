@@ -9,6 +9,7 @@ import { InventoryCountEditorComponent } from './inventory/inventory-counts/inve
 import { OrdersComponent } from './orders/orders.component';
 import { OrderDetailsComponent } from './orders/order-details/order-details.component';
 import { OrderCreateComponent } from './orders/order-create/order-create.component';
+import { BuyersComponent } from './settings/buyers/buyers.component';
 
 export const routes: Routes = [
     { path: '', component: HomeComponent,
@@ -22,6 +23,7 @@ export const routes: Routes = [
             { path: 'orders', component: OrdersComponent },
             { path: 'orders/create', component: OrderCreateComponent },
             { path: 'orders/:id', component: OrderDetailsComponent },
+            { path: 'settings/buyers', component: BuyersComponent },
             // Add other routes as children here
             { path: '', redirectTo: 'inventory/inventory-items', pathMatch: 'full' },
         ]

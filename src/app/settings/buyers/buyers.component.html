@@ -1,0 +1,121 @@
+<!-- filepath: /home/rayleigh/Desktop/projects/inventory-management-frontend/src/app/settings/buyers/buyers.component.html -->
+<div class="buyers-container">
+  <div class="page-header">
+    <h1>Location Management</h1>
+  </div>
+  
+  <!-- Loading spinner -->
+  <div *ngIf="isLoading" class="loading-container">
+    <mat-spinner diameter="40"></mat-spinner>
+  </div>
+
+  <!-- Locations table -->
+  <div *ngIf="!isLoading && !isEditingSettings" class="locations-table-container mat-elevation-z2">
+    <table mat-table [dataSource]="locations" class="locations-table">
+      <!-- Name Column -->
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef>Name</th>
+        <td mat-cell *matCellDef="let location">{{ location.name }}</td>
+      </ng-container>
+
+      <!-- Code Column -->
+      <ng-container matColumnDef="code">
+        <th mat-header-cell *matHeaderCellDef>Code</th>
+        <td mat-cell *matCellDef="let location">{{ location.code || '-' }}</td>
+      </ng-container>
+
+      <!-- Address Column -->
+      <ng-container matColumnDef="address">
+        <th mat-header-cell *matHeaderCellDef>Address</th>
+        <td mat-cell *matCellDef="let location">
+          <div class="address-info">
+            <div>{{ location.address || '-' }}</div>
+            <div *ngIf="location.city || location.state">
+              {{ location.city || '' }}{{ location.city && location.state ? ', ' : '' }}{{ location.state || '' }} {{ location.zip || '' }}
+            </div>
+            <div *ngIf="location.phone">{{ location.phone }}</div>
+          </div>
+        </td>
+      </ng-container>
+
+      <!-- Actions Column -->
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Integration Settings</th>
+        <td mat-cell *matCellDef="let location">
+          <div class="action-cell">
+            <span [ngClass]="{'status-active': getIntegrationStatus(location.id!) === 'Active', 
+                              'status-disabled': getIntegrationStatus(location.id!) === 'Disabled',
+                              'status-not-configured': getIntegrationStatus(location.id!) === 'Not Configured'}">
+              {{ getIntegrationStatus(location.id!) }}
+            </span>
+            <button mat-icon-button color="primary" (click)="editIntegrationSettings(location)" matTooltip="Edit integration settings">
+              <mat-icon>settings</mat-icon>
+            </button>
+          </div>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+  </div>
+
+  <!-- Integration settings edit form -->
+  <div *ngIf="!isLoading && isEditingSettings && selectedLocation && selectedSettings" class="settings-form-container">
+    <mat-card>
+      <mat-card-header>
+        <mat-card-title>
+          Integration Settings: {{ selectedLocation.name }}
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <form class="settings-form">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>POS API URL</mat-label>
+            <input matInput [(ngModel)]="selectedSettings.posApiUrl" name="posApiUrl" placeholder="Enter API URL">
+            <mat-hint>The URL for the POS system API integration</mat-hint>
+          </mat-form-field>
+
+          <div class="form-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Sync Interval (seconds)</mat-label>
+              <input matInput type="number" [(ngModel)]="selectedSettings.frequentSyncSeconds" name="frequentSyncSeconds" min="1">
+              <mat-hint>How frequently to sync data (in seconds)</mat-hint>
+            </mat-form-field>
+          </div>
+
+          <div class="toggle-container">
+            <mat-slide-toggle [(ngModel)]="selectedSettings.frequentSyncEnabled" name="frequentSyncEnabled">
+              Enable Frequent Sync
+            </mat-slide-toggle>
+            <div class="toggle-hint">
+              When enabled, data will be synced at the interval specified above
+            </div>
+          </div>
+
+          <div class="toggle-container">
+            <mat-slide-toggle [(ngModel)]="selectedSettings.dailySyncEnabled" name="dailySyncEnabled">
+              Enable Daily Sync
+            </mat-slide-toggle>
+            <div class="toggle-hint">
+              When enabled, a full data sync will run once daily
+            </div>
+          </div>
+        </form>
+      </mat-card-content>
+      <mat-card-actions>
+        <button mat-button (click)="cancelEdit()">Cancel</button>
+        <button mat-raised-button color="primary" (click)="saveIntegrationSettings()">Save Settings</button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+
+  <!-- No locations found message -->
+  <div *ngIf="!isLoading && locations.length === 0" class="no-data-message">
+    <mat-card>
+      <mat-card-content>
+        <p>No locations found for the current company.</p>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

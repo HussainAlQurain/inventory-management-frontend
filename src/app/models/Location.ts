@@ -1,5 +1,11 @@
 export interface Location {
   id?: number;
   name: string;
-  // Additional fields can be added as needed
+  code?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  phone?: string;
+  companyId?: number;
 }
