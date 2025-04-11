@@ -12,6 +12,38 @@ export interface OrderItemCreate {
   quantity: number;
 }
 
+// Interface for updating order item
+export interface OrderItemUpdate {
+  orderItemId: number;
+  quantity: number;
+  price?: number;
+  uomId?: number;
+}
+
+// Interface for available inventory items
+export interface AvailableInventoryItem {
+  id: number;
+  name: string;
+  sku?: string;
+  productCode?: string;
+  description?: string;
+  currentPrice?: number;
+  inventoryUom?: {
+    id: number;
+    name: string;
+    abbreviation: string;
+  };
+}
+
+// Interface for edit order request
+export interface EditOrderRequest {
+  comments?: string;
+  supplierId?: number;
+  updatedItems?: OrderItemUpdate[];
+  newItems?: OrderItemCreate[];
+  deletedItemIds?: number[];
+}
+
 // Interface for creating a new order
 export interface CreateOrderRequest {
   buyerLocationId: number;
@@ -199,6 +231,58 @@ export class OrderService {
         }
         return response;
       })
+    );
+  }
+
+  /**
+   * Edit an existing purchase order (only draft orders can be edited)
+   * @param orderId ID of the order to edit
+   * @param editRequest Edit order request with updates, new items, and deletions
+   * @returns Observable of updated OrderDetail
+   */
+  editPurchaseOrder(orderId: number, editRequest: EditOrderRequest): Observable<OrderDetail> {
+    const companyId = this.companiesService.getSelectedCompanyId() || 1;
+    return this.http.patch<OrderDetail>(
+      `${this.apiUrl}/companies/${companyId}/purchase-orders/${orderId}`, 
+      editRequest
+    ).pipe(
+      map(response => {
+        // Ensure we have an id field that matches the orderId field
+        if (response.orderId && !response.id) {
+          response.id = response.orderId;
+        }
+        return response;
+      })
+    );
+  }
+
+  /**
+   * Get available inventory items for adding to an order
+   * @param supplierId The supplier ID 
+   * @param locationId The location ID
+   * @returns Observable of AvailableInventoryItem array
+   */
+  getAvailableInventoryItems(supplierId: number, locationId: number): Observable<AvailableInventoryItem[]> {
+    const companyId = this.companiesService.getSelectedCompanyId() || 1;
+    let params = new HttpParams()
+      .set('supplierId', supplierId.toString())
+      .set('locationId', locationId.toString());
+
+    return this.http.get<AvailableInventoryItem[]>(
+      `${this.apiUrl}/companies/${companyId}/purchase-orders/available-items`,
+      { params }
+    );
+  }
+
+  /**
+   * Delete an order
+   * @param orderId ID of the order to delete
+   * @returns Observable of any response
+   */
+  deletePurchaseOrder(orderId: number): Observable<any> {
+    const companyId = this.companiesService.getSelectedCompanyId() || 1;
+    return this.http.delete(
+      `${this.apiUrl}/companies/${companyId}/purchase-orders/${orderId}`
     );
   }
 }
