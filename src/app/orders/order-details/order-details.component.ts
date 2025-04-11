@@ -29,6 +29,8 @@ export interface OrderDetail extends OrderSummary {
   buyerLocationId: number;
   supplierId: number;
   items: OrderItemDetail[];
+  createdByUserId?: number;
+  createdByUserName?: string;
 }
 
 // Interface for order line items

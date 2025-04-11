@@ -281,6 +281,27 @@
           color: #c62828;
         }
       }
+      
+      // Styles for the user who created the order
+      .created-by {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        
+        &.system-user {
+          color: #1976d2;
+          font-weight: 500;
+          background-color: rgba(25, 118, 210, 0.08);
+          padding: 2px 6px;
+          border-radius: 4px;
+        }
+        
+        .system-icon {
+          font-size: 16px;
+          height: 16px;
+          width: 16px;
+        }
+      }
     }
   }
 }

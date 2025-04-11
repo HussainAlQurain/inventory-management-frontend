@@ -9,6 +9,8 @@ export interface OrderSummary {
     total: number;
     status: string;
     comments?: string;
+    createdByUserId?: number;
+    createdByUserName?: string;
 }
 
 // Common order statuses from backend

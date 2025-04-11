@@ -69,6 +69,7 @@ export class OrdersComponent implements OnInit, AfterViewInit {
     'buyerLocationName', 
     'sentDate', 
     'deliveryDate', 
+    'createdBy',
     'total',
     'status',
     'actions'
