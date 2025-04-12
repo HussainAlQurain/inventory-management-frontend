@@ -4,12 +4,13 @@ import { AuthService } from '../../services/auth.service';
 import { LoginComponent } from '../login/login.component';
 import { ContentComponent } from "../content/content.component";
 import { UserComponent } from "../../user/user.component";
+import { NotificationComponent } from "../notification/notification.component";
 
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [LoginComponent, ContentComponent, UserComponent],
+  imports: [LoginComponent, ContentComponent, UserComponent, NotificationComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
 })

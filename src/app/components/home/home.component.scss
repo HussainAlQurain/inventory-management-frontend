@@ -1,6 +1,12 @@
-app-user {
+.header-container {
+  display: flex;
+  align-items: center;
+  gap: 16px; // Increased gap between notification and user
   position: fixed;
   top: 10px;
   right: 20px;
   z-index: 1000;
+  padding: 0;
+  background-color: transparent;
+  box-shadow: none;
 }
