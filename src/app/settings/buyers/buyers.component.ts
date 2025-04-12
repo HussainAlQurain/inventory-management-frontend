@@ -22,6 +22,8 @@ import { LocationService } from '../../services/location.service';
 import { IntegrationSettingsService } from '../../services/integration-settings.service';
 import { AutoOrderSettingsService } from '../../services/auto-order-settings.service';
 import { CompaniesService } from '../../services/companies.service';
+import { CreateLocationDialogComponent } from './create-location-dialog/create-location-dialog.component';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-buyers',
@@ -41,7 +43,8 @@ import { CompaniesService } from '../../services/companies.service';
     MatInputModule,
     MatSlideToggleModule,
     MatTooltipModule,
-    MatTabsModule
+    MatTabsModule,
+    CreateLocationDialogComponent
   ],
   templateUrl: './buyers.component.html',
   styleUrls: ['./buyers.component.scss']
@@ -62,6 +65,7 @@ export class BuyersComponent implements OnInit {
     private integrationService: IntegrationSettingsService,
     private autoOrderService: AutoOrderSettingsService,
     private companiesService: CompaniesService,
+    private authService: AuthService,
     private snackBar: MatSnackBar,
     private dialog: MatDialog
   ) {}
@@ -81,6 +85,61 @@ export class BuyersComponent implements OnInit {
       error: (error) => {
         console.error('Error loading locations:', error);
         this.snackBar.open('Failed to load locations', 'Close', { duration: 3000 });
+        this.isLoading = false;
+      }
+    });
+  }
+
+  // Function to open the create location dialog
+  openCreateLocationDialog(): void {
+    const dialogRef = this.dialog.open(CreateLocationDialogComponent);
+    
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.createNewLocation(result);
+      }
+    });
+  }
+
+  // Function to create a new location and add the current user to it
+  createNewLocation(newLocationData: Partial<Location>): void {
+    this.isLoading = true;
+    
+    // Add the company ID to the location data
+    const companyId = this.companiesService.getSelectedCompanyId();
+    newLocationData.companyId = companyId!;
+    
+    this.locationService.createLocation(newLocationData as Location).subscribe({
+      next: (createdLocation) => {
+        console.log('Location created successfully:', createdLocation);
+        
+        // Get the current user ID
+        const userId = this.authService.getUserId();
+        console.log("userId: ", userId);
+        
+        if (userId) {
+          // Add the current user to the location
+          this.locationService.addUsersToLocation(createdLocation.id!, [userId]).subscribe({
+            next: () => {
+              this.snackBar.open('Location created and user added successfully', 'Close', { duration: 3000 });
+              this.loadLocations(); // Reload locations to include the new one
+            },
+            error: (error) => {
+              console.error('Error adding user to location:', error);
+              this.snackBar.open('Location created but failed to add user', 'Close', { duration: 3000 });
+              this.loadLocations(); // Still reload locations to show the new one
+              this.isLoading = false;
+            }
+          });
+        } else {
+          this.snackBar.open('Location created successfully', 'Close', { duration: 3000 });
+          this.loadLocations();
+          this.isLoading = false;
+        }
+      },
+      error: (error) => {
+        console.error('Error creating location:', error);
+        this.snackBar.open('Failed to create location', 'Close', { duration: 3000 });
         this.isLoading = false;
       }
     });

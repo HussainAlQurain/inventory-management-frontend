@@ -1,0 +1,27 @@
+.location-form {
+  display: flex;
+  flex-direction: column;
+  min-width: 400px;
+  max-width: 600px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+  
+  mat-form-field {
+    flex: 1;
+  }
+}
+
+mat-dialog-content {
+  padding-top: 10px;
+}
+
+mat-dialog-actions {
+  margin-top: 16px;
+}
