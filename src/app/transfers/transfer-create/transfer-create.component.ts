@@ -16,12 +16,21 @@ import { TransferService } from '../../services/transfer.service';
 import { LocationService } from '../../services/location.service';
 import { InventoryItemsService } from '../../services/inventory-items-service.service';
 import { SubRecipeService } from '../../services/sub-recipe.service';
+import { UomService } from '../../services/uom.service';
 import { Location } from '../../models/Location';
 import { InventoryItem } from '../../models/InventoryItem';
 import { SubRecipe } from '../../models/SubRecipe';
 import { UnitOfMeasure } from '../../models/UnitOfMeasure';
-import { TransferLine, TransferRequest } from '../../models/Transfer';
+import { Transfer, TransferLine } from '../../models/Transfer';
 
+// Define TransferRequest interface locally to avoid import issues
+interface TransferRequest {
+  fromLocationId: number;
+  toLocationId: number;
+  lines: TransferLine[];
+}
+
+// Define ItemOption interface for filtering and displaying items
 interface ItemOption {
   id: number;
   name: string;
@@ -67,6 +76,7 @@ export class TransferCreateComponent implements OnInit {
     private locationService: LocationService,
     private inventoryItemsService: InventoryItemsService,
     private subRecipeService: SubRecipeService,
+    private uomService: UomService,
     private snackBar: MatSnackBar,
     private router: Router
   ) {
@@ -85,24 +95,13 @@ export class TransferCreateComponent implements OnInit {
       locations: this.locationService.getAllLocations(),
       inventoryItems: this.inventoryItemsService.getInventoryItemsByCompany(),
       subRecipes: this.subRecipeService.getSubRecipes(),
-      // Assume there's a service for UOMs, if not then we need to create one
-      // or get UOMs from the inventory items
+      uoms: this.uomService.getAllUoms()
     }).subscribe({
       next: (results) => {
         this.locations = results.locations;
         this.inventoryItems = results.inventoryItems;
         this.subRecipes = results.subRecipes.filter(sr => sr.type === 'PREPARATION'); // Only prep type
-        
-        // Extract unique UOMs from inventory items for simplicity
-        // In a real app, we would likely have a dedicated UOM service
-        const uomMap = new Map<number, UnitOfMeasure>();
-        this.inventoryItems.forEach(item => {
-          if (item.inventoryUom) {
-            uomMap.set(item.inventoryUom.id!, item.inventoryUom);
-          }
-        });
-        
-        this.unitOfMeasures = Array.from(uomMap.values());
+        this.unitOfMeasures = results.uoms;
         
         // Update filtered items
         this.updateFilteredItems();
