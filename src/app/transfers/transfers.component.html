@@ -1,0 +1,21 @@
+<div class="transfers-container">
+  <div class="page-header">
+    <h1 class="page-title">Inventory Transfers</h1>
+    <div class="header-actions">
+      <button mat-raised-button color="primary" (click)="createTransfer()">
+        <mat-icon>add</mat-icon> Create Transfer
+      </button>
+    </div>
+  </div>
+
+  <mat-card class="transfers-card">
+    <mat-tab-group (selectedIndexChange)="tabChanged($event)" [selectedIndex]="activeTabIndex">
+      <mat-tab label="Incoming Transfers">
+        <app-transfer-incoming></app-transfer-incoming>
+      </mat-tab>
+      <mat-tab label="Outgoing Transfers">
+        <app-transfer-outgoing></app-transfer-outgoing>
+      </mat-tab>
+    </mat-tab-group>
+  </mat-card>
+</div>

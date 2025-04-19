@@ -1,0 +1,80 @@
+.incoming-transfers-container {
+  padding: 16px;
+
+  .filter-section {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+
+    .location-filter {
+      width: 300px;
+    }
+
+    .search-filter {
+      flex: 1;
+    }
+  }
+
+  .loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+  }
+
+  .error-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px;
+    background-color: #ffebee;
+    border-radius: 4px;
+
+    .error-message {
+      color: #d32f2f;
+      margin-bottom: 16px;
+    }
+  }
+
+  .table-container {
+    .transfers-table {
+      width: 100%;
+
+      .clickable-row {
+        cursor: pointer;
+        
+        &:hover {
+          background-color: rgba(0, 0, 0, 0.04);
+        }
+      }
+    }
+
+    .status-badge {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      
+      &.status-pending {
+        background-color: #fff8e1;
+        color: #ffa000;
+      }
+      
+      &.status-completed {
+        background-color: #e8f5e9;
+        color: #2e7d32;
+      }
+      
+      &.status-cancelled {
+        background-color: #ffebee;
+        color: #d32f2f;
+      }
+    }
+    
+    .no-data-message {
+      text-align: center;
+      padding: 24px;
+      color: #666;
+    }
+  }
+}

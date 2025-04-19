@@ -1,0 +1,60 @@
+import { Injectable } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
+import { Transfer, TransferLine, TransferRequest } from '../models/Transfer';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class TransferService {
+  private baseUrl = `${environment.apiUrl}/transfers`;
+
+  constructor(private http: HttpClient) {}
+
+  // Create a new transfer request
+  createTransfer(transfer: TransferRequest): Observable<Transfer> {
+    return this.http.post<Transfer>(this.baseUrl, transfer);
+  }
+
+  // Get a specific transfer by ID
+  getTransfer(id: number): Observable<Transfer> {
+    return this.http.get<Transfer>(`${this.baseUrl}/${id}`);
+  }
+
+  // Get outgoing transfers for a specific location
+  getOutgoingTransfers(locationId: number): Observable<Transfer[]> {
+    return this.http.get<Transfer[]>(`${this.baseUrl}/location/${locationId}/outgoing`);
+  }
+
+  // Get incoming transfers for a specific location
+  getIncomingTransfers(locationId: number): Observable<Transfer[]> {
+    return this.http.get<Transfer[]>(`${this.baseUrl}/location/${locationId}/incoming`);
+  }
+
+  // Get outgoing transfers for a company
+  getCompanyOutgoingTransfers(companyId: number): Observable<Transfer[]> {
+    return this.http.get<Transfer[]>(`${this.baseUrl}/company/${companyId}/outgoing`);
+  }
+
+  // Get incoming transfers for a company
+  getCompanyIncomingTransfers(companyId: number): Observable<Transfer[]> {
+    return this.http.get<Transfer[]>(`${this.baseUrl}/company/${companyId}/incoming`);
+  }
+
+  // Delete a transfer
+  deleteTransfer(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
+
+  // Update transfer lines
+  updateTransferLines(id: number, actingLocationId: number, lines: TransferLine[]): Observable<Transfer> {
+    let params = new HttpParams().set('actingLocationId', actingLocationId.toString());
+    return this.http.put<Transfer>(`${this.baseUrl}/${id}/lines`, lines, { params });
+  }
+
+  // Complete a transfer
+  completeTransfer(id: number): Observable<Transfer> {
+    return this.http.post<Transfer>(`${this.baseUrl}/${id}/complete`, {});
+  }
+}

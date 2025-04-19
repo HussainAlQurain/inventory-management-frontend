@@ -46,6 +46,15 @@ export class SidenavBarComponent {
     },
     {
       id: 2,
+      title: 'Transfers',
+      icon: 'swap_horiz',
+      submenus: [
+        { id: 0, title: 'All Transfers', route: '/transfers' },
+        { id: 1, title: 'Create Transfer', route: '/transfers/create' },
+      ],
+    },
+    {
+      id: 3,
       title: 'Suppliers',
       icon: 'local_shipping',
       submenus: [
@@ -55,7 +64,7 @@ export class SidenavBarComponent {
       ],
     },
     {
-      id: 3,
+      id: 4,
       title: 'Accounting',
       icon: 'account_balance_wallet',
       submenus: [
@@ -66,7 +75,7 @@ export class SidenavBarComponent {
       ],
     },
     {
-      id: 4,
+      id: 5,
       title: 'Reports',
       icon: 'assessment',
       submenus: [
@@ -87,7 +96,7 @@ export class SidenavBarComponent {
       ],
     },
     {
-      id: 5,
+      id: 6,
       title: 'Settings',
       icon: 'settings',
       submenus: [

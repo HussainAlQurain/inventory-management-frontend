@@ -1,0 +1,89 @@
+<div class="outgoing-transfers-container">
+  <div class="filter-section">
+    <mat-form-field appearance="outline" class="location-filter">
+      <mat-label>Filter by Location</mat-label>
+      <mat-select [(ngModel)]="selectedLocation" (selectionChange)="onLocationChange()">
+        <mat-option [value]="null">All Locations</mat-option>
+        <mat-option *ngFor="let location of locations" [value]="location.id">
+          {{ location.name }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="search-filter">
+      <mat-label>Search</mat-label>
+      <input matInput (keyup)="applyFilter($event)" placeholder="Search transfers...">
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner diameter="40"></mat-spinner>
+  </div>
+
+  <div *ngIf="error && !loading" class="error-container">
+    <p class="error-message">{{ error }}</p>
+    <button mat-raised-button color="primary" (click)="onLocationChange()">Retry</button>
+  </div>
+
+  <div *ngIf="!loading && !error" class="table-container">
+    <table mat-table [dataSource]="dataSource" matSort class="transfers-table">
+      <!-- ID Column -->
+      <ng-container matColumnDef="id">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Transfer ID</th>
+        <td mat-cell *matCellDef="let transfer">{{ transfer.id }}</td>
+      </ng-container>
+
+      <!-- Date Column -->
+      <ng-container matColumnDef="creationDate">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Request Date</th>
+        <td mat-cell *matCellDef="let transfer">{{ formatDate(transfer.creationDate) }}</td>
+      </ng-container>
+
+      <!-- To Location Column -->
+      <ng-container matColumnDef="toLocation">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>To Location</th>
+        <td mat-cell *matCellDef="let transfer">{{ transfer.toLocationName }}</td>
+      </ng-container>
+
+      <!-- Status Column -->
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+        <td mat-cell *matCellDef="let transfer">
+          <span class="status-badge" [ngClass]="getStatusClass(transfer.status)">
+            {{ transfer.status }}
+          </span>
+        </td>
+      </ng-container>
+
+      <!-- Item Count Column -->
+      <ng-container matColumnDef="itemCount">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Items</th>
+        <td mat-cell *matCellDef="let transfer">{{ getItemCount(transfer) }}</td>
+      </ng-container>
+
+      <!-- Actions Column -->
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <td mat-cell *matCellDef="let transfer">
+          <button mat-icon-button color="primary" matTooltip="View Details" (click)="viewTransferDetails(transfer)">
+            <mat-icon>visibility</mat-icon>
+          </button>
+          <button *ngIf="transfer.status !== 'completed'" mat-icon-button color="warn" matTooltip="Delete" (click)="deleteTransfer(transfer, $event)">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;" (click)="viewTransferDetails(row)" class="clickable-row"></tr>
+    </table>
+
+    <div *ngIf="dataSource.data.length === 0" class="no-data-message">
+      <p>No outgoing transfers found</p>
+      <button mat-raised-button color="primary" (click)="createTransfer()">Create Transfer</button>
+    </div>
+
+    <mat-paginator [pageSizeOptions]="[10, 25, 50, 100]" showFirstLastButtons></mat-paginator>
+  </div>
+</div>

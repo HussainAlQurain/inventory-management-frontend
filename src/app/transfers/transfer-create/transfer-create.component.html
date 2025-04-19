@@ -1,0 +1,139 @@
+<div class="create-transfer-container">
+  <div class="page-header">
+    <div class="header-left">
+      <button mat-icon-button color="primary" (click)="cancel()" aria-label="Back to transfers">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h1>Create New Transfer</h1>
+    </div>
+    <div class="header-actions">
+      <button mat-raised-button color="primary" [disabled]="transferForm.invalid || submitting" (click)="onSubmit()">
+        <mat-icon>save</mat-icon>
+        {{ submitting ? 'Creating...' : 'Create Transfer' }}
+      </button>
+      <button mat-button (click)="cancel()">Cancel</button>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner diameter="40"></mat-spinner>
+  </div>
+
+  <div *ngIf="error" class="error-container">
+    <p class="error-message">{{ error }}</p>
+    <button mat-raised-button color="primary" (click)="ngOnInit()">Retry</button>
+  </div>
+
+  <div *ngIf="!loading && !error" class="form-container">
+    <form [formGroup]="transferForm">
+      <mat-card class="location-card">
+        <mat-card-header>
+          <mat-card-title>Transfer Details</mat-card-title>
+        </mat-card-header>
+
+        <mat-card-content>
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="form-field">
+              <mat-label>From Location</mat-label>
+              <mat-select formControlName="fromLocationId" required>
+                <mat-option *ngFor="let location of locations" [value]="location.id">
+                  {{ location.name }}
+                </mat-option>
+              </mat-select>
+              <mat-error *ngIf="transferForm.get('fromLocationId')?.hasError('required')">
+                From location is required
+              </mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="form-field">
+              <mat-label>To Location</mat-label>
+              <mat-select formControlName="toLocationId" required>
+                <mat-option *ngFor="let location of locations" [value]="location.id">
+                  {{ location.name }}
+                </mat-option>
+              </mat-select>
+              <mat-error *ngIf="transferForm.get('toLocationId')?.hasError('required')">
+                To location is required
+              </mat-error>
+            </mat-form-field>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="items-card">
+        <mat-card-header>
+          <mat-card-title>Transfer Items</mat-card-title>
+          <button mat-raised-button color="primary" (click)="addLine()" class="add-item-button">
+            <mat-icon>add</mat-icon> Add Item
+          </button>
+        </mat-card-header>
+
+        <mat-card-content>
+          <div *ngIf="lines.length === 0" class="no-items-message">
+            <p>No items added yet. Click "Add Item" to add items to the transfer.</p>
+          </div>
+
+          <div formArrayName="lines" class="transfer-lines">
+            <div *ngFor="let line of lines.controls; let i = index" [formGroupName]="i" class="transfer-line">
+              <div class="line-header">
+                <h4>Item #{{ i + 1 }}</h4>
+                <button mat-icon-button color="warn" (click)="removeLine(i)" aria-label="Remove item">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+
+              <div class="line-content">
+                <mat-form-field appearance="outline" class="form-field">
+                  <mat-label>Item Type</mat-label>
+                  <mat-select formControlName="itemType" required (selectionChange)="onItemTypeChange(i)">
+                    <mat-option value="inventory">Inventory Item</mat-option>
+                    <mat-option value="subrecipe">Sub-Recipe / Preparation</mat-option>
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="form-field">
+                  <mat-label>Item</mat-label>
+                  <mat-select formControlName="itemId" required (selectionChange)="onItemChange(i)">
+                    <mat-option *ngFor="let item of filteredItems" [value]="item.id" 
+                               [disabled]="item.type !== line.get('itemType')?.value">
+                      {{ item.name }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+
+                <div class="quantity-uom-row">
+                  <mat-form-field appearance="outline" class="form-field-small">
+                    <mat-label>Quantity</mat-label>
+                    <input matInput type="number" formControlName="quantity" min="0.001" step="0.001" required>
+                    <mat-error *ngIf="line.get('quantity')?.hasError('required')">
+                      Quantity is required
+                    </mat-error>
+                    <mat-error *ngIf="line.get('quantity')?.hasError('min')">
+                      Quantity must be greater than 0
+                    </mat-error>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline" class="form-field">
+                    <mat-label>Unit of Measure</mat-label>
+                    <mat-select formControlName="unitOfMeasureId" required>
+                      <mat-option *ngFor="let uom of getItemUoms(line.get('itemId')?.value, line.get('itemType')?.value)" [value]="uom.id">
+                        {{ uom.name }} ({{ uom.abbreviation }})
+                      </mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                </div>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <div class="form-actions">
+        <button mat-button (click)="cancel()">Cancel</button>
+        <button mat-raised-button color="primary" [disabled]="transferForm.invalid || submitting" (click)="onSubmit()">
+          {{ submitting ? 'Creating...' : 'Create Transfer' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

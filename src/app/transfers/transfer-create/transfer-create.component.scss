@@ -1,0 +1,142 @@
+.create-transfer-container {
+  padding: 16px;
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      h1 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 500;
+      }
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+    }
+  }
+
+  .loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+  }
+
+  .error-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px;
+    background-color: #ffebee;
+    border-radius: 4px;
+    margin-bottom: 24px;
+
+    .error-message {
+      color: #d32f2f;
+      margin-bottom: 16px;
+    }
+  }
+
+  .form-container {
+    mat-card {
+      margin-bottom: 24px;
+      
+      mat-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        
+        .add-item-button {
+          margin-right: 16px;
+        }
+      }
+    }
+
+    .form-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+
+      .form-field {
+        flex: 1;
+        min-width: 200px;
+      }
+    }
+
+    .quantity-uom-row {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+
+      .form-field-small {
+        width: 120px;
+      }
+
+      .form-field {
+        flex: 1;
+      }
+    }
+
+    .transfer-lines {
+      margin-top: 16px;
+      
+      .transfer-line {
+        background-color: #f5f5f5;
+        border-radius: 4px;
+        padding: 16px;
+        margin-bottom: 16px;
+        
+        .line-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
+          
+          h4 {
+            margin: 0;
+            font-weight: 500;
+          }
+        }
+        
+        .line-content {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 16px;
+          
+          mat-form-field {
+            flex-grow: 1;
+            min-width: 200px;
+          }
+          
+          .quantity-uom-row {
+            flex: 1 1 100%;
+          }
+        }
+      }
+    }
+
+    .no-items-message {
+      text-align: center;
+      padding: 24px;
+      color: #666;
+    }
+  }
+
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+  }
+}

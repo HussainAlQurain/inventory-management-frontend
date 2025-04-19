@@ -10,6 +10,8 @@ import { OrdersComponent } from './orders/orders.component';
 import { OrderDetailsComponent } from './orders/order-details/order-details.component';
 import { OrderCreateComponent } from './orders/order-create/order-create.component';
 import { BuyersComponent } from './settings/buyers/buyers.component';
+import { TransfersComponent } from './transfers/transfers.component';
+import { TransferCreateComponent } from './transfers/transfer-create/transfer-create.component';
 
 export const routes: Routes = [
     { path: '', component: HomeComponent,
@@ -24,6 +26,8 @@ export const routes: Routes = [
             { path: 'orders/create', component: OrderCreateComponent },
             { path: 'orders/:id', component: OrderDetailsComponent },
             { path: 'settings/buyers', component: BuyersComponent },
+            { path: 'transfers', component: TransfersComponent },
+            { path: 'transfers/create', component: TransferCreateComponent },
             // Add other routes as children here
             { path: '', redirectTo: 'inventory/inventory-items', pathMatch: 'full' },
         ]

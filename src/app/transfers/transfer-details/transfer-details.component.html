@@ -1,0 +1,143 @@
+<div class="transfer-details-container">
+  <h2 mat-dialog-title>
+    Transfer #{{ transfer?.id }}
+    <span class="status-badge" [ngClass]="getStatusClass(transfer?.status)">{{ transfer?.status }}</span>
+  </h2>
+  
+  <mat-dialog-content>
+    <div *ngIf="loading" class="loading-container">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+    
+    <div *ngIf="error && !loading" class="error-container">
+      <p class="error-message">{{ error }}</p>
+      <button mat-raised-button color="primary" (click)="loadTransferDetails()">Retry</button>
+    </div>
+    
+    <div *ngIf="!loading && !error && transfer" class="transfer-content">
+      <div class="transfer-info-section">
+        <div class="info-row">
+          <div class="info-item">
+            <span class="label">Created:</span>
+            <span class="value">{{ formatDate(transfer.creationDate) }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Status:</span>
+            <span class="value status-value" [ngClass]="getStatusClass(transfer?.status)">{{ transfer.status }}</span>
+          </div>
+          <div class="info-item" *ngIf="transfer.completionDate">
+            <span class="label">Completed:</span>
+            <span class="value">{{ formatDate(transfer.completionDate) }}</span>
+          </div>
+        </div>
+        
+        <div class="info-row">
+          <div class="info-item">
+            <span class="label">From Location:</span>
+            <span class="value">{{ transfer.fromLocationName }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">To Location:</span>
+            <span class="value">{{ transfer.toLocationName }}</span>
+          </div>
+        </div>
+      </div>
+      
+      <mat-divider></mat-divider>
+      
+      <!-- Lines Section - View Mode -->
+      <div *ngIf="!isEditing" class="lines-section">
+        <div class="section-header">
+          <h3>Transfer Items</h3>
+          <button *ngIf="canEdit" mat-raised-button color="primary" (click)="startEditing()">
+            <mat-icon>edit</mat-icon> Edit Items
+          </button>
+        </div>
+        
+        <div class="lines-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Type</th>
+                <th>Quantity</th>
+                <th>Unit</th>
+                <th *ngIf="transfer.lines[0].costPerUnit">Cost/Unit</th>
+                <th *ngIf="transfer.lines[0].totalCost">Total Cost</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let line of transfer.lines">
+                <td>{{ line.itemName }}</td>
+                <td>{{ getItemType(line) }}</td>
+                <td>{{ line.quantity }}</td>
+                <td>{{ line.uomName }}</td>
+                <td *ngIf="line.costPerUnit">{{ line.costPerUnit | currency }}</td>
+                <td *ngIf="line.totalCost">{{ line.totalCost | currency }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <!-- Lines Section - Edit Mode -->
+      <div *ngIf="isEditing" class="lines-section editing">
+        <div class="section-header">
+          <h3>Edit Transfer Items</h3>
+        </div>
+        
+        <form [formGroup]="linesForm">
+          <div formArrayName="lines" class="lines-form">
+            <div *ngFor="let line of lines.controls; let i = index" [formGroupName]="i" class="line-form-item">
+              <div class="line-header">
+                <h4>{{ line.get('itemName')?.value }}</h4>
+                <button mat-icon-button color="warn" (click)="removeLine(i)" *ngIf="lines.length > 1">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+              
+              <div class="line-inputs">
+                <mat-form-field appearance="outline">
+                  <mat-label>Quantity</mat-label>
+                  <input matInput type="number" formControlName="quantity" min="0.001" step="0.001">
+                  <mat-error *ngIf="line.get('quantity')?.hasError('required')">
+                    Quantity is required
+                  </mat-error>
+                  <mat-error *ngIf="line.get('quantity')?.hasError('min')">
+                    Quantity must be greater than 0
+                  </mat-error>
+                </mat-form-field>
+                
+                <mat-form-field appearance="outline" *ngIf="unitOfMeasures.length > 0">
+                  <mat-label>Unit of Measure</mat-label>
+                  <mat-select formControlName="unitOfMeasureId">
+                    <mat-option *ngFor="let uom of unitOfMeasures" [value]="uom.id">
+                      {{ uom.name }} ({{ uom.abbreviation }})
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-actions">
+            <button mat-button (click)="cancelEditing()">Cancel</button>
+            <button mat-raised-button color="primary" [disabled]="linesForm.invalid || submitting" (click)="saveChanges()">
+              <mat-icon>save</mat-icon> Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </mat-dialog-content>
+  
+  <mat-dialog-actions align="end">
+    <button *ngIf="canDelete && !isEditing" mat-button color="warn" (click)="deleteTransfer()">
+      <mat-icon>delete</mat-icon> Delete Transfer
+    </button>
+    <button *ngIf="canComplete && !isEditing" mat-raised-button color="primary" (click)="completeTransfer()">
+      <mat-icon>check_circle</mat-icon> Complete Transfer
+    </button>
+    <button mat-button (click)="closeDialog()">Close</button>
+  </mat-dialog-actions>
+</div>
