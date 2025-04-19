@@ -88,17 +88,6 @@ export class TransferIncomingComponent implements OnInit {
     });
   }
 
-  // Private wrapper methods to work around TypeScript errors
-  private getCompanyIncomingTransfersWrapper(companyId: number): Observable<Transfer[]> {
-    // Using type assertion to tell TypeScript that we know this method exists
-    return (this.transferService as any).getCompanyIncomingTransfers(companyId);
-  }
-  
-  private getIncomingTransfersWrapper(locationId: number): Observable<Transfer[]> {
-    // Using type assertion to tell TypeScript that we know this method exists
-    return (this.transferService as any).getIncomingTransfers(locationId);
-  }
-
   loadCompanyIncomingTransfers(): void {
     if (!this.companyId) {
       this.error = 'Company ID not found';
@@ -107,7 +96,8 @@ export class TransferIncomingComponent implements OnInit {
     }
     
     this.loading = true;
-    this.getCompanyIncomingTransfersWrapper(this.companyId).subscribe({
+    // Use type assertion to fix runtime error
+    (this.transferService as any).getCompanyIncomingTransfers(this.companyId).subscribe({
       next: (transfers: Transfer[]) => {
         this.dataSource.data = transfers;
         this.loading = false;
@@ -122,7 +112,8 @@ export class TransferIncomingComponent implements OnInit {
 
   loadLocationIncomingTransfers(locationId: number): void {
     this.loading = true;
-    this.getIncomingTransfersWrapper(locationId).subscribe({
+    // Use type assertion to fix runtime error
+    (this.transferService as any).getIncomingTransfers(locationId).subscribe({
       next: (transfers: Transfer[]) => {
         this.dataSource.data = transfers;
         this.loading = false;

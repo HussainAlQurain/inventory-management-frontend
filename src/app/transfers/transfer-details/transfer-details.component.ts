@@ -253,4 +253,15 @@ export class TransferDetailsComponent implements OnInit {
   getItemType(line: TransferLine): string {
     return line.inventoryItemId ? 'Inventory Item' : 'Sub-Recipe';
   }
+
+  getStatusClass(status: string | undefined): string {
+    if (!status) return '';
+    
+    switch(status.toLowerCase()) {
+      case 'pending': return 'status-pending';
+      case 'completed': return 'status-completed';
+      case 'cancelled': return 'status-cancelled';
+      default: return '';
+    }
+  }
 }

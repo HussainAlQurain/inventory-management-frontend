@@ -23,7 +23,7 @@
           </div>
           <div class="info-item">
             <span class="label">Status:</span>
-            <span class="value status-value" [ngClass]="getStatusClass(transfer?.status)">{{ transfer.status }}</span>
+            <span class="value status-value" [ngClass]="getStatusClass(transfer.status)">{{ transfer.status }}</span>
           </div>
           <div class="info-item" *ngIf="transfer.completionDate">
             <span class="label">Completed:</span>
