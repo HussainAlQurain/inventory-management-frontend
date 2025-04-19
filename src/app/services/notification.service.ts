@@ -94,7 +94,7 @@ export class NotificationService {
       notificationIds: notificationIds
     };
     
-    return this.http.post(`${this.baseUrl}/mark-read-batch`, request)
+    return this.http.put(`${this.baseUrl}/mark-read-batch`, request)
       .pipe(
         tap(() => {
           // Update the local notifications list
