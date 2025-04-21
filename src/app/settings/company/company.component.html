@@ -1,0 +1,177 @@
+<div class="company-container">
+  <div class="page-header">
+    <h1>Company Settings</h1>
+  </div>
+
+  <!-- Loading spinner -->
+  <div *ngIf="isLoading" class="loading-container">
+    <mat-spinner diameter="40"></mat-spinner>
+  </div>
+
+  <div *ngIf="!isLoading && company" class="company-content">
+    <mat-card class="company-card">
+      <mat-card-header>
+        <mat-card-title class="card-title">
+          <span>Company Details</span>
+          <button mat-icon-button color="primary" (click)="toggleEditCompany()" matTooltip="Edit company details">
+            <mat-icon>{{ isEditingCompany ? 'cancel' : 'edit' }}</mat-icon>
+          </button>
+        </mat-card-title>
+      </mat-card-header>
+      
+      <mat-card-content>
+        <form [formGroup]="companyForm">
+          <div class="form-grid">
+            <mat-form-field appearance="outline">
+              <mat-label>Company Name</mat-label>
+              <input matInput formControlName="name" placeholder="Enter company name">
+              <mat-error *ngIf="companyForm.get('name')?.hasError('required')">
+                Company name is required
+              </mat-error>
+            </mat-form-field>
+            
+            <mat-form-field appearance="outline">
+              <mat-label>Tax ID</mat-label>
+              <input matInput formControlName="tax_id" placeholder="Enter tax ID">
+            </mat-form-field>
+            
+            <mat-form-field appearance="outline">
+              <mat-label>Phone</mat-label>
+              <input matInput formControlName="phone" placeholder="Enter phone number">
+            </mat-form-field>
+            
+            <mat-form-field appearance="outline">
+              <mat-label>Mobile</mat-label>
+              <input matInput formControlName="mobile" placeholder="Enter mobile number">
+            </mat-form-field>
+            
+            <mat-form-field appearance="outline">
+              <mat-label>Email</mat-label>
+              <input matInput formControlName="email" placeholder="Enter email">
+              <mat-error *ngIf="companyForm.get('email')?.hasError('email')">
+                Please enter a valid email address
+              </mat-error>
+            </mat-form-field>
+            
+            <mat-form-field appearance="outline">
+              <mat-label>Address</mat-label>
+              <input matInput formControlName="address" placeholder="Enter address">
+            </mat-form-field>
+            
+            <mat-form-field appearance="outline">
+              <mat-label>City</mat-label>
+              <input matInput formControlName="city" placeholder="Enter city">
+            </mat-form-field>
+            
+            <mat-form-field appearance="outline">
+              <mat-label>State</mat-label>
+              <input matInput formControlName="state" placeholder="Enter state/province">
+            </mat-form-field>
+            
+            <mat-form-field appearance="outline">
+              <mat-label>ZIP Code</mat-label>
+              <input matInput formControlName="zip" placeholder="Enter ZIP code">
+            </mat-form-field>
+            
+            <mat-form-field appearance="outline">
+              <mat-label>Allowed Invoice Deviation</mat-label>
+              <input matInput type="number" formControlName="allowedInvoiceDeviation" placeholder="Enter percentage">
+              <span matSuffix>%</span>
+            </mat-form-field>
+            
+            <mat-form-field appearance="outline">
+              <mat-label>Accounting Software</mat-label>
+              <input matInput formControlName="accountingSoftware" placeholder="Enter accounting software">
+            </mat-form-field>
+            
+            <div class="checkbox-field">
+              <mat-slide-toggle formControlName="addPurchasedItemsToFavorites" color="primary">
+                Add Purchased Items to Favorites
+              </mat-slide-toggle>
+              <mat-hint>When enabled, purchased items will be automatically added to favorites</mat-hint>
+            </div>
+            
+            <div class="checkbox-field">
+              <mat-slide-toggle formControlName="exportDeliveryNotesAsBills" color="primary">
+                Export Delivery Notes as Bills
+              </mat-slide-toggle>
+              <mat-hint>When enabled, delivery notes will be exported as bills</mat-hint>
+            </div>
+          </div>
+          
+          <div class="actions-row" *ngIf="isEditingCompany">
+            <button mat-button (click)="toggleEditCompany()">Cancel</button>
+            <button mat-raised-button color="primary" (click)="saveCompanyChanges()" [disabled]="!companyForm.valid || isSaving">
+              <mat-icon>save</mat-icon> Save Changes
+            </button>
+          </div>
+        </form>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="redistribute-card">
+      <mat-card-header>
+        <mat-card-title class="card-title">
+          <span>Auto Redistribute Settings</span>
+          <div class="header-actions">
+            <button mat-icon-button color="primary" *ngIf="autoRedistributeSettings?.enabled" 
+                   (click)="toggleEditRedistributeSettings()" 
+                   [disabled]="isSaving"
+                   matTooltip="Edit redistribute settings">
+              <mat-icon>{{ isEditingRedistributeSettings ? 'cancel' : 'edit' }}</mat-icon>
+            </button>
+            <mat-slide-toggle 
+              [checked]="autoRedistributeSettings?.enabled" 
+              (change)="toggleRedistributeEnabled()" 
+              [disabled]="isSaving">
+              {{ autoRedistributeSettings?.enabled ? 'Enabled' : 'Disabled' }}
+            </mat-slide-toggle>
+          </div>
+        </mat-card-title>
+      </mat-card-header>
+      
+      <mat-card-content>
+        <div class="status-indicator" [ngClass]="{'active': autoRedistributeSettings?.enabled, 'inactive': !autoRedistributeSettings?.enabled}">
+          <mat-icon>{{ autoRedistributeSettings?.enabled ? 'sync' : 'sync_disabled' }}</mat-icon>
+          <span>Auto redistribute is currently {{ autoRedistributeSettings?.enabled ? 'enabled' : 'disabled' }}</span>
+        </div>
+        
+        <mat-divider></mat-divider>
+        
+        <form [formGroup]="redistributeSettingsForm" class="redistribute-form">
+          <p class="form-description">
+            When auto redistribute is enabled, the system will automatically transfer inventory between locations
+            based on inventory levels, helping to balance stock across your locations.
+          </p>
+          
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Frequency (seconds)</mat-label>
+            <input matInput type="number" formControlName="frequencySeconds" min="60">
+            <mat-hint>How frequently the system will check for and redistribute inventory (minimum 60 seconds)</mat-hint>
+            <mat-error *ngIf="redistributeSettingsForm.get('frequencySeconds')?.hasError('min')">
+              Frequency must be at least 60 seconds
+            </mat-error>
+          </mat-form-field>
+          
+          <div class="frequency-display" *ngIf="autoRedistributeSettings?.frequencySeconds">
+            <span>Redistribution will run every {{ formatFrequency(autoRedistributeSettings!.frequencySeconds) }}</span>
+          </div>
+          
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Transfer Comment</mat-label>
+            <input matInput formControlName="autoTransferComment">
+            <mat-hint>This comment will be added to all auto-generated transfers</mat-hint>
+          </mat-form-field>
+          
+          <div class="actions-row" *ngIf="isEditingRedistributeSettings">
+            <button mat-button (click)="toggleEditRedistributeSettings()">Cancel</button>
+            <button mat-raised-button color="primary" (click)="saveRedistributeSettings()" 
+                [disabled]="!redistributeSettingsForm.valid || isSaving">
+              <mat-icon>save</mat-icon> Save Settings
+            </button>
+          </div>
+        </form>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>
