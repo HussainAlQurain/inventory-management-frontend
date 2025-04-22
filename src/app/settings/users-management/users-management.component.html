@@ -1,0 +1,108 @@
+<div class="users-management-container">
+  <div class="header-section">
+    <h2>User Management</h2>
+    <div class="action-buttons">
+      <button mat-raised-button color="primary" (click)="openCreateUserDialog()" [disabled]="isLoading">
+        <mat-icon>person_add</mat-icon>
+        Add New User
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading indicator -->
+  <div *ngIf="isLoading" class="loading-container">
+    <mat-spinner diameter="40"></mat-spinner>
+    <span>Loading users...</span>
+  </div>
+
+  <!-- Error message -->
+  <mat-card *ngIf="loadError && !isLoading" class="error-card">
+    <mat-card-content>
+      <mat-icon color="warn">error</mat-icon>
+      <span>Failed to load user data. Please try again.</span>
+      <button mat-raised-button color="primary" (click)="loadUsers()">Retry</button>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- User list table -->
+  <div class="table-container" *ngIf="!isLoading && !loadError">
+    <table mat-table [dataSource]="users" class="user-table mat-elevation-z2">
+      <!-- Username Column -->
+      <ng-container matColumnDef="username">
+        <th mat-header-cell *matHeaderCellDef>Username</th>
+        <td mat-cell *matCellDef="let user">{{ user.username }}</td>
+      </ng-container>
+
+      <!-- Name Column -->
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef>Name</th>
+        <td mat-cell *matCellDef="let user">{{ user.firstName }} {{ user.lastName }}</td>
+      </ng-container>
+
+      <!-- Email Column -->
+      <ng-container matColumnDef="email">
+        <th mat-header-cell *matHeaderCellDef>Email</th>
+        <td mat-cell *matCellDef="let user">{{ user.email }}</td>
+      </ng-container>
+
+      <!-- Role Column -->
+      <ng-container matColumnDef="role">
+        <th mat-header-cell *matHeaderCellDef>Role</th>
+        <td mat-cell *matCellDef="let user">
+          <div class="role-cell">
+            <span>{{ getRoleLabel(getPrimaryRole(user)) }}</span>
+            <button mat-icon-button [matMenuTriggerFor]="roleMenu" matTooltip="Change role">
+              <mat-icon>arrow_drop_down</mat-icon>
+            </button>
+            <mat-menu #roleMenu="matMenu">
+              <button *ngFor="let role of availableRoles" 
+                      mat-menu-item 
+                      (click)="changeUserRole(user, role.value)" 
+                      [disabled]="getPrimaryRole(user) === role.value">
+                {{ role.label }}
+              </button>
+            </mat-menu>
+          </div>
+        </td>
+      </ng-container>
+
+      <!-- Status Column -->
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef>Status</th>
+        <td mat-cell *matCellDef="let user">
+          <div class="status-indicator" [class.active]="user.status === 'active'"
+                                       [class.disabled]="user.status === 'disabled'">
+            {{ user.status || 'active' }}
+          </div>
+        </td>
+      </ng-container>
+
+      <!-- Actions Column -->
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <td mat-cell *matCellDef="let user">
+          <button mat-icon-button color="primary" (click)="openEditUserDialog(user)" matTooltip="Edit User">
+            <mat-icon>edit</mat-icon>
+          </button>
+          
+          <button mat-icon-button 
+                  [color]="user.status === 'active' ? 'warn' : 'primary'" 
+                  (click)="toggleUserStatus(user)" 
+                  [matTooltip]="user.status === 'active' ? 'Disable User' : 'Enable User'">
+            <mat-icon>{{ user.status === 'active' ? 'block' : 'check_circle' }}</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <!-- Header and Row Declarations -->
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+
+    <!-- Empty state message -->
+    <div *ngIf="users.length === 0" class="empty-state">
+      <mat-icon>people</mat-icon>
+      <p>No users found. Click "Add New User" to create a user.</p>
+    </div>
+  </div>
+</div>

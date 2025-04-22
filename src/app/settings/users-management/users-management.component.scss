@@ -1,0 +1,104 @@
+.users-management-container {
+  padding: 20px;
+  
+  .header-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    
+    h2 {
+      margin: 0;
+      font-weight: 500;
+    }
+  }
+  
+  .loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    
+    span {
+      margin-top: 16px;
+      font-size: 16px;
+      color: #666;
+    }
+  }
+  
+  .error-card {
+    margin-bottom: 20px;
+    
+    mat-card-content {
+      display: flex;
+      align-items: center;
+      
+      mat-icon {
+        margin-right: 8px;
+        color: #f44336;
+      }
+      
+      span {
+        flex: 1;
+      }
+    }
+  }
+  
+  .table-container {
+    overflow-x: auto;
+    
+    .user-table {
+      width: 100%;
+      
+      th.mat-header-cell {
+        font-weight: 500;
+        color: #555;
+      }
+      
+      .role-cell {
+        display: flex;
+        align-items: center;
+        
+        span {
+          margin-right: 8px;
+        }
+      }
+      
+      .status-indicator {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        text-transform: capitalize;
+        
+        &.active {
+          background-color: #e8f5e9;
+          color: #388e3c;
+        }
+        
+        &.disabled {
+          background-color: #ffebee;
+          color: #d32f2f;
+        }
+      }
+    }
+  }
+  
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: #757575;
+    
+    mat-icon {
+      font-size: 48px;
+      width: 48px;
+      height: 48px;
+      margin-bottom: 16px;
+      opacity: 0.7;
+    }
+  }
+}

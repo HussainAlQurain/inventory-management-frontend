@@ -13,6 +13,7 @@ import { BuyersComponent } from './settings/buyers/buyers.component';
 import { CompanyComponent } from './settings/company/company.component';
 import { TransfersComponent } from './transfers/transfers.component';
 import { TransferCreateComponent } from './transfers/transfer-create/transfer-create.component';
+import { UsersManagementComponent } from './settings/users-management/users-management.component';
 
 export const routes: Routes = [
     { path: '', component: HomeComponent,
@@ -28,6 +29,7 @@ export const routes: Routes = [
             { path: 'orders/:id', component: OrderDetailsComponent },
             { path: 'settings/buyers', component: BuyersComponent },
             { path: 'settings/company', component: CompanyComponent },
+            { path: 'settings/users-management', component: UsersManagementComponent },
             { path: 'transfers', component: TransfersComponent },
             { path: 'transfers/create', component: TransferCreateComponent },
             // Add other routes as children here

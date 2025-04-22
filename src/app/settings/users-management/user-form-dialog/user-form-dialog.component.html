@@ -1,0 +1,91 @@
+<h2 mat-dialog-title>{{ getDialogTitle() }}</h2>
+
+<form [formGroup]="userForm" (ngSubmit)="onSubmit()">
+  <div mat-dialog-content>
+    <!-- Create mode fields -->
+    <ng-container *ngIf="isCreateMode">
+      <!-- Username field -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Username</mat-label>
+        <input matInput formControlName="username" placeholder="Enter username">
+        <mat-error *ngIf="f['username']?.errors?.['required']">Username is required</mat-error>
+        <mat-error *ngIf="f['username']?.errors?.['minlength']">Username must be at least 3 characters</mat-error>
+      </mat-form-field>
+
+      <!-- Password field with toggle visibility -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Password</mat-label>
+        <input matInput [type]="passwordVisible ? 'text' : 'password'" 
+               formControlName="password" 
+               placeholder="Enter password">
+        <button type="button" 
+                mat-icon-button 
+                matSuffix 
+                (click)="togglePasswordVisibility()" 
+                [attr.aria-label]="'Toggle password visibility'" 
+                tabindex="-1">
+          <mat-icon>{{ passwordVisible ? 'visibility_off' : 'visibility' }}</mat-icon>
+        </button>
+        <mat-error *ngIf="f['password']?.errors?.['required']">Password is required</mat-error>
+        <mat-error *ngIf="f['password']?.errors?.['minlength']">Password must be at least 8 characters</mat-error>
+      </mat-form-field>
+
+      <!-- Role selection -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Role</mat-label>
+        <mat-select formControlName="role">
+          <mat-option *ngFor="let role of data.availableRoles" [value]="role.value">
+            {{ role.label }}
+          </mat-option>
+        </mat-select>
+        <mat-error *ngIf="f['role']?.errors?.['required']">Role is required</mat-error>
+      </mat-form-field>
+    </ng-container>
+
+    <!-- Common fields for both create and edit modes -->
+    <!-- Email field -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Email</mat-label>
+      <input matInput type="email" formControlName="email" placeholder="Enter email">
+      <mat-error *ngIf="f['email']?.errors?.['required']">Email is required</mat-error>
+      <mat-error *ngIf="f['email']?.errors?.['email']">Please enter a valid email address</mat-error>
+    </mat-form-field>
+
+    <!-- Name fields in a row -->
+    <div class="form-row">
+      <mat-form-field appearance="outline" class="half-width">
+        <mat-label>First Name</mat-label>
+        <input matInput formControlName="firstName" placeholder="Enter first name">
+        <mat-error *ngIf="f['firstName']?.errors?.['required']">First name is required</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="half-width">
+        <mat-label>Last Name</mat-label>
+        <input matInput formControlName="lastName" placeholder="Enter last name">
+        <mat-error *ngIf="f['lastName']?.errors?.['required']">Last name is required</mat-error>
+      </mat-form-field>
+    </div>
+
+    <!-- Phone field -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Phone</mat-label>
+      <input matInput formControlName="phone" placeholder="Enter phone number (optional)">
+    </mat-form-field>
+
+    <!-- Status toggle - only in edit mode -->
+    <div *ngIf="!isCreateMode && f['status']" class="form-field-status">
+      <label>Status: </label>
+      <mat-slide-toggle formControlName="status" [checked]="f['status'].value === 'active'"
+                       [color]="'primary'">
+        {{ f['status'].value === 'active' ? 'Active' : 'Disabled' }}
+      </mat-slide-toggle>
+    </div>
+  </div>
+
+  <div mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="onCancel()">Cancel</button>
+    <button mat-raised-button color="primary" type="submit" [disabled]="!userForm.valid">
+      {{ isCreateMode ? 'Create' : 'Save Changes' }}
+    </button>
+  </div>
+</form>
