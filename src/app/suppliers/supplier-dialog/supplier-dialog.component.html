@@ -1,0 +1,229 @@
+<h2 mat-dialog-title>{{ data.supplier ? 'Edit Supplier' : 'Add Supplier' }}</h2>
+
+<div class="spinner-container" *ngIf="isLoading">
+  <mat-spinner diameter="40"></mat-spinner>
+</div>
+
+<div [hidden]="isLoading">
+  <mat-dialog-content>
+    <form [formGroup]="supplierForm">
+      <mat-tab-group>
+        <!-- Basic Information Tab -->
+        <mat-tab label="Basic Info">
+          <div class="form-container">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Supplier Name</mat-label>
+              <input matInput formControlName="name" required>
+              <mat-error *ngIf="supplierForm.get('name')?.hasError('required')">Name is required</mat-error>
+              <mat-error *ngIf="supplierForm.get('name')?.hasError('maxlength')">Name can't exceed 100 characters</mat-error>
+            </mat-form-field>
+            
+            <div class="form-row two-col">
+              <mat-form-field appearance="outline">
+                <mat-label>Customer Number</mat-label>
+                <input matInput formControlName="customerNumber">
+              </mat-form-field>
+              
+              <mat-form-field appearance="outline">
+                <mat-label>Minimum Order</mat-label>
+                <input matInput type="number" formControlName="minimumOrder">
+                <mat-error *ngIf="supplierForm.get('minimumOrder')?.hasError('min')">Can't be negative</mat-error>
+              </mat-form-field>
+            </div>
+            
+            <div class="form-row two-col">
+              <mat-form-field appearance="outline">
+                <mat-label>Tax ID</mat-label>
+                <input matInput formControlName="taxId">
+              </mat-form-field>
+              
+              <mat-form-field appearance="outline">
+                <mat-label>Tax Rate (%)</mat-label>
+                <input matInput type="number" formControlName="taxRate">
+                <mat-error *ngIf="supplierForm.get('taxRate')?.hasError('min')">Can't be negative</mat-error>
+                <mat-error *ngIf="supplierForm.get('taxRate')?.hasError('max')">Can't exceed 100%</mat-error>
+              </mat-form-field>
+            </div>
+            
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Payment Terms</mat-label>
+              <input matInput formControlName="paymentTerms">
+            </mat-form-field>
+            
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Default Category</mat-label>
+              <mat-select formControlName="defaultCategoryId">
+                <mat-option [value]="null">None</mat-option>
+                <mat-option *ngFor="let category of categories" [value]="category.id">
+                  {{ category.name }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+            
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Comments</mat-label>
+              <textarea matInput formControlName="comments" rows="3"></textarea>
+            </mat-form-field>
+          </div>
+        </mat-tab>
+        
+        <!-- Address Tab -->
+        <mat-tab label="Address">
+          <div class="form-container">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Street Address</mat-label>
+              <input matInput formControlName="address">
+            </mat-form-field>
+            
+            <div class="form-row three-col">
+              <mat-form-field appearance="outline">
+                <mat-label>City</mat-label>
+                <input matInput formControlName="city">
+              </mat-form-field>
+              
+              <mat-form-field appearance="outline">
+                <mat-label>State/Province</mat-label>
+                <input matInput formControlName="state">
+              </mat-form-field>
+              
+              <mat-form-field appearance="outline">
+                <mat-label>ZIP/Postal Code</mat-label>
+                <input matInput formControlName="zip">
+              </mat-form-field>
+            </div>
+            
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>CC Emails</mat-label>
+              <input matInput formControlName="ccEmails" placeholder="Comma-separated email addresses">
+            </mat-form-field>
+          </div>
+        </mat-tab>
+        
+        <!-- Contacts Tab -->
+        <mat-tab label="Contacts">
+          <div class="form-container">
+            <div class="section-header">
+              <h3>Email Addresses</h3>
+            </div>
+            
+            <!-- Add Email Form -->
+            <div class="add-form">
+              <form [formGroup]="emailForm" (ngSubmit)="addEmail()">
+                <div class="form-row">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Email Address</mat-label>
+                    <input matInput formControlName="email" type="email" required>
+                    <mat-error *ngIf="emailForm.get('email')?.hasError('required')">Email is required</mat-error>
+                    <mat-error *ngIf="emailForm.get('email')?.hasError('email')">Please enter a valid email</mat-error>
+                  </mat-form-field>
+                </div>
+                
+                <div class="form-row two-col">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Location (Optional)</mat-label>
+                    <mat-select formControlName="locationId">
+                      <mat-option [value]="null">All Locations</mat-option>
+                      <mat-option *ngFor="let location of locations" [value]="location.id">
+                        {{ location.name }}
+                      </mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                  
+                  <div class="checkbox-container">
+                    <mat-checkbox formControlName="isDefault">Set as Default</mat-checkbox>
+                  </div>
+                </div>
+                
+                <div class="form-actions">
+                  <button mat-raised-button color="primary" type="submit" [disabled]="emailForm.invalid">
+                    Add Email
+                  </button>
+                </div>
+              </form>
+            </div>
+            
+            <!-- Email List -->
+            <div class="contact-list">
+              <div class="contact-item" *ngFor="let email of supplierEmails; let i = index">
+                <div class="contact-details">
+                  <span class="contact-value">{{ email.email }}</span>
+                  <span class="contact-badge" *ngIf="email.isDefault || email.default">Default</span>
+                  <span class="location-badge" *ngIf="email.locationId">{{ getLocationName(email.locationId) }}</span>
+                </div>
+                <button mat-icon-button color="warn" (click)="removeEmail(i)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+              <div class="no-contacts" *ngIf="supplierEmails.length === 0">
+                No email addresses added
+              </div>
+            </div>
+            
+            <div class="section-header">
+              <h3>Phone Numbers</h3>
+            </div>
+            
+            <!-- Add Phone Form -->
+            <div class="add-form">
+              <form [formGroup]="phoneForm" (ngSubmit)="addPhone()">
+                <div class="form-row">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Phone Number</mat-label>
+                    <input matInput formControlName="phoneNumber" required>
+                    <mat-error *ngIf="phoneForm.get('phoneNumber')?.hasError('required')">Phone number is required</mat-error>
+                  </mat-form-field>
+                </div>
+                
+                <div class="form-row two-col">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Location (Optional)</mat-label>
+                    <mat-select formControlName="locationId">
+                      <mat-option [value]="null">All Locations</mat-option>
+                      <mat-option *ngFor="let location of locations" [value]="location.id">
+                        {{ location.name }}
+                      </mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                  
+                  <div class="checkbox-container">
+                    <mat-checkbox formControlName="isDefault">Set as Default</mat-checkbox>
+                  </div>
+                </div>
+                
+                <div class="form-actions">
+                  <button mat-raised-button color="primary" type="submit" [disabled]="phoneForm.invalid">
+                    Add Phone
+                  </button>
+                </div>
+              </form>
+            </div>
+            
+            <!-- Phone List -->
+            <div class="contact-list">
+              <div class="contact-item" *ngFor="let phone of supplierPhones; let i = index">
+                <div class="contact-details">
+                  <span class="contact-value">{{ phone.phoneNumber }}</span>
+                  <span class="contact-badge" *ngIf="phone.isDefault || phone.default">Default</span>
+                  <span class="location-badge" *ngIf="phone.locationId">{{ getLocationName(phone.locationId) }}</span>
+                </div>
+                <button mat-icon-button color="warn" (click)="removePhone(i)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+              <div class="no-contacts" *ngIf="supplierPhones.length === 0">
+                No phone numbers added
+              </div>
+            </div>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    </form>
+  </mat-dialog-content>
+  
+  <mat-dialog-actions align="end">
+    <button mat-button (click)="onCancel()">Cancel</button>
+    <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="supplierForm.invalid">
+      {{ data.supplier ? 'Update' : 'Create' }} Supplier
+    </button>
+  </mat-dialog-actions>
+</div>

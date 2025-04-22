@@ -1,201 +1,137 @@
-import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { map, Observable, of } from 'rxjs';
-import { environment } from '../../environments/environment';
+import { HttpClient } from '@angular/common/http';
+import { Observable, catchError, map, of } from 'rxjs';
 import { Supplier, SupplierEmail, SupplierPhone } from '../models/Supplier';
+import { environment } from '../../environments/environment';
 import { CompaniesService } from './companies.service';
-import { LocationService } from './location.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class SupplierService {
-  private baseUrl = environment.apiUrl + '/suppliers';
+  private apiUrl = environment.apiUrl;
 
   constructor(
     private http: HttpClient,
-    private companiesService: CompaniesService,
-    private locationService: LocationService
-  ) { }
+    private companiesService: CompaniesService
+  ) {}
 
+  // Get all suppliers for a company
   getAllSuppliers(): Observable<Supplier[]> {
     const companyId = this.companiesService.getSelectedCompanyId();
-    return this.http.get<Supplier[]>(`${this.baseUrl}/company/${companyId}`)
-    .pipe(
-      map(suppliers => suppliers.map(supplier => {
-        // Normalize the data structure
-        if (supplier.orderEmails && !supplier.emails) {
-          supplier.emails = supplier.orderEmails.map(email => ({
-            ...email,
-            isDefault: email.default
-          }));
-        }
-        
-        if (supplier.orderPhones && !supplier.phones) {
-          supplier.phones = supplier.orderPhones.map(phone => ({
-            ...phone,
-            isDefault: phone.default
-          }));
-        }
-        
-        return supplier;
-      }))
-    );
-
-  }
-
-  getSupplierById(id: number): Observable<Supplier> {
-    const companyId = this.companiesService.getSelectedCompanyId();
-    return this.http.get<Supplier>(`${this.baseUrl}/${id}/company/${companyId}`)
-    .pipe(
-      map(supplier => {
-        // Normalize the data structure by copying orderEmails to emails and orderPhones to phones
-        if (supplier.orderEmails && !supplier.emails) {
-          supplier.emails = supplier.orderEmails.map(email => ({
-            ...email,
-            isDefault: email.default // Copy default to isDefault for UI
-          }));
-        }
-        
-        if (supplier.orderPhones && !supplier.phones) {
-          supplier.phones = supplier.orderPhones.map(phone => ({
-            ...phone,
-            isDefault: phone.default // Copy default to isDefault for UI
-          }));
-        }
-        
-        return supplier;
+    return this.http.get<Supplier[]>(`${this.apiUrl}/suppliers/company/${companyId}`).pipe(
+      map(suppliers => this.normalizeSupplierContacts(suppliers)),
+      catchError(error => {
+        console.error('Error fetching suppliers', error);
+        return of([]);
       })
     );
-
   }
 
+  // Search suppliers by term
+  searchSuppliers(searchTerm: string): Observable<Supplier[]> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    return this.http.get<Supplier[]>(`${this.apiUrl}/suppliers/company/${companyId}/search?search=${searchTerm}`).pipe(
+      map(suppliers => this.normalizeSupplierContacts(suppliers)),
+      catchError(error => {
+        console.error('Error searching suppliers', error);
+        return of([]);
+      })
+    );
+  }
+
+  // Get supplier by ID
+  getSupplierById(supplierId: number): Observable<Supplier> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    return this.http.get<Supplier>(`${this.apiUrl}/suppliers/${supplierId}/company/${companyId}`).pipe(
+      map(supplier => this.normalizeSupplierContacts([supplier])[0])
+    );
+  }
+
+  // Create new supplier
   createSupplier(supplier: Supplier): Observable<Supplier> {
     const companyId = this.companiesService.getSelectedCompanyId();
-    const locationId = this.locationService.getSelectedLocationId();
-    const apiSupplier = { ...supplier };
-    
-    // Transform emails (ensure locationId is set)
-    if (apiSupplier.emails && apiSupplier.emails.length > 0) {
-      apiSupplier.emails = apiSupplier.emails.map((email: SupplierEmail) => ({
-        ...email,
-        locationId: email.locationId || locationId,
-        default: email.isDefault
-      }));      
-    }
-    
-    // Transform phones (ensure locationId is set)
-    if (apiSupplier.phones && apiSupplier.phones.length > 0) {
-      apiSupplier.phones = apiSupplier.phones.map((phone: SupplierPhone) => ({
-        ...phone,
-        locationId: phone.locationId || locationId,
-        default: phone.isDefault
-      }));
-    }
-    
-    return this.http.post<Supplier>(`${this.baseUrl}/company/${companyId}`, apiSupplier);
-
+    return this.http.post<Supplier>(`${this.apiUrl}/suppliers/company/${companyId}`, supplier).pipe(
+      map(newSupplier => this.normalizeSupplierContacts([newSupplier])[0])
+    );
   }
 
-  updateSupplier(supplier: Partial<Supplier>): Observable<Supplier> {
+  // Update supplier
+  updateSupplier(supplier: Supplier): Observable<Supplier> {
     const companyId = this.companiesService.getSelectedCompanyId();
-    const locationId = this.locationService.getSelectedLocationId();
-    const apiSupplier = { ...supplier };
-    
-    // Transform emails (ensure locationId is set)
-    if (apiSupplier.emails && apiSupplier.emails.length > 0) {
-      apiSupplier.emails = apiSupplier.emails.map((email: SupplierEmail) => ({
-        ...email,
-        locationId: email.locationId || locationId,
-        default: email.isDefault
-      }));      
-    }
-    
-    // Transform phones (ensure locationId is set)
-    if (apiSupplier.phones && apiSupplier.phones.length > 0) {
-      apiSupplier.phones = apiSupplier.phones.map((phone: SupplierPhone) => ({
-        ...phone,
-        locationId: phone.locationId || locationId,
-        default: phone.isDefault
-      }));
-    }
-    return this.http.patch<Supplier>(`${this.baseUrl}/${supplier.id}/company/${companyId}`, apiSupplier);
+    return this.http.patch<Supplier>(`${this.apiUrl}/suppliers/${supplier.id}/company/${companyId}`, supplier).pipe(
+      map(updatedSupplier => this.normalizeSupplierContacts([updatedSupplier])[0])
+    );
   }
 
-  deleteSupplier(id: number): Observable<void> {
+  // Delete supplier
+  deleteSupplier(supplierId: number): Observable<void> {
     const companyId = this.companiesService.getSelectedCompanyId();
-    return this.http.delete<void>(`${this.baseUrl}/${id}/company/${companyId}`);
+    return this.http.delete<void>(`${this.apiUrl}/suppliers/${supplierId}/company/${companyId}`);
   }
 
-  // Supplier emails
+  // Email management
   getSupplierEmails(supplierId: number): Observable<SupplierEmail[]> {
     const companyId = this.companiesService.getSelectedCompanyId();
-    return this.http.get<SupplierEmail[]>(`${this.baseUrl}/${supplierId}/company/${companyId}/emails`);
+    return this.http.get<SupplierEmail[]>(`${this.apiUrl}/suppliers/${supplierId}/company/${companyId}/emails`);
   }
 
-  createSupplierEmail(supplierId: number, email: SupplierEmail): Observable<SupplierEmail> {
+  addSupplierEmail(supplierId: number, email: SupplierEmail): Observable<SupplierEmail> {
     const companyId = this.companiesService.getSelectedCompanyId();
-    return this.http.post<SupplierEmail>(`${this.baseUrl}/${supplierId}/company/${companyId}/emails`, email);
+    return this.http.post<SupplierEmail>(`${this.apiUrl}/suppliers/${supplierId}/company/${companyId}/emails`, email);
   }
 
-  updateSupplierEmail(supplierId: number, email: SupplierEmail): Observable<SupplierEmail> {
+  updateSupplierEmail(supplierId: number, emailId: number, email: SupplierEmail): Observable<SupplierEmail> {
     const companyId = this.companiesService.getSelectedCompanyId();
-    return this.http.patch<SupplierEmail>(`${this.baseUrl}/${supplierId}/company/${companyId}/emails/${email.id}`, email);
+    return this.http.patch<SupplierEmail>(`${this.apiUrl}/suppliers/${supplierId}/company/${companyId}/emails/${emailId}`, email);
   }
 
   deleteSupplierEmail(supplierId: number, emailId: number): Observable<void> {
     const companyId = this.companiesService.getSelectedCompanyId();
-    return this.http.delete<void>(`${this.baseUrl}/${supplierId}/company/${companyId}/emails/${emailId}`);
+    return this.http.delete<void>(`${this.apiUrl}/suppliers/${supplierId}/company/${companyId}/emails/${emailId}`);
   }
 
-  // Supplier phones
+  // Phone management
   getSupplierPhones(supplierId: number): Observable<SupplierPhone[]> {
     const companyId = this.companiesService.getSelectedCompanyId();
-    return this.http.get<SupplierPhone[]>(`${this.baseUrl}/${supplierId}/company/${companyId}/phones`);
+    return this.http.get<SupplierPhone[]>(`${this.apiUrl}/suppliers/${supplierId}/company/${companyId}/phones`);
   }
 
-  createSupplierPhone(supplierId: number, phone: SupplierPhone): Observable<SupplierPhone> {
+  addSupplierPhone(supplierId: number, phone: SupplierPhone): Observable<SupplierPhone> {
     const companyId = this.companiesService.getSelectedCompanyId();
-    return this.http.post<SupplierPhone>(`${this.baseUrl}/${supplierId}/company/${companyId}/phones`, phone);
+    return this.http.post<SupplierPhone>(`${this.apiUrl}/suppliers/${supplierId}/company/${companyId}/phones`, phone);
   }
 
-  updateSupplierPhone(supplierId: number, phone: SupplierPhone): Observable<SupplierPhone> {
+  updateSupplierPhone(supplierId: number, phoneId: number, phone: SupplierPhone): Observable<SupplierPhone> {
     const companyId = this.companiesService.getSelectedCompanyId();
-    return this.http.patch<SupplierPhone>(`${this.baseUrl}/${supplierId}/company/${companyId}/phones/${phone.id}`, phone);
+    return this.http.patch<SupplierPhone>(`${this.apiUrl}/suppliers/${supplierId}/company/${companyId}/phones/${phoneId}`, phone);
   }
 
   deleteSupplierPhone(supplierId: number, phoneId: number): Observable<void> {
     const companyId = this.companiesService.getSelectedCompanyId();
-    return this.http.delete<void>(`${this.baseUrl}/${supplierId}/company/${companyId}/phones/${phoneId}`);
+    return this.http.delete<void>(`${this.apiUrl}/suppliers/${supplierId}/company/${companyId}/phones/${phoneId}`);
   }
 
-  // For supplier search functionality
-  searchSuppliers(term: string): Observable<Supplier[]> {
-    if (!term.trim()) {
-      return this.getAllSuppliers();
-    }
-    const companyId = this.companiesService.getSelectedCompanyId();
-    // Update the endpoint to match the backend controller method
-    return this.http.get<Supplier[]>(`${this.baseUrl}/company/${companyId}/search?search=${term}`)
-    .pipe(
-      map(suppliers => suppliers.map(supplier => {
-        // Normalize the data structure
-        if (supplier.orderEmails && !supplier.emails) {
-          supplier.emails = supplier.orderEmails.map(email => ({
-            ...email,
-            isDefault: email.default
-          }));
-        }
-        
-        if (supplier.orderPhones && !supplier.phones) {
-          supplier.phones = supplier.orderPhones.map(phone => ({
-            ...phone,
-            isDefault: phone.default
-          }));
-        }
-        
-        return supplier;
-      }))
-    );
+  // Helper function to normalize contact information (ensures backward compatibility)
+  private normalizeSupplierContacts(suppliers: Supplier[]): Supplier[] {
+    return suppliers.map(supplier => {
+      const normalizedSupplier = { ...supplier };
+      
+      // Ensure emails are accessible via both orderEmails and emails properties
+      if (supplier.orderEmails && !supplier.emails) {
+        normalizedSupplier.emails = [...supplier.orderEmails];
+      } else if (supplier.emails && !supplier.orderEmails) {
+        normalizedSupplier.orderEmails = [...supplier.emails];
+      }
+      
+      // Ensure phones are accessible via both orderPhones and phones properties
+      if (supplier.orderPhones && !supplier.phones) {
+        normalizedSupplier.phones = [...supplier.orderPhones];
+      } else if (supplier.phones && !supplier.orderPhones) {
+        normalizedSupplier.orderPhones = [...supplier.phones];
+      }
+      
+      return normalizedSupplier;
+    });
   }
 }

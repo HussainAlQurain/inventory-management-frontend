@@ -315,9 +315,17 @@ export class PurchaseOptionModalComponent implements OnInit {
       defaultCategoryId: this.selectedSupplier.defaultCategoryId || null
     });
     
-    // Set the category control value if a category exists
-    if (this.selectedSupplier.defaultCategory) {
-      this.categoryCtrl.setValue(this.selectedSupplier.defaultCategory.name);
+    // Fetch and set the category name if a categoryId exists
+    if (this.selectedSupplier && this.selectedSupplier.defaultCategoryId) {
+      this.categoriesService.getAllCategories('').subscribe({
+        next: (categories: Category[]) => {
+          const category = categories.find(c => c.id === this.selectedSupplier?.defaultCategoryId);
+          if (category) {
+            this.categoryCtrl.setValue(category.name);
+          }
+        },
+        error: (err: any) => console.error('Error fetching categories:', err)
+      });
     }
     
     // Copy emails and phones

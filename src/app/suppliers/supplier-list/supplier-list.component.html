@@ -1,0 +1,89 @@
+<div class="suppliers-container">
+  <div class="page-header">
+    <h1>Suppliers</h1>
+    <button mat-raised-button color="primary" (click)="openSupplierDialog()" class="add-supplier-btn">
+      <mat-icon>add</mat-icon> Add Supplier
+    </button>
+  </div>
+  
+  <div class="search-container">
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Search Suppliers</mat-label>
+      <input matInput [(ngModel)]="searchQuery" (keyup)="onSearchChange(searchQuery)" placeholder="Search by name, number, email, etc.">
+      <button *ngIf="searchQuery" matSuffix mat-icon-button aria-label="Clear" (click)="searchQuery=''; onSearchChange('')">
+        <mat-icon>close</mat-icon>
+      </button>
+    </mat-form-field>
+  </div>
+  
+  <div class="loading-overlay" *ngIf="isLoading">
+    <mat-spinner diameter="50"></mat-spinner>
+  </div>
+  
+  <div class="table-container" [class.loading]="isLoading">
+    <table mat-table [dataSource]="filteredSuppliers">
+      
+      <!-- Name Column -->
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef>Name</th>
+        <td mat-cell *matCellDef="let supplier">{{ supplier.name }}</td>
+      </ng-container>
+      
+      <!-- Customer Number Column -->
+      <ng-container matColumnDef="customerNumber">
+        <th mat-header-cell *matHeaderCellDef>Customer#</th>
+        <td mat-cell *matCellDef="let supplier">{{ supplier.customerNumber || 'N/A' }}</td>
+      </ng-container>
+      
+      <!-- Address Column -->
+      <ng-container matColumnDef="address">
+        <th mat-header-cell *matHeaderCellDef>Address</th>
+        <td mat-cell *matCellDef="let supplier">{{ getAddress(supplier) }}</td>
+      </ng-container>
+      
+      <!-- Default Contact Column -->
+      <ng-container matColumnDef="defaultContact">
+        <th mat-header-cell *matHeaderCellDef>Contact</th>
+        <td mat-cell *matCellDef="let supplier">{{ getDefaultContact(supplier) }}</td>
+      </ng-container>
+      
+      <!-- Minimum Order Column -->
+      <ng-container matColumnDef="minimumOrder">
+        <th mat-header-cell *matHeaderCellDef>Min. Order</th>
+        <td mat-cell *matCellDef="let supplier">{{ supplier.minimumOrder || 'N/A' }}</td>
+      </ng-container>
+      
+      <!-- Actions Column -->
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <td mat-cell *matCellDef="let supplier">
+          <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Actions menu">
+            <mat-icon>more_vert</mat-icon>
+          </button>
+          <mat-menu #menu="matMenu">
+            <button mat-menu-item (click)="viewSupplierDetails(supplier.id!)">
+              <mat-icon>visibility</mat-icon>
+              <span>View Details</span>
+            </button>
+            <button mat-menu-item (click)="openSupplierDialog(supplier)">
+              <mat-icon>edit</mat-icon>
+              <span>Edit</span>
+            </button>
+            <button mat-menu-item (click)="deleteSupplier(supplier)">
+              <mat-icon>delete</mat-icon>
+              <span>Delete</span>
+            </button>
+          </mat-menu>
+        </td>
+      </ng-container>
+      
+      <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;" (click)="viewSupplierDetails(row.id!)" class="supplier-row"></tr>
+    </table>
+    
+    <div class="no-data-message" *ngIf="filteredSuppliers.length === 0 && !isLoading">
+      <mat-icon>info</mat-icon>
+      <span>No suppliers found. Try adjusting your search or add a new supplier.</span>
+    </div>
+  </div>
+</div>

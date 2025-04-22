@@ -124,9 +124,17 @@ export class SupplierFormComponent implements OnInit {
       defaultCategoryId: this.supplier.defaultCategoryId || null
     });
     
-    // Set the category control value if a category exists
-    if (this.supplier.defaultCategory) {
-      this.categoryCtrl.setValue(this.supplier.defaultCategory.name);
+    // Fetch and set the category name if a categoryId exists
+    if (this.supplier && this.supplier.defaultCategoryId) {
+      this.categoriesService.getAllCategories('').subscribe({
+        next: (categories: Category[]) => {
+          const category = categories.find(c => c.id === this.supplier?.defaultCategoryId);
+          if (category) {
+            this.categoryCtrl.setValue(category.name);
+          }
+        },
+        error: (err: any) => console.error('Error fetching categories:', err)
+      });
     }
     
     // Copy emails and phones

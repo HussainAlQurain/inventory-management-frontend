@@ -8,38 +8,44 @@ export interface Supplier {
   taxId?: string;
   taxRate?: number;
   paymentTerms?: string;
-  comments?: string;
   address?: string;
   city?: string;
   state?: string;
   zip?: string;
   ccEmails?: string;
+  comments?: string;
+  defaultCategoryId?: number | null;
 
+  // Contact information
+  // API sends back orderEmails and orderPhones, but we maintain 
+  // emails and phones for backward compatibility
   emails?: SupplierEmail[];
-  orderEmails?: SupplierEmail[];
-
   phones?: SupplierPhone[];
+
+  orderEmails?: SupplierEmail[];
   orderPhones?: SupplierPhone[];
-
-  defaultCategoryId?: number;
-  defaultCategory?: Category; // Add this property for the category object
-  authorizedBuyerIds?: number[];
-  authorizedBuyers?: any[];
-
 }
 
 export interface SupplierEmail {
   id?: number;
   email: string;
-  isDefault?: boolean; // For UI
-  default?: boolean;   // This will be used for API communication
+  isDefault?: boolean;
+  default?: boolean;
   locationId?: number | null;
+  location?: any;      // Location object if needed
 }
 
 export interface SupplierPhone {
   id?: number;
   phoneNumber: string;
-  isDefault?: boolean; // For UI
-  default?: boolean;   // This will be used for API communication
+  isDefault?: boolean;
+  default?: boolean;
   locationId?: number | null;
+  location?: any;      // Location object if needed
+}
+
+export interface SupplierAuthorizedBuyer {
+  id: number;
+  locationId: number;
+  locationName?: string;
 }

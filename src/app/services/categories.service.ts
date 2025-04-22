@@ -21,10 +21,18 @@ export class CategoriesService {
     return this.http.get<Category[]>(`${this.baseUrl}/company/${companyId}?search=${searchTerm}`);
   }
   
-
   createCategory(newCat: Partial<Category>): Observable<Category> {
     const companyId = this.companiesService.getSelectedCompanyId();
     return this.http.post<Category>(`${this.baseUrl}/company/${companyId}`, newCat);
   }
 
+  updateCategory(category: Partial<Category>): Observable<Category> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    return this.http.patch<Category>(`${this.baseUrl}/${category.id}/company/${companyId}`, category);
+  }
+
+  deleteCategory(categoryId: number): Observable<void> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    return this.http.delete<void>(`${this.baseUrl}/${categoryId}/company/${companyId}`);
+  }
 }

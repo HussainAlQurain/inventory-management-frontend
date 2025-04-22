@@ -14,6 +14,9 @@ import { CompanyComponent } from './settings/company/company.component';
 import { TransfersComponent } from './transfers/transfers.component';
 import { TransferCreateComponent } from './transfers/transfer-create/transfer-create.component';
 import { UsersManagementComponent } from './settings/users-management/users-management.component';
+import { SupplierListComponent } from './suppliers/supplier-list/supplier-list.component';
+import { SupplierDetailComponent } from './suppliers/supplier-detail/supplier-detail.component';
+import { SupplierCategoriesComponent } from './suppliers/supplier-categories/supplier-categories.component';
 
 export const routes: Routes = [
     { path: '', component: HomeComponent,
@@ -27,6 +30,9 @@ export const routes: Routes = [
             { path: 'orders', component: OrdersComponent },
             { path: 'orders/create', component: OrderCreateComponent },
             { path: 'orders/:id', component: OrderDetailsComponent },
+            { path: 'suppliers/list', component: SupplierListComponent },
+            { path: 'suppliers/detail/:id', component: SupplierDetailComponent },
+            { path: 'suppliers/categories', component: SupplierCategoriesComponent },
             { path: 'settings/buyers', component: BuyersComponent },
             { path: 'settings/company', component: CompanyComponent },
             { path: 'settings/users-management', component: UsersManagementComponent },
