@@ -25,6 +25,7 @@ import { LocationService } from '../../services/location.service';
 import { Category } from '../../models/Category';
 import { Location } from '../../models/Location';
 import { debounceTime, distinctUntilChanged, switchMap, Observable, of } from 'rxjs';
+import { ConfirmDialogComponent } from '../../shared/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-supplier-detail',
@@ -109,6 +110,7 @@ export class SupplierDetailComponent implements OnInit {
     });
   }
 
+  // Form creation methods
   createSupplierForm(): FormGroup {
     return this.fb.group({
       name: ['', [Validators.required, Validators.maxLength(100)]],
@@ -143,6 +145,7 @@ export class SupplierDetailComponent implements OnInit {
     });
   }
 
+  // Data loading methods
   loadSupplier(): void {
     if (!this.supplierId) return;
     
@@ -151,6 +154,8 @@ export class SupplierDetailComponent implements OnInit {
       next: (supplier) => {
         this.supplier = supplier;
         this.populateForm();
+        this.loadSupplierEmails();
+        this.loadSupplierPhones();
         this.isLoading = false;
       },
       error: (err) => {
@@ -158,6 +163,38 @@ export class SupplierDetailComponent implements OnInit {
         this.snackBar.open('Failed to load supplier details', 'Close', { duration: 3000 });
         this.isLoading = false;
         this.router.navigate(['/suppliers/list']);
+      }
+    });
+  }
+
+  loadSupplierEmails(): void {
+    if (!this.supplierId) return;
+    
+    this.supplierService.getSupplierEmails(this.supplierId).subscribe({
+      next: (emails) => {
+        this.supplierEmails = emails.map(email => ({
+          ...email,
+          isDefault: email.default
+        }));
+      },
+      error: (err) => {
+        console.error('Error loading supplier emails:', err);
+      }
+    });
+  }
+
+  loadSupplierPhones(): void {
+    if (!this.supplierId) return;
+    
+    this.supplierService.getSupplierPhones(this.supplierId).subscribe({
+      next: (phones) => {
+        this.supplierPhones = phones.map(phone => ({
+          ...phone,
+          isDefault: phone.default
+        }));
+      },
+      error: (err) => {
+        console.error('Error loading supplier phones:', err);
       }
     });
   }
@@ -189,33 +226,6 @@ export class SupplierDetailComponent implements OnInit {
       ccEmails: this.supplier.ccEmails || '',
       defaultCategoryId: this.supplier.defaultCategoryId || null
     });
-    
-    // Set up emails and phones arrays from orderEmails and orderPhones
-    if (this.supplier.orderEmails && this.supplier.orderEmails.length > 0) {
-      this.supplierEmails = this.supplier.orderEmails.map(email => ({
-        id: email.id,
-        email: email.email,
-        isDefault: email.default,
-        locationId: email.locationId
-      }));
-    } else if (this.supplier.emails) {
-      this.supplierEmails = [...this.supplier.emails];
-    } else {
-      this.supplierEmails = [];
-    }
-
-    if (this.supplier.orderPhones && this.supplier.orderPhones.length > 0) {
-      this.supplierPhones = this.supplier.orderPhones.map(phone => ({
-        id: phone.id,
-        phoneNumber: phone.phoneNumber,
-        isDefault: phone.default,
-        locationId: phone.locationId
-      }));
-    } else if (this.supplier.phones) {
-      this.supplierPhones = [...this.supplier.phones];
-    } else {
-      this.supplierPhones = [];
-    }
   }
 
   loadCategories(): void {
@@ -241,6 +251,7 @@ export class SupplierDetailComponent implements OnInit {
     });
   }
 
+  // Form filtering and editing methods
   onCategoryInput(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
     this.filteredCategories = this._filterCategories(value);
@@ -263,27 +274,15 @@ export class SupplierDetailComponent implements OnInit {
     }
   }
 
+  // Save supplier basic info
   saveSupplier(): void {
     if (!this.supplierForm.valid) {
       this.snackBar.open('Please fill out all required fields correctly', 'Close', { duration: 3000 });
       return;
     }
     
-    // Map UI isDefault to API default property
-    const emailsForApi = this.supplierEmails.map(email => ({
-      ...email,
-      default: email.isDefault
-    }));
-
-    const phonesForApi = this.supplierPhones.map(phone => ({
-      ...phone,
-      default: phone.isDefault
-    }));
-    
     const supplierData: Supplier = {
-      ...this.supplierForm.value,
-      orderEmails: emailsForApi,
-      orderPhones: phonesForApi
+      ...this.supplierForm.value
     };
     
     if (this.supplier?.id) {
@@ -335,47 +334,94 @@ export class SupplierDetailComponent implements OnInit {
   }
 
   addEmail(): void {
-    if (this.newEmailForm.invalid) {
+    if (this.newEmailForm.invalid || !this.supplierId) {
       return;
     }
     
-    const newEmail: SupplierEmail = {
-      ...this.newEmailForm.value,
+    const emailData = {
+      email: this.newEmailForm.value.email,
+      locationId: this.newEmailForm.value.locationId,
       default: this.newEmailForm.value.isDefault
     };
     
-    // If this is set as default, update all others to not default
-    if (newEmail.isDefault) {
-      this.supplierEmails.forEach(email => email.isDefault = false);
-    }
-    
-    this.supplierEmails.push(newEmail);
-    this.toggleAddEmailForm();
-    
-    // If we're in edit mode and have an existing supplier, save the changes
-    if (this.isEditing && this.supplier?.id) {
-      this.saveSupplier();
-    }
+    this.isLoading = true;
+    this.supplierService.addSupplierEmail(this.supplierId, emailData).subscribe({
+      next: (addedEmail) => {
+        this.snackBar.open('Email added successfully', 'Close', { duration: 3000 });
+        this.loadSupplierEmails(); // Reload all emails to ensure we have latest data with server-assigned IDs
+        this.toggleAddEmailForm();
+        this.isLoading = false;
+      },
+      error: (err) => {
+        console.error('Error adding email:', err);
+        this.snackBar.open('Failed to add email', 'Close', { duration: 3000 });
+        this.isLoading = false;
+      }
+    });
   }
 
   removeEmail(index: number): void {
-    this.supplierEmails.splice(index, 1);
-    
-    // If we're in edit mode and have an existing supplier, save the changes
-    if (this.isEditing && this.supplier?.id) {
-      this.saveSupplier();
+    if (!this.supplierId || !this.supplierEmails[index].id) {
+      return;
     }
+    
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Confirm Deletion',
+        message: `Are you sure you want to delete this email?`,
+        confirmText: 'Delete',
+        cancelText: 'Cancel'
+      }
+    });
+    
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        const emailId = this.supplierEmails[index].id!;
+        
+        this.isLoading = true;
+        this.supplierService.deleteSupplierEmail(this.supplierId!, emailId).subscribe({
+          next: () => {
+            this.snackBar.open('Email deleted successfully', 'Close', { duration: 3000 });
+            this.loadSupplierEmails();
+            this.isLoading = false;
+          },
+          error: (err) => {
+            console.error('Error deleting email:', err);
+            this.snackBar.open('Failed to delete email', 'Close', { duration: 3000 });
+            this.isLoading = false;
+          }
+        });
+      }
+    });
   }
 
   setDefaultEmail(index: number): void {
-    this.supplierEmails.forEach((email, i) => {
-      email.isDefault = (i === index);
-    });
-    
-    // If we're in edit mode and have an existing supplier, save the changes
-    if (this.isEditing && this.supplier?.id) {
-      this.saveSupplier();
+    if (!this.supplierId || !this.supplierEmails[index].id) {
+      return;
     }
+    
+    const emailToUpdate = this.supplierEmails[index];
+    
+    const updatedEmail = {
+      id: emailToUpdate.id,
+      email: emailToUpdate.email,
+      locationId: emailToUpdate.locationId,
+      default: true
+    };
+    
+    this.isLoading = true;
+    this.supplierService.updateSupplierEmail(this.supplierId, emailToUpdate.id!, updatedEmail).subscribe({
+      next: () => {
+        this.snackBar.open('Default email updated', 'Close', { duration: 3000 });
+        this.loadSupplierEmails();
+        this.isLoading = false;
+      },
+      error: (err) => {
+        console.error('Error updating email:', err);
+        this.snackBar.open('Failed to update email', 'Close', { duration: 3000 });
+        this.isLoading = false;
+      }
+    });
   }
 
   // Phone methods
@@ -391,51 +437,99 @@ export class SupplierDetailComponent implements OnInit {
   }
 
   addPhone(): void {
-    if (this.newPhoneForm.invalid) {
+    if (this.newPhoneForm.invalid || !this.supplierId) {
       return;
     }
     
-    const newPhone: SupplierPhone = {
-      ...this.newPhoneForm.value,
+    const phoneData = {
+      phoneNumber: this.newPhoneForm.value.phoneNumber,
+      locationId: this.newPhoneForm.value.locationId,
       default: this.newPhoneForm.value.isDefault
     };
     
-    // If this is set as default, update all others to not default
-    if (newPhone.isDefault) {
-      this.supplierPhones.forEach(phone => phone.isDefault = false);
-    }
-    
-    this.supplierPhones.push(newPhone);
-    this.toggleAddPhoneForm();
-    
-    // If we're in edit mode and have an existing supplier, save the changes
-    if (this.isEditing && this.supplier?.id) {
-      this.saveSupplier();
-    }
+    this.isLoading = true;
+    this.supplierService.addSupplierPhone(this.supplierId, phoneData).subscribe({
+      next: (addedPhone) => {
+        this.snackBar.open('Phone number added successfully', 'Close', { duration: 3000 });
+        this.loadSupplierPhones(); // Reload all phones to ensure we have latest data with server-assigned IDs
+        this.toggleAddPhoneForm();
+        this.isLoading = false;
+      },
+      error: (err) => {
+        console.error('Error adding phone:', err);
+        this.snackBar.open('Failed to add phone number', 'Close', { duration: 3000 });
+        this.isLoading = false;
+      }
+    });
   }
 
   removePhone(index: number): void {
-    this.supplierPhones.splice(index, 1);
-    
-    // If we're in edit mode and have an existing supplier, save the changes
-    if (this.isEditing && this.supplier?.id) {
-      this.saveSupplier();
+    if (!this.supplierId || !this.supplierPhones[index].id) {
+      return;
     }
+    
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Confirm Deletion',
+        message: `Are you sure you want to delete this phone number?`,
+        confirmText: 'Delete',
+        cancelText: 'Cancel'
+      }
+    });
+    
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        const phoneId = this.supplierPhones[index].id!;
+        
+        this.isLoading = true;
+        this.supplierService.deleteSupplierPhone(this.supplierId!, phoneId).subscribe({
+          next: () => {
+            this.snackBar.open('Phone number deleted successfully', 'Close', { duration: 3000 });
+            this.loadSupplierPhones();
+            this.isLoading = false;
+          },
+          error: (err) => {
+            console.error('Error deleting phone:', err);
+            this.snackBar.open('Failed to delete phone number', 'Close', { duration: 3000 });
+            this.isLoading = false;
+          }
+        });
+      }
+    });
   }
 
   setDefaultPhone(index: number): void {
-    this.supplierPhones.forEach((phone, i) => {
-      phone.isDefault = (i === index);
-    });
-    
-    // If we're in edit mode and have an existing supplier, save the changes
-    if (this.isEditing && this.supplier?.id) {
-      this.saveSupplier();
+    if (!this.supplierId || !this.supplierPhones[index].id) {
+      return;
     }
+    
+    const phoneToUpdate = this.supplierPhones[index];
+    
+    const updatedPhone = {
+      id: phoneToUpdate.id,
+      phoneNumber: phoneToUpdate.phoneNumber,
+      locationId: phoneToUpdate.locationId,
+      default: true
+    };
+    
+    this.isLoading = true;
+    this.supplierService.updateSupplierPhone(this.supplierId, phoneToUpdate.id!, updatedPhone).subscribe({
+      next: () => {
+        this.snackBar.open('Default phone updated', 'Close', { duration: 3000 });
+        this.loadSupplierPhones();
+        this.isLoading = false;
+      },
+      error: (err) => {
+        console.error('Error updating phone:', err);
+        this.snackBar.open('Failed to update phone', 'Close', { duration: 3000 });
+        this.isLoading = false;
+      }
+    });
   }
 
+  // Helper methods
   getLocationName(locationId: number | null): string {
-    if (!locationId) return 'N/A';
+    if (!locationId) return 'All Locations';
     const location = this.locations.find(loc => loc.id === locationId);
     return location ? location.name : 'Unknown';
   }

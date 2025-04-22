@@ -76,12 +76,12 @@ export class SupplierService {
     return this.http.get<SupplierEmail[]>(`${this.apiUrl}/suppliers/${supplierId}/company/${companyId}/emails`);
   }
 
-  addSupplierEmail(supplierId: number, email: SupplierEmail): Observable<SupplierEmail> {
+  addSupplierEmail(supplierId: number, email: Partial<SupplierEmail>): Observable<SupplierEmail> {
     const companyId = this.companiesService.getSelectedCompanyId();
     return this.http.post<SupplierEmail>(`${this.apiUrl}/suppliers/${supplierId}/company/${companyId}/emails`, email);
   }
 
-  updateSupplierEmail(supplierId: number, emailId: number, email: SupplierEmail): Observable<SupplierEmail> {
+  updateSupplierEmail(supplierId: number, emailId: number, email: Partial<SupplierEmail>): Observable<SupplierEmail> {
     const companyId = this.companiesService.getSelectedCompanyId();
     return this.http.patch<SupplierEmail>(`${this.apiUrl}/suppliers/${supplierId}/company/${companyId}/emails/${emailId}`, email);
   }
@@ -97,12 +97,12 @@ export class SupplierService {
     return this.http.get<SupplierPhone[]>(`${this.apiUrl}/suppliers/${supplierId}/company/${companyId}/phones`);
   }
 
-  addSupplierPhone(supplierId: number, phone: SupplierPhone): Observable<SupplierPhone> {
+  addSupplierPhone(supplierId: number, phone: Partial<SupplierPhone>): Observable<SupplierPhone> {
     const companyId = this.companiesService.getSelectedCompanyId();
     return this.http.post<SupplierPhone>(`${this.apiUrl}/suppliers/${supplierId}/company/${companyId}/phones`, phone);
   }
 
-  updateSupplierPhone(supplierId: number, phoneId: number, phone: SupplierPhone): Observable<SupplierPhone> {
+  updateSupplierPhone(supplierId: number, phoneId: number, phone: Partial<SupplierPhone>): Observable<SupplierPhone> {
     const companyId = this.companiesService.getSelectedCompanyId();
     return this.http.patch<SupplierPhone>(`${this.apiUrl}/suppliers/${supplierId}/company/${companyId}/phones/${phoneId}`, phone);
   }
