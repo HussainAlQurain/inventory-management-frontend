@@ -1,139 +1,134 @@
 <div class="supplier-detail-container">
   <div class="page-header">
     <div class="header-left">
-      <button mat-icon-button (click)="navigateBack()" matTooltip="Back to Suppliers">
+      <button mat-icon-button (click)="navigateBack()">
         <mat-icon>arrow_back</mat-icon>
       </button>
       <h1 class="page-title">{{ supplier?.name || 'New Supplier' }}</h1>
     </div>
     <div class="header-actions">
       <ng-container *ngIf="!isEditing">
-        <button mat-raised-button color="primary" (click)="toggleEditMode()">
+        <button mat-flat-button color="primary" (click)="toggleEditMode()">
           <mat-icon>edit</mat-icon> Edit
         </button>
       </ng-container>
       <ng-container *ngIf="isEditing">
-        <button mat-button color="warn" (click)="toggleEditMode()">
-          Cancel
+        <button mat-stroked-button (click)="toggleEditMode()">
+          <mat-icon>close</mat-icon> Cancel
         </button>
-        <button mat-raised-button color="primary" (click)="saveSupplier()">
+        <button mat-flat-button color="primary" (click)="saveSupplier()">
           <mat-icon>save</mat-icon> Save
         </button>
       </ng-container>
     </div>
   </div>
 
-  <div class="spinner-container" *ngIf="isLoading">
-    <mat-spinner diameter="50"></mat-spinner>
+  <div *ngIf="isLoading" class="spinner-container">
+    <mat-spinner diameter="40"></mat-spinner>
   </div>
 
-  <div class="content-container" *ngIf="!isLoading && supplier">
-    <mat-tab-group>
+  <div *ngIf="!isLoading" class="content-container">
+    <mat-tab-group [selectedIndex]="selectedTabIndex" (selectedIndexChange)="onTabChange($event)">
       <!-- Basic Information Tab -->
       <mat-tab label="Basic Information">
         <div class="tab-content">
           <form [formGroup]="supplierForm">
             <div class="form-grid">
-              <!-- Basic Information Section -->
               <div class="form-section">
-                <h3>Basic Information</h3>
+                <h3>Company Information</h3>
                 <div class="form-row">
                   <mat-form-field appearance="outline">
                     <mat-label>Supplier Name</mat-label>
-                    <input matInput formControlName="name" required [readonly]="!isEditing">
+                    <input matInput formControlName="name" [readonly]="!isEditing">
                     <mat-error *ngIf="supplierForm.get('name')?.hasError('required')">Name is required</mat-error>
-                    <mat-error *ngIf="supplierForm.get('name')?.hasError('maxlength')">Name can't exceed 100 characters</mat-error>
                   </mat-form-field>
                 </div>
-                
                 <div class="form-row">
                   <mat-form-field appearance="outline">
                     <mat-label>Customer Number</mat-label>
                     <input matInput formControlName="customerNumber" [readonly]="!isEditing">
                   </mat-form-field>
                 </div>
-                
-                <div class="form-row two-col">
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Minimum Order</mat-label>
+                    <input matInput type="number" formControlName="minimumOrder" [readonly]="!isEditing">
+                  </mat-form-field>
+                </div>
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Default Category</mat-label>
+                    <input matInput 
+                      formControlName="defaultCategoryId" 
+                      [readonly]="!isEditing" 
+                      [matAutocomplete]="categoryAuto"
+                      (input)="onCategoryInput($event)">
+                    <mat-autocomplete #categoryAuto="matAutocomplete">
+                      <mat-option *ngFor="let category of filteredCategories" [value]="category.id">
+                        {{ category.name }}
+                      </mat-option>
+                    </mat-autocomplete>
+                  </mat-form-field>
+                </div>
+              </div>
+
+              <div class="form-section">
+                <h3>Tax Information</h3>
+                <div class="form-row">
                   <mat-form-field appearance="outline">
                     <mat-label>Tax ID</mat-label>
                     <input matInput formControlName="taxId" [readonly]="!isEditing">
                   </mat-form-field>
-
+                </div>
+                <div class="form-row">
                   <mat-form-field appearance="outline">
                     <mat-label>Tax Rate (%)</mat-label>
                     <input matInput type="number" formControlName="taxRate" [readonly]="!isEditing">
-                    <mat-error *ngIf="supplierForm.get('taxRate')?.hasError('min')">Can't be negative</mat-error>
-                    <mat-error *ngIf="supplierForm.get('taxRate')?.hasError('max')">Can't exceed 100%</mat-error>
                   </mat-form-field>
                 </div>
-                
-                <div class="form-row two-col">
+                <div class="form-row">
                   <mat-form-field appearance="outline">
                     <mat-label>Payment Terms</mat-label>
                     <input matInput formControlName="paymentTerms" [readonly]="!isEditing">
                   </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Minimum Order</mat-label>
-                    <input matInput type="number" formControlName="minimumOrder" [readonly]="!isEditing">
-                    <mat-error *ngIf="supplierForm.get('minimumOrder')?.hasError('min')">Can't be negative</mat-error>
-                  </mat-form-field>
                 </div>
-                
                 <div class="form-row">
-                  <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>Default Category</mat-label>
-                    <input matInput [value]="getCategoryName(supplierForm.get('defaultCategoryId')?.value)" [readonly]="true" *ngIf="!isEditing">
-                    <mat-select formControlName="defaultCategoryId" *ngIf="isEditing">
-                      <mat-option [value]="null">None</mat-option>
-                      <mat-option *ngFor="let category of categories" [value]="category.id">
-                        {{ category.name }}
-                      </mat-option>
-                    </mat-select>
+                  <mat-form-field appearance="outline">
+                    <mat-label>CC Emails</mat-label>
+                    <input matInput formControlName="ccEmails" [readonly]="!isEditing"
+                      placeholder="Comma-separated list of CC emails">
                   </mat-form-field>
                 </div>
               </div>
-              
-              <!-- Address Section -->
-              <div class="form-section">
+
+              <div class="form-section full-width-section">
                 <h3>Address Information</h3>
                 <div class="form-row">
-                  <mat-form-field appearance="outline" class="full-width">
+                  <mat-form-field appearance="outline">
                     <mat-label>Address</mat-label>
-                    <input matInput formControlName="address" [readonly]="!isEditing">
+                    <textarea matInput formControlName="address" [readonly]="!isEditing"></textarea>
                   </mat-form-field>
                 </div>
-                
                 <div class="form-row three-col">
                   <mat-form-field appearance="outline">
                     <mat-label>City</mat-label>
                     <input matInput formControlName="city" [readonly]="!isEditing">
                   </mat-form-field>
-
                   <mat-form-field appearance="outline">
-                    <mat-label>State</mat-label>
+                    <mat-label>State/Province</mat-label>
                     <input matInput formControlName="state" [readonly]="!isEditing">
                   </mat-form-field>
-
                   <mat-form-field appearance="outline">
-                    <mat-label>ZIP</mat-label>
+                    <mat-label>ZIP/Postal Code</mat-label>
                     <input matInput formControlName="zip" [readonly]="!isEditing">
                   </mat-form-field>
                 </div>
               </div>
-              
-              <!-- Additional Information Section -->
+
               <div class="form-section full-width-section">
                 <h3>Additional Information</h3>
                 <div class="form-row">
-                  <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>CC Emails</mat-label>
-                    <input matInput formControlName="ccEmails" [readonly]="!isEditing" placeholder="comma-separated email addresses">
-                  </mat-form-field>
-                </div>
-                
-                <div class="form-row">
-                  <mat-form-field appearance="outline" class="full-width">
+                  <mat-form-field appearance="outline">
                     <mat-label>Comments</mat-label>
                     <textarea matInput formControlName="comments" [readonly]="!isEditing" rows="4"></textarea>
                   </mat-form-field>
@@ -147,172 +142,231 @@
       <!-- Contact Information Tab -->
       <mat-tab label="Contact Information">
         <div class="tab-content">
-          <!-- Email Addresses Section -->
+          <!-- Email Section -->
           <div class="contacts-section">
             <div class="section-header">
               <h3>Email Addresses</h3>
-              <button mat-mini-fab color="primary" (click)="toggleAddEmailForm()" [disabled]="!isEditing" matTooltip="Add Email">
-                <mat-icon>add</mat-icon>
+              <button mat-mini-fab color="primary" (click)="toggleAddEmailForm()" matTooltip="Add Email">
+                <mat-icon>{{ showAddEmailForm ? 'close' : 'add' }}</mat-icon>
               </button>
             </div>
-            
+
             <!-- Add Email Form -->
             <div class="add-form" *ngIf="showAddEmailForm">
-              <form [formGroup]="newEmailForm" (ngSubmit)="addEmail()">
-                <div class="form-row three-col">
+              <form [formGroup]="newEmailForm">
+                <div class="form-row">
                   <mat-form-field appearance="outline">
                     <mat-label>Email Address</mat-label>
-                    <input matInput formControlName="email" type="email" required>
+                    <input matInput formControlName="email" placeholder="Enter email address">
                     <mat-error *ngIf="newEmailForm.get('email')?.hasError('required')">Email is required</mat-error>
-                    <mat-error *ngIf="newEmailForm.get('email')?.hasError('email')">Please enter a valid email</mat-error>
+                    <mat-error *ngIf="newEmailForm.get('email')?.hasError('email')">Enter a valid email</mat-error>
                   </mat-form-field>
-                  
+                </div>
+                <div class="form-row two-col">
                   <mat-form-field appearance="outline">
-                    <mat-label>Location (Optional)</mat-label>
+                    <mat-label>Location</mat-label>
                     <mat-select formControlName="locationId">
                       <mat-option [value]="null">All Locations</mat-option>
-                      <mat-option *ngFor="let location of locations" [value]="location.id">
-                        {{ location.name }}
-                      </mat-option>
+                      <mat-option *ngFor="let location of locations" [value]="location.id">{{ location.name }}</mat-option>
                     </mat-select>
                   </mat-form-field>
-                  
                   <div class="form-field-container">
-                    <mat-checkbox formControlName="isDefault">Set as Default</mat-checkbox>
+                    <mat-checkbox formControlName="isDefault">Set as default</mat-checkbox>
                   </div>
                 </div>
-                
                 <div class="form-actions">
-                  <button mat-button type="button" (click)="toggleAddEmailForm()">Cancel</button>
-                  <button mat-raised-button color="primary" type="submit" [disabled]="newEmailForm.invalid">Add Email</button>
+                  <button mat-stroked-button (click)="toggleAddEmailForm()">Cancel</button>
+                  <button mat-flat-button color="primary" [disabled]="newEmailForm.invalid" (click)="addEmail()">Add</button>
                 </div>
               </form>
             </div>
-            
-            <!-- Emails Table -->
-            <table mat-table [dataSource]="supplierEmails" *ngIf="supplierEmails.length > 0">
-              <!-- Email Column -->
+
+            <!-- Edit Email Form -->
+            <div class="add-form" *ngIf="editingEmailIndex !== null">
+              <form [formGroup]="editEmailForm">
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Email Address</mat-label>
+                    <input matInput formControlName="email" placeholder="Enter email address">
+                    <mat-error *ngIf="editEmailForm.get('email')?.hasError('required')">Email is required</mat-error>
+                    <mat-error *ngIf="editEmailForm.get('email')?.hasError('email')">Enter a valid email</mat-error>
+                  </mat-form-field>
+                </div>
+                <div class="form-row two-col">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Location</mat-label>
+                    <mat-select formControlName="locationId">
+                      <mat-option [value]="null">All Locations</mat-option>
+                      <mat-option *ngFor="let location of locations" [value]="location.id">{{ location.name }}</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                  <div class="form-field-container">
+                    <mat-checkbox formControlName="isDefault">Set as default</mat-checkbox>
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button mat-stroked-button (click)="cancelEditEmail()">Cancel</button>
+                  <button mat-flat-button color="primary" [disabled]="editEmailForm.invalid" (click)="saveEditEmail()">Save</button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Email List -->
+            <table mat-table [dataSource]="supplierEmails" *ngIf="supplierEmails.length > 0 && editingEmailIndex === null">
               <ng-container matColumnDef="email">
-                <th mat-header-cell *matHeaderCellDef>Email</th>
+                <th mat-header-cell *matHeaderCellDef>Email Address</th>
                 <td mat-cell *matCellDef="let email">{{ email.email }}</td>
               </ng-container>
-              
-              <!-- Default Column -->
+
               <ng-container matColumnDef="isDefault">
                 <th mat-header-cell *matHeaderCellDef>Default</th>
                 <td mat-cell *matCellDef="let email">
-                  <mat-icon *ngIf="email.isDefault || email.default" color="primary">star</mat-icon>
-                  <mat-icon *ngIf="!email.isDefault && !email.default && isEditing" (click)="setDefaultEmail(supplierEmails.indexOf(email))" class="clickable-icon">star_outline</mat-icon>
+                  <mat-icon *ngIf="email.isDefault || email.default" color="primary">check_circle</mat-icon>
                 </td>
               </ng-container>
-              
-              <!-- Location Column -->
+
               <ng-container matColumnDef="location">
                 <th mat-header-cell *matHeaderCellDef>Location</th>
                 <td mat-cell *matCellDef="let email">{{ getLocationName(email.locationId) }}</td>
               </ng-container>
-              
-              <!-- Actions Column -->
+
               <ng-container matColumnDef="actions">
                 <th mat-header-cell *matHeaderCellDef>Actions</th>
                 <td mat-cell *matCellDef="let email; let i = index">
-                  <button mat-icon-button color="warn" *ngIf="isEditing" (click)="removeEmail(i)" matTooltip="Remove Email">
+                  <button mat-icon-button color="primary" *ngIf="!(email.isDefault || email.default)"
+                      (click)="setDefaultEmail(i)" matTooltip="Set as default">
+                    <mat-icon>star_outline</mat-icon>
+                  </button>
+                  <button mat-icon-button color="primary" (click)="startEditEmail(i)" matTooltip="Edit email">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button color="warn" (click)="removeEmail(i)" matTooltip="Delete">
                     <mat-icon>delete</mat-icon>
                   </button>
                 </td>
               </ng-container>
-              
+
               <tr mat-header-row *matHeaderRowDef="emailColumns"></tr>
               <tr mat-row *matRowDef="let row; columns: emailColumns;"></tr>
             </table>
-            
-            <div class="no-data-message" *ngIf="supplierEmails.length === 0">
-              No email addresses added yet.
+
+            <div class="no-data-message" *ngIf="supplierEmails.length === 0 && !showAddEmailForm && editingEmailIndex === null">
+              No email addresses have been added. Click the + button to add an email.
             </div>
-          </div>
-          
-          <mat-divider></mat-divider>
-          
-          <!-- Phone Numbers Section -->
-          <div class="contacts-section">
+
+            <mat-divider></mat-divider>
+
+            <!-- Phone Section -->
             <div class="section-header">
               <h3>Phone Numbers</h3>
-              <button mat-mini-fab color="primary" (click)="toggleAddPhoneForm()" [disabled]="!isEditing" matTooltip="Add Phone">
-                <mat-icon>add</mat-icon>
+              <button mat-mini-fab color="primary" (click)="toggleAddPhoneForm()" matTooltip="Add Phone">
+                <mat-icon>{{ showAddPhoneForm ? 'close' : 'add' }}</mat-icon>
               </button>
             </div>
-            
+
             <!-- Add Phone Form -->
             <div class="add-form" *ngIf="showAddPhoneForm">
-              <form [formGroup]="newPhoneForm" (ngSubmit)="addPhone()">
-                <div class="form-row three-col">
+              <form [formGroup]="newPhoneForm">
+                <div class="form-row">
                   <mat-form-field appearance="outline">
                     <mat-label>Phone Number</mat-label>
-                    <input matInput formControlName="phoneNumber" required>
-                    <mat-error *ngIf="newPhoneForm.get('phoneNumber')?.hasError('required')">Phone number is required</mat-error>
+                    <input matInput formControlName="phoneNumber" placeholder="Enter phone number">
+                    <mat-error *ngIf="newPhoneForm.get('phoneNumber')?.hasError('required')">
+                      Phone number is required
+                    </mat-error>
                   </mat-form-field>
-                  
+                </div>
+                <div class="form-row two-col">
                   <mat-form-field appearance="outline">
-                    <mat-label>Location (Optional)</mat-label>
+                    <mat-label>Location</mat-label>
                     <mat-select formControlName="locationId">
                       <mat-option [value]="null">All Locations</mat-option>
-                      <mat-option *ngFor="let location of locations" [value]="location.id">
-                        {{ location.name }}
-                      </mat-option>
+                      <mat-option *ngFor="let location of locations" [value]="location.id">{{ location.name }}</mat-option>
                     </mat-select>
                   </mat-form-field>
-                  
                   <div class="form-field-container">
-                    <mat-checkbox formControlName="isDefault">Set as Default</mat-checkbox>
+                    <mat-checkbox formControlName="isDefault">Set as default</mat-checkbox>
                   </div>
                 </div>
-                
                 <div class="form-actions">
-                  <button mat-button type="button" (click)="toggleAddPhoneForm()">Cancel</button>
-                  <button mat-raised-button color="primary" type="submit" [disabled]="newPhoneForm.invalid">Add Phone</button>
+                  <button mat-stroked-button (click)="toggleAddPhoneForm()">Cancel</button>
+                  <button mat-flat-button color="primary" [disabled]="newPhoneForm.invalid" (click)="addPhone()">Add</button>
                 </div>
               </form>
             </div>
-            
-            <!-- Phones Table -->
-            <table mat-table [dataSource]="supplierPhones" *ngIf="supplierPhones.length > 0">
-              <!-- Phone Column -->
+
+            <!-- Edit Phone Form -->
+            <div class="add-form" *ngIf="editingPhoneIndex !== null">
+              <form [formGroup]="editPhoneForm">
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Phone Number</mat-label>
+                    <input matInput formControlName="phoneNumber" placeholder="Enter phone number">
+                    <mat-error *ngIf="editPhoneForm.get('phoneNumber')?.hasError('required')">
+                      Phone number is required
+                    </mat-error>
+                  </mat-form-field>
+                </div>
+                <div class="form-row two-col">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Location</mat-label>
+                    <mat-select formControlName="locationId">
+                      <mat-option [value]="null">All Locations</mat-option>
+                      <mat-option *ngFor="let location of locations" [value]="location.id">{{ location.name }}</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                  <div class="form-field-container">
+                    <mat-checkbox formControlName="isDefault">Set as default</mat-checkbox>
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button mat-stroked-button (click)="cancelEditPhone()">Cancel</button>
+                  <button mat-flat-button color="primary" [disabled]="editPhoneForm.invalid" (click)="saveEditPhone()">Save</button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Phone List -->
+            <table mat-table [dataSource]="supplierPhones" *ngIf="supplierPhones.length > 0 && editingPhoneIndex === null">
               <ng-container matColumnDef="phoneNumber">
                 <th mat-header-cell *matHeaderCellDef>Phone Number</th>
                 <td mat-cell *matCellDef="let phone">{{ phone.phoneNumber }}</td>
               </ng-container>
-              
-              <!-- Default Column -->
+
               <ng-container matColumnDef="isDefault">
                 <th mat-header-cell *matHeaderCellDef>Default</th>
                 <td mat-cell *matCellDef="let phone">
-                  <mat-icon *ngIf="phone.isDefault || phone.default" color="primary">star</mat-icon>
-                  <mat-icon *ngIf="!phone.isDefault && !phone.default && isEditing" (click)="setDefaultPhone(supplierPhones.indexOf(phone))" class="clickable-icon">star_outline</mat-icon>
+                  <mat-icon *ngIf="phone.isDefault || phone.default" color="primary">check_circle</mat-icon>
                 </td>
               </ng-container>
-              
-              <!-- Location Column -->
+
               <ng-container matColumnDef="location">
                 <th mat-header-cell *matHeaderCellDef>Location</th>
                 <td mat-cell *matCellDef="let phone">{{ getLocationName(phone.locationId) }}</td>
               </ng-container>
-              
-              <!-- Actions Column -->
+
               <ng-container matColumnDef="actions">
                 <th mat-header-cell *matHeaderCellDef>Actions</th>
                 <td mat-cell *matCellDef="let phone; let i = index">
-                  <button mat-icon-button color="warn" *ngIf="isEditing" (click)="removePhone(i)" matTooltip="Remove Phone">
+                  <button mat-icon-button color="primary" *ngIf="!(phone.isDefault || phone.default)"
+                      (click)="setDefaultPhone(i)" matTooltip="Set as default">
+                    <mat-icon>star_outline</mat-icon>
+                  </button>
+                  <button mat-icon-button color="primary" (click)="startEditPhone(i)" matTooltip="Edit phone number">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button color="warn" (click)="removePhone(i)" matTooltip="Delete">
                     <mat-icon>delete</mat-icon>
                   </button>
                 </td>
               </ng-container>
-              
+
               <tr mat-header-row *matHeaderRowDef="phoneColumns"></tr>
               <tr mat-row *matRowDef="let row; columns: phoneColumns;"></tr>
             </table>
-            
-            <div class="no-data-message" *ngIf="supplierPhones.length === 0">
-              No phone numbers added yet.
+
+            <div class="no-data-message" *ngIf="supplierPhones.length === 0 && !showAddPhoneForm && editingPhoneIndex === null">
+              No phone numbers have been added. Click the + button to add a phone number.
             </div>
           </div>
         </div>

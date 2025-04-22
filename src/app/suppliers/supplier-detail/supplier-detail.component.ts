@@ -1,8 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { MatTabsModule } from '@angular/material/tabs';
+import { MatTabsModule, MatTabGroup } from '@angular/material/tabs';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -53,32 +53,39 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog/confirm-dial
   templateUrl: './supplier-detail.component.html',
   styleUrls: ['./supplier-detail.component.scss']
 })
-export class SupplierDetailComponent implements OnInit {
+export class SupplierDetailComponent implements OnInit, AfterViewInit {
+  @ViewChild(MatTabGroup) tabGroup!: MatTabGroup;
+
   supplierId: number | null = null;
   supplier: Supplier | null = null;
   supplierForm: FormGroup;
   isLoading: boolean = false;
   isEditing: boolean = false;
-  
+  selectedTabIndex: number = 0;
+
   // Category management
   categories: Category[] = [];
   filteredCategories: Category[] = [];
-  
+
   // Location management
   locations: Location[] = [];
-  
+
   // Contact management
   supplierEmails: SupplierEmail[] = [];
   supplierPhones: SupplierPhone[] = [];
-  
+
   emailColumns: string[] = ['email', 'isDefault', 'location', 'actions'];
   phoneColumns: string[] = ['phoneNumber', 'isDefault', 'location', 'actions'];
-  
+
   // New email/phone forms
   newEmailForm: FormGroup;
   newPhoneForm: FormGroup;
+  editEmailForm: FormGroup;
+  editPhoneForm: FormGroup;
   showAddEmailForm: boolean = false;
   showAddPhoneForm: boolean = false;
+  editingEmailIndex: number | null = null;
+  editingPhoneIndex: number | null = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -93,12 +100,14 @@ export class SupplierDetailComponent implements OnInit {
     this.supplierForm = this.createSupplierForm();
     this.newEmailForm = this.createEmailForm();
     this.newPhoneForm = this.createPhoneForm();
+    this.editEmailForm = this.createEmailForm();
+    this.editPhoneForm = this.createPhoneForm();
   }
 
   ngOnInit(): void {
     this.loadCategories();
     this.loadLocations();
-    
+
     this.route.paramMap.subscribe(params => {
       const id = params.get('id');
       if (id) {
@@ -108,6 +117,20 @@ export class SupplierDetailComponent implements OnInit {
         this.initNewSupplier();
       }
     });
+  }
+
+  ngAfterViewInit(): void {
+    // Set the tab to the last selected tab if available
+    const savedTabIndex = localStorage.getItem('supplierDetailTabIndex');
+    if (savedTabIndex) {
+      // Use setTimeout to avoid ExpressionChangedAfterItHasBeenCheckedError
+      setTimeout(() => {
+        this.selectedTabIndex = Number(savedTabIndex);
+        if (this.tabGroup) {
+          this.tabGroup.selectedIndex = this.selectedTabIndex;
+        }
+      });
+    }
   }
 
   // Form creation methods
@@ -145,10 +168,16 @@ export class SupplierDetailComponent implements OnInit {
     });
   }
 
+  // Tab management
+  onTabChange(index: number): void {
+    this.selectedTabIndex = index;
+    localStorage.setItem('supplierDetailTabIndex', index.toString());
+  }
+
   // Data loading methods
   loadSupplier(): void {
     if (!this.supplierId) return;
-    
+
     this.isLoading = true;
     this.supplierService.getSupplierById(this.supplierId).subscribe({
       next: (supplier) => {
@@ -169,13 +198,20 @@ export class SupplierDetailComponent implements OnInit {
 
   loadSupplierEmails(): void {
     if (!this.supplierId) return;
-    
+
     this.supplierService.getSupplierEmails(this.supplierId).subscribe({
       next: (emails) => {
         this.supplierEmails = emails.map(email => ({
           ...email,
           isDefault: email.default
         }));
+
+        // Ensure we stay on the Contact Information tab
+        setTimeout(() => {
+          if (this.tabGroup) {
+            this.tabGroup.selectedIndex = this.selectedTabIndex;
+          }
+        });
       },
       error: (err) => {
         console.error('Error loading supplier emails:', err);
@@ -185,13 +221,20 @@ export class SupplierDetailComponent implements OnInit {
 
   loadSupplierPhones(): void {
     if (!this.supplierId) return;
-    
+
     this.supplierService.getSupplierPhones(this.supplierId).subscribe({
       next: (phones) => {
         this.supplierPhones = phones.map(phone => ({
           ...phone,
           isDefault: phone.default
         }));
+
+        // Ensure we stay on the Contact Information tab
+        setTimeout(() => {
+          if (this.tabGroup) {
+            this.tabGroup.selectedIndex = this.selectedTabIndex;
+          }
+        });
       },
       error: (err) => {
         console.error('Error loading supplier phones:', err);
@@ -210,7 +253,7 @@ export class SupplierDetailComponent implements OnInit {
 
   populateForm(): void {
     if (!this.supplier) return;
-    
+
     this.supplierForm.patchValue({
       name: this.supplier.name,
       customerNumber: this.supplier.customerNumber || '',
@@ -259,9 +302,9 @@ export class SupplierDetailComponent implements OnInit {
 
   private _filterCategories(value: string): Category[] {
     if (!value) return this.categories;
-    
+
     const filterValue = value.toLowerCase();
-    return this.categories.filter(category => 
+    return this.categories.filter(category =>
       category.name.toLowerCase().includes(filterValue)
     );
   }
@@ -280,15 +323,15 @@ export class SupplierDetailComponent implements OnInit {
       this.snackBar.open('Please fill out all required fields correctly', 'Close', { duration: 3000 });
       return;
     }
-    
+
     const supplierData: Supplier = {
       ...this.supplierForm.value
     };
-    
+
     if (this.supplier?.id) {
       // Update existing supplier
       supplierData.id = this.supplier.id;
-      
+
       this.isLoading = true;
       this.supplierService.updateSupplier(supplierData).subscribe({
         next: (updatedSupplier) => {
@@ -330,20 +373,78 @@ export class SupplierDetailComponent implements OnInit {
         isDefault: false,
         locationId: null
       });
+      // Cancel any ongoing edits
+      this.cancelEditEmail();
     }
+  }
+
+  startEditEmail(index: number): void {
+    const email = this.supplierEmails[index];
+    this.editingEmailIndex = index;
+
+    // Cancel add form if it's open
+    this.showAddEmailForm = false;
+
+    // Populate edit form with current values
+    this.editEmailForm.patchValue({
+      email: email.email,
+      isDefault: email.isDefault || email.default,
+      locationId: email.locationId
+    });
+  }
+
+  cancelEditEmail(): void {
+    this.editingEmailIndex = null;
+  }
+
+  saveEditEmail(): void {
+    if (this.editEmailForm.invalid || !this.supplierId || this.editingEmailIndex === null) {
+      return;
+    }
+
+    const emailToUpdate = this.supplierEmails[this.editingEmailIndex];
+
+    const updatedEmail = {
+      id: emailToUpdate.id,
+      email: this.editEmailForm.value.email,
+      locationId: this.editEmailForm.value.locationId,
+      default: this.editEmailForm.value.isDefault
+    };
+
+    this.isLoading = true;
+    this.supplierService.updateSupplierEmail(this.supplierId, emailToUpdate.id!, updatedEmail).subscribe({
+      next: () => {
+        this.snackBar.open('Email updated successfully', 'Close', { duration: 3000 });
+        this.loadSupplierEmails();
+        this.cancelEditEmail();
+        this.isLoading = false;
+
+        // Ensure we stay on the Contact Information tab
+        setTimeout(() => {
+          if (this.tabGroup) {
+            this.tabGroup.selectedIndex = this.selectedTabIndex;
+          }
+        });
+      },
+      error: (err) => {
+        console.error('Error updating email:', err);
+        this.snackBar.open('Failed to update email', 'Close', { duration: 3000 });
+        this.isLoading = false;
+      }
+    });
   }
 
   addEmail(): void {
     if (this.newEmailForm.invalid || !this.supplierId) {
       return;
     }
-    
+
     const emailData = {
       email: this.newEmailForm.value.email,
       locationId: this.newEmailForm.value.locationId,
       default: this.newEmailForm.value.isDefault
     };
-    
+
     this.isLoading = true;
     this.supplierService.addSupplierEmail(this.supplierId, emailData).subscribe({
       next: (addedEmail) => {
@@ -351,6 +452,13 @@ export class SupplierDetailComponent implements OnInit {
         this.loadSupplierEmails(); // Reload all emails to ensure we have latest data with server-assigned IDs
         this.toggleAddEmailForm();
         this.isLoading = false;
+
+        // Ensure we stay on the Contact Information tab
+        setTimeout(() => {
+          if (this.tabGroup) {
+            this.tabGroup.selectedIndex = this.selectedTabIndex;
+          }
+        });
       },
       error: (err) => {
         console.error('Error adding email:', err);
@@ -364,7 +472,7 @@ export class SupplierDetailComponent implements OnInit {
     if (!this.supplierId || !this.supplierEmails[index].id) {
       return;
     }
-    
+
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
         title: 'Confirm Deletion',
@@ -373,17 +481,24 @@ export class SupplierDetailComponent implements OnInit {
         cancelText: 'Cancel'
       }
     });
-    
+
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
         const emailId = this.supplierEmails[index].id!;
-        
+
         this.isLoading = true;
         this.supplierService.deleteSupplierEmail(this.supplierId!, emailId).subscribe({
           next: () => {
             this.snackBar.open('Email deleted successfully', 'Close', { duration: 3000 });
             this.loadSupplierEmails();
             this.isLoading = false;
+
+            // Ensure we stay on the Contact Information tab
+            setTimeout(() => {
+              if (this.tabGroup) {
+                this.tabGroup.selectedIndex = this.selectedTabIndex;
+              }
+            });
           },
           error: (err) => {
             console.error('Error deleting email:', err);
@@ -399,22 +514,29 @@ export class SupplierDetailComponent implements OnInit {
     if (!this.supplierId || !this.supplierEmails[index].id) {
       return;
     }
-    
+
     const emailToUpdate = this.supplierEmails[index];
-    
+
     const updatedEmail = {
       id: emailToUpdate.id,
       email: emailToUpdate.email,
       locationId: emailToUpdate.locationId,
       default: true
     };
-    
+
     this.isLoading = true;
     this.supplierService.updateSupplierEmail(this.supplierId, emailToUpdate.id!, updatedEmail).subscribe({
       next: () => {
         this.snackBar.open('Default email updated', 'Close', { duration: 3000 });
         this.loadSupplierEmails();
         this.isLoading = false;
+
+        // Ensure we stay on the Contact Information tab
+        setTimeout(() => {
+          if (this.tabGroup) {
+            this.tabGroup.selectedIndex = this.selectedTabIndex;
+          }
+        });
       },
       error: (err) => {
         console.error('Error updating email:', err);
@@ -433,20 +555,78 @@ export class SupplierDetailComponent implements OnInit {
         isDefault: false,
         locationId: null
       });
+      // Cancel any ongoing edits
+      this.cancelEditPhone();
     }
+  }
+
+  startEditPhone(index: number): void {
+    const phone = this.supplierPhones[index];
+    this.editingPhoneIndex = index;
+
+    // Cancel add form if it's open
+    this.showAddPhoneForm = false;
+
+    // Populate edit form with current values
+    this.editPhoneForm.patchValue({
+      phoneNumber: phone.phoneNumber,
+      isDefault: phone.isDefault || phone.default,
+      locationId: phone.locationId
+    });
+  }
+
+  cancelEditPhone(): void {
+    this.editingPhoneIndex = null;
+  }
+
+  saveEditPhone(): void {
+    if (this.editPhoneForm.invalid || !this.supplierId || this.editingPhoneIndex === null) {
+      return;
+    }
+
+    const phoneToUpdate = this.supplierPhones[this.editingPhoneIndex];
+
+    const updatedPhone = {
+      id: phoneToUpdate.id,
+      phoneNumber: this.editPhoneForm.value.phoneNumber,
+      locationId: this.editPhoneForm.value.locationId,
+      default: this.editPhoneForm.value.isDefault
+    };
+
+    this.isLoading = true;
+    this.supplierService.updateSupplierPhone(this.supplierId, phoneToUpdate.id!, updatedPhone).subscribe({
+      next: () => {
+        this.snackBar.open('Phone updated successfully', 'Close', { duration: 3000 });
+        this.loadSupplierPhones();
+        this.cancelEditPhone();
+        this.isLoading = false;
+
+        // Ensure we stay on the Contact Information tab
+        setTimeout(() => {
+          if (this.tabGroup) {
+            this.tabGroup.selectedIndex = this.selectedTabIndex;
+          }
+        });
+      },
+      error: (err) => {
+        console.error('Error updating phone:', err);
+        this.snackBar.open('Failed to update phone', 'Close', { duration: 3000 });
+        this.isLoading = false;
+      }
+    });
   }
 
   addPhone(): void {
     if (this.newPhoneForm.invalid || !this.supplierId) {
       return;
     }
-    
+
     const phoneData = {
       phoneNumber: this.newPhoneForm.value.phoneNumber,
       locationId: this.newPhoneForm.value.locationId,
       default: this.newPhoneForm.value.isDefault
     };
-    
+
     this.isLoading = true;
     this.supplierService.addSupplierPhone(this.supplierId, phoneData).subscribe({
       next: (addedPhone) => {
@@ -454,6 +634,13 @@ export class SupplierDetailComponent implements OnInit {
         this.loadSupplierPhones(); // Reload all phones to ensure we have latest data with server-assigned IDs
         this.toggleAddPhoneForm();
         this.isLoading = false;
+
+        // Ensure we stay on the Contact Information tab
+        setTimeout(() => {
+          if (this.tabGroup) {
+            this.tabGroup.selectedIndex = this.selectedTabIndex;
+          }
+        });
       },
       error: (err) => {
         console.error('Error adding phone:', err);
@@ -467,7 +654,7 @@ export class SupplierDetailComponent implements OnInit {
     if (!this.supplierId || !this.supplierPhones[index].id) {
       return;
     }
-    
+
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
         title: 'Confirm Deletion',
@@ -476,17 +663,24 @@ export class SupplierDetailComponent implements OnInit {
         cancelText: 'Cancel'
       }
     });
-    
+
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
         const phoneId = this.supplierPhones[index].id!;
-        
+
         this.isLoading = true;
         this.supplierService.deleteSupplierPhone(this.supplierId!, phoneId).subscribe({
           next: () => {
             this.snackBar.open('Phone number deleted successfully', 'Close', { duration: 3000 });
             this.loadSupplierPhones();
             this.isLoading = false;
+
+            // Ensure we stay on the Contact Information tab
+            setTimeout(() => {
+              if (this.tabGroup) {
+                this.tabGroup.selectedIndex = this.selectedTabIndex;
+              }
+            });
           },
           error: (err) => {
             console.error('Error deleting phone:', err);
@@ -502,22 +696,29 @@ export class SupplierDetailComponent implements OnInit {
     if (!this.supplierId || !this.supplierPhones[index].id) {
       return;
     }
-    
+
     const phoneToUpdate = this.supplierPhones[index];
-    
+
     const updatedPhone = {
       id: phoneToUpdate.id,
       phoneNumber: phoneToUpdate.phoneNumber,
       locationId: phoneToUpdate.locationId,
       default: true
     };
-    
+
     this.isLoading = true;
     this.supplierService.updateSupplierPhone(this.supplierId, phoneToUpdate.id!, updatedPhone).subscribe({
       next: () => {
         this.snackBar.open('Default phone updated', 'Close', { duration: 3000 });
         this.loadSupplierPhones();
         this.isLoading = false;
+
+        // Ensure we stay on the Contact Information tab
+        setTimeout(() => {
+          if (this.tabGroup) {
+            this.tabGroup.selectedIndex = this.selectedTabIndex;
+          }
+        });
       },
       error: (err) => {
         console.error('Error updating phone:', err);
