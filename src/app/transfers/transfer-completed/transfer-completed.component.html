@@ -1,0 +1,95 @@
+<div class="completed-transfers-container">
+  <div class="filter-section">
+    <mat-form-field appearance="outline" class="location-filter">
+      <mat-label>Filter by Location</mat-label>
+      <mat-select [(ngModel)]="selectedLocation" (selectionChange)="onLocationChange()">
+        <mat-option [value]="null">All Locations</mat-option>
+        <mat-option *ngFor="let location of locations" [value]="location.id">
+          {{ location.name }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="direction-filter" *ngIf="selectedLocation">
+      <mat-label>Direction</mat-label>
+      <mat-select [(ngModel)]="fromLocation" (selectionChange)="onDirectionChange()">
+        <mat-option [value]="true">From this location</mat-option>
+        <mat-option [value]="false">To this location</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="search-filter">
+      <mat-label>Search</mat-label>
+      <input matInput (keyup)="applyFilter($event)" placeholder="Search transfers...">
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner diameter="40"></mat-spinner>
+  </div>
+
+  <div *ngIf="error && !loading" class="error-container">
+    <p class="error-message">{{ error }}</p>
+    <button mat-raised-button color="primary" (click)="onLocationChange()">Retry</button>
+  </div>
+
+  <div *ngIf="!loading && !error" class="table-container">
+    <table mat-table [dataSource]="dataSource" matSort class="transfers-table">
+      <!-- ID Column -->
+      <ng-container matColumnDef="id">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Transfer ID</th>
+        <td mat-cell *matCellDef="let transfer">{{ transfer.id }}</td>
+      </ng-container>
+
+      <!-- Completion Date Column -->
+      <ng-container matColumnDef="completionDate">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Completion Date</th>
+        <td mat-cell *matCellDef="let transfer">{{ formatDate(transfer.completionDate) }}</td>
+      </ng-container>
+
+      <!-- From Location Column -->
+      <ng-container matColumnDef="fromLocation">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>From</th>
+        <td mat-cell *matCellDef="let transfer">{{ transfer.fromLocationName }}</td>
+      </ng-container>
+
+      <!-- To Location Column -->
+      <ng-container matColumnDef="toLocation">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>To</th>
+        <td mat-cell *matCellDef="let transfer">{{ transfer.toLocationName }}</td>
+      </ng-container>
+
+      <!-- Item Count Column -->
+      <ng-container matColumnDef="itemCount">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Items</th>
+        <td mat-cell *matCellDef="let transfer">{{ getItemCount(transfer) }}</td>
+      </ng-container>
+
+      <!-- Total Cost Column -->
+      <ng-container matColumnDef="totalCost">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Total Value</th>
+        <td mat-cell *matCellDef="let transfer">{{ getTotalCost(transfer) | currency }}</td>
+      </ng-container>
+
+      <!-- Actions Column -->
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <td mat-cell *matCellDef="let transfer">
+          <button mat-icon-button color="primary" matTooltip="View Details" (click)="viewTransferDetails(transfer)">
+            <mat-icon>visibility</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;" (click)="viewTransferDetails(row)" class="clickable-row"></tr>
+    </table>
+
+    <div *ngIf="dataSource.data.length === 0" class="no-data-message">
+      <p>No completed transfers found</p>
+    </div>
+
+    <mat-paginator [pageSizeOptions]="[10, 25, 50, 100]" showFirstLastButtons></mat-paginator>
+  </div>
+</div>

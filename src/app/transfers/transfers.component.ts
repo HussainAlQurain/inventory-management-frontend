@@ -14,6 +14,7 @@ import { Router } from '@angular/router';
 import { TransferCreateComponent } from './transfer-create/transfer-create.component';
 import { TransferOutgoingComponent } from './transfer-outgoing/transfer-outgoing.component';
 import { TransferIncomingComponent } from './transfer-incoming/transfer-incoming.component';
+import { TransferCompletedComponent } from './transfer-completed/transfer-completed.component';
 
 @Component({
   selector: 'app-transfers',
@@ -33,7 +34,8 @@ import { TransferIncomingComponent } from './transfer-incoming/transfer-incoming
     MatSnackBarModule,
     TransferCreateComponent,
     TransferOutgoingComponent,
-    TransferIncomingComponent
+    TransferIncomingComponent,
+    TransferCompletedComponent
   ],
   templateUrl: './transfers.component.html',
   styleUrls: ['./transfers.component.scss']

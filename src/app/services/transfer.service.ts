@@ -42,6 +42,17 @@ export class TransferService {
     return this.http.get<Transfer[]>(`${this.baseUrl}/company/${companyId}/incoming`);
   }
 
+  // Get completed transfers for a company
+  getCompanyCompletedTransfers(companyId: number): Observable<Transfer[]> {
+    return this.http.get<Transfer[]>(`${this.baseUrl}/company/${companyId}/completed`);
+  }
+
+  // Get completed transfers for a location
+  getLocationCompletedTransfers(locationId: number, fromLocation: boolean): Observable<Transfer[]> {
+    let params = new HttpParams().set('fromLocation', fromLocation.toString());
+    return this.http.get<Transfer[]>(`${this.baseUrl}/location/${locationId}/completed`, { params });
+  }
+
   // Delete a transfer
   deleteTransfer(id: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);

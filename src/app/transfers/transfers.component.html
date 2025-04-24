@@ -1,23 +1,22 @@
 <div class="transfers-container">
-  <mat-card class="transfers-container">
-    <mat-card-header>
-      <mat-card-title>Transfers</mat-card-title>
-      <div class="header-actions">
-        <button mat-raised-button color="primary" (click)="createTransfer()">
-          <mat-icon>add</mat-icon> Create Transfer
-        </button>
-      </div>
-    </mat-card-header>
-    
-    <mat-card-content>
-      <mat-tab-group (selectedTabChange)="tabChanged($event)">
-        <mat-tab label="Outgoing Transfers">
-          <app-transfer-outgoing *ngIf="activeTabIndex === 0"></app-transfer-outgoing>
-        </mat-tab>
-        <mat-tab label="Incoming Transfers">
-          <app-transfer-incoming *ngIf="activeTabIndex === 1"></app-transfer-incoming>
-        </mat-tab>
-      </mat-tab-group>
-    </mat-card-content>
+  <div class="page-header">
+    <h1>Inventory Transfers</h1>
+    <button mat-raised-button color="primary" (click)="createTransfer()">
+      <mat-icon>add</mat-icon> Create Transfer
+    </button>
+  </div>
+
+  <mat-card class="content-card">
+    <mat-tab-group (selectedTabChange)="tabChanged($event)" [selectedIndex]="activeTabIndex">
+      <mat-tab label="Outgoing Transfers">
+        <app-transfer-outgoing></app-transfer-outgoing>
+      </mat-tab>
+      <mat-tab label="Incoming Transfers">
+        <app-transfer-incoming></app-transfer-incoming>
+      </mat-tab>
+      <mat-tab label="Completed Transfers">
+        <app-transfer-completed></app-transfer-completed>
+      </mat-tab>
+    </mat-tab-group>
   </mat-card>
 </div>
