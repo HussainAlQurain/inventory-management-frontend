@@ -32,8 +32,8 @@
       <div class="filter-row">
         <mat-form-field appearance="outline">
           <mat-label>Search by name</mat-label>
-          <input matInput [(ngModel)]="nameFilter" (keyup)="applyFilters()" placeholder="Search items...">
-          <button *ngIf="nameFilter" matSuffix mat-icon-button aria-label="Clear" (click)="nameFilter=''; applyFilters()">
+          <input matInput [(ngModel)]="nameFilter" (keyup)="onSearchChange(nameFilter)" placeholder="Search items...">
+          <button *ngIf="nameFilter" matSuffix mat-icon-button aria-label="Clear" (click)="nameFilter=''; onSearchChange('')">
             <mat-icon>close</mat-icon>
           </button>
         </mat-form-field>
@@ -72,7 +72,7 @@
       <div class="active-filters" *ngIf="hasActiveFilters()">
         <span class="filter-chip" *ngIf="nameFilter">
           Name: {{nameFilter}}
-          <button mat-icon-button (click)="nameFilter=''; applyFilters()">
+          <button mat-icon-button (click)="nameFilter=''; onSearchChange('')">
             <mat-icon>close</mat-icon>
           </button>
         </span>
@@ -208,7 +208,19 @@
               class="inventory-row"></tr>
         </table>
   
-        <mat-paginator [pageSizeOptions]="[10, 25, 50, 100]" showFirstLastButtons></mat-paginator>
+        <mat-paginator 
+          [length]="totalItems"
+          [pageSize]="pageSize"
+          [pageIndex]="pageIndex"
+          [pageSizeOptions]="pageSizeOptions"
+          (page)="onPageChange($event)"
+          showFirstLastButtons>
+        </mat-paginator>
+        
+        <div class="pagination-info">
+          Showing {{ filteredItems.length > 0 ? (pageIndex * pageSize) + 1 : 0 }} - 
+          {{ Math.min((pageIndex + 1) * pageSize, totalItems) }} of {{ totalItems }} items
+        </div>
       }
     </div>
     <app-add-inventory-item *ngIf="showAddItemPanel" (closePanel)="handleClosePanel($event)"></app-add-inventory-item>

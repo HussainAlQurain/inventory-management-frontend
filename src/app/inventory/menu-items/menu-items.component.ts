@@ -1,9 +1,9 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit, ViewChild, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule, MatTable } from '@angular/material/table';
-import { MatPaginatorModule, MatPaginator } from '@angular/material/paginator';
-import { MatSortModule, MatSort } from '@angular/material/sort';
+import { MatPaginatorModule, MatPaginator, PageEvent } from '@angular/material/paginator';
+import { MatSortModule, MatSort, Sort } from '@angular/material/sort';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -17,6 +17,8 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 import { MenuItem } from '../../models/MenuItem';
 import { Category } from '../../models/Category';
@@ -24,6 +26,7 @@ import { MenuItemsService } from '../../services/menu-items.service';
 import { CategoriesService } from '../../services/categories.service';
 import { AddMenuItemComponent } from '../add-menu-item/add-menu-item.component';
 import { MenuItemDetailComponent } from '../menu-item-detail/menu-item-detail.component';
+import { PaginatedItemsResponse } from '../../services/sub-recipes.service';
 
 @Component({
   selector: 'app-menu-items',
@@ -53,7 +56,7 @@ import { MenuItemDetailComponent } from '../menu-item-detail/menu-item-detail.co
   templateUrl: './menu-items.component.html',
   styleUrl: './menu-items.component.scss'
 })
-export class MenuItemsComponent implements OnInit {
+export class MenuItemsComponent implements OnInit, AfterViewInit {
   // Display columns for the table - removing 'actions'
   displayedColumns: string[] = [
     'name',
@@ -65,7 +68,6 @@ export class MenuItemsComponent implements OnInit {
   ];
   
   // Data sources
-  menuItems: MenuItem[] = [];
   filteredMenuItems: MenuItem[] = [];
   
   // Selected menu item for detail view
@@ -88,6 +90,18 @@ export class MenuItemsComponent implements OnInit {
   // For adding new menu item
   showAddForm = false;
   showAddMenuItemPanel = false;
+
+  // Pagination and sorting
+  totalItems = 0;
+  currentPage = 0;
+  pageSize = 10;
+  pageSizeOptions = [5, 10, 25, 50];
+  sortBy = 'name';
+  sortDirection = 'asc';
+  
+  // For search debounce
+  private searchSubject = new Subject<string>();
+  Math = Math; // For template usage
   
   // For pagination and sorting
   @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -103,16 +117,47 @@ export class MenuItemsComponent implements OnInit {
   ) { }
 
   ngOnInit(): void {
+    this.setupSearchDebounce();
     this.loadMenuItems();
     this.loadCategories();
   }
 
+  ngAfterViewInit(): void {
+    // Set up sort change listener
+    if (this.sort) {
+      this.sort.sortChange.subscribe((sort: Sort) => {
+        this.sortBy = sort.active;
+        this.sortDirection = sort.direction || 'asc';
+        this.currentPage = 0; // Reset to first page
+        this.loadMenuItems();
+      });
+    }
+  }
+
+  setupSearchDebounce(): void {
+    this.searchSubject.pipe(
+      debounceTime(500),
+      distinctUntilChanged()
+    ).subscribe(() => {
+      this.currentPage = 0; // Reset to first page when search changes
+      this.loadMenuItems();
+    });
+  }
+
   loadMenuItems(): void {
     this.isLoading = true;
-    this.menuItemsService.getMenuItemsByCompany().subscribe({
-      next: (items) => {
-        this.menuItems = items;
-        this.filteredMenuItems = items;
+    
+    this.menuItemsService.getPaginatedMenuItems(
+      this.currentPage,
+      this.pageSize,
+      this.sortBy,
+      this.sortDirection,
+      this.getSearchTerm()
+    ).subscribe({
+      next: (response: PaginatedItemsResponse<MenuItem>) => {
+        this.filteredMenuItems = response.items;
+        this.totalItems = response.totalItems;
+        this.currentPage = response.currentPage;
         this.isLoading = false;
       },
       error: (error) => {
@@ -121,6 +166,14 @@ export class MenuItemsComponent implements OnInit {
         this.isLoading = false;
       }
     });
+  }
+
+  // Create a search term based on active filters
+  getSearchTerm(): string | undefined {
+    if (this.nameFilter) {
+      return this.nameFilter;
+    }
+    return undefined;
   }
 
   loadCategories(): void {
@@ -132,6 +185,19 @@ export class MenuItemsComponent implements OnInit {
         console.error('Error loading categories:', error);
       }
     });
+  }
+
+  // Pagination event handler
+  onPageChange(event: PageEvent): void {
+    this.currentPage = event.pageIndex;
+    this.pageSize = event.pageSize;
+    this.loadMenuItems();
+  }
+
+  // Handle search input changes
+  onSearchChange(value: string): void {
+    this.nameFilter = value;
+    this.searchSubject.next(value);
   }
 
   selectMenuItem(menuItem: MenuItem): void {
@@ -170,30 +236,18 @@ export class MenuItemsComponent implements OnInit {
     });
   }
 
-  // Filtering methods
+  // Apply filters now triggers server-side filtering by reloading data
   applyFilters(): void {
-    this.filteredMenuItems = this.menuItems.filter(item => {
-      // Filter by name
-      const nameMatch = !this.nameFilter || 
-        item.name.toLowerCase().includes(this.nameFilter.toLowerCase());
-      
-      // Filter by category
-      const categoryMatch = !this.categoryFilter || 
-        item.category?.id === this.categoryFilter;
-      
-      // Filter by POS code
-      const posCodeMatch = !this.posCodeFilter || 
-        (item.posCode && item.posCode.toLowerCase().includes(this.posCodeFilter.toLowerCase()));
-      
-      return nameMatch && categoryMatch && posCodeMatch;
-    });
+    this.currentPage = 0; // Reset to first page
+    this.loadMenuItems();
   }
 
   clearAllFilters(): void {
     this.nameFilter = '';
     this.categoryFilter = null;
     this.posCodeFilter = '';
-    this.applyFilters();
+    this.currentPage = 0; // Reset to first page
+    this.loadMenuItems();
   }
 
   hasActiveFilters(): boolean {
@@ -219,8 +273,8 @@ export class MenuItemsComponent implements OnInit {
   handleCloseAddPanel(createdMenuItem: MenuItem | null): void {
     this.showAddMenuItemPanel = false;
     if (createdMenuItem) {
-      this.menuItems.push(createdMenuItem);
-      this.applyFilters();
+      // Reload menu items to include the new one
+      this.loadMenuItems();
       
       // Optionally select the newly created menu item
       this.selectMenuItem(createdMenuItem);
@@ -246,9 +300,8 @@ export class MenuItemsComponent implements OnInit {
       this.isLoading = true;
       this.menuItemsService.deleteMenuItem(id).subscribe({
         next: () => {
-          // Remove from list
-          this.menuItems = this.menuItems.filter(item => item.id !== id);
-          this.filteredMenuItems = this.filteredMenuItems.filter(item => item.id !== id);
+          // Reload menu items after deletion
+          this.loadMenuItems();
           
           // Close panel if the deleted item was selected
           if (this.selectedMenuItem?.id === id) {
@@ -280,17 +333,8 @@ export class MenuItemsComponent implements OnInit {
 
   // Handle save menu item event from detail panel
   handleSaveMenuItem(updatedMenuItem: MenuItem): void {
-    // Find the item in the list and update it
-    const index = this.menuItems.findIndex(item => item.id === updatedMenuItem.id);
-    if (index !== -1) {
-      this.menuItems[index] = updatedMenuItem;
-    }
-    
-    // Also update in filtered list
-    const filteredIndex = this.filteredMenuItems.findIndex(item => item.id === updatedMenuItem.id);
-    if (filteredIndex !== -1) {
-      this.filteredMenuItems[filteredIndex] = updatedMenuItem;
-    }
+    // Reload menu items to refresh the list
+    this.loadMenuItems();
     
     // Show success message
     this.snackBar.open('Menu item updated successfully', 'Close', {

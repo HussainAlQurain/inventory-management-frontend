@@ -290,25 +290,18 @@ export class AddMenuItemComponent implements OnInit {
       menuItemLines: cleanedLines
     };
     
-    const companyId = this.companiesService.getSelectedCompanyId();
-    
-    if(companyId){
-        this.menuItemsService.createMenuItem(companyId, menuItemData).subscribe({
-        next: (createdMenuItem) => {
-            this.isSubmitting = false;
-            this.closePanel.emit(createdMenuItem);
-        },
-        error: (error) => {
-            this.isSubmitting = false;
-            console.error('Error creating menu item:', error);
-            alert('Error creating menu item. Please try again.');
-        }
-        });
-    }
-    else {
-        this.isSubmitting = false;
-        alert("Company id is not provided");
-    }
+    // The createMenuItem method no longer needs companyId as it gets it from the service
+    this.menuItemsService.createMenuItem(menuItemData).subscribe({
+      next: (createdMenuItem) => {
+          this.isSubmitting = false;
+          this.closePanel.emit(createdMenuItem);
+      },
+      error: (error) => {
+          this.isSubmitting = false;
+          console.error('Error creating menu item:', error);
+          alert('Error creating menu item. Please try again.');
+      }
+    });
   }
   
   cancel(): void {

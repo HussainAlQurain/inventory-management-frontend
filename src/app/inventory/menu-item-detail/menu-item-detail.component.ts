@@ -308,8 +308,8 @@ export class MenuItemDetailComponent implements OnInit, OnChanges {
       // Keep the existing cost and food cost percentage
     };
 
-    // Save the updated menu item
-    this.menuItemsService.updateMenuItem(updatedMenuItem).subscribe({
+    // Save the updated menu item - pass the ID and the data as separate parameters
+    this.menuItemsService.updateMenuItem(this.menuItem.id!, updatedMenuItem).subscribe({
       next: (savedMenuItem) => {
         this.menuItem = savedMenuItem;
         this.isEditMode = false;

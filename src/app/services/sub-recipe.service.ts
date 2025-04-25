@@ -1,11 +1,12 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Observable, throwError, forkJoin, of } from 'rxjs';
 import { catchError, map, retry, tap, switchMap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { SubRecipe, SubRecipeLine } from '../models/SubRecipe';
 import { CompaniesService } from './companies.service';
 import { InventoryItemsService } from './inventory-items-service.service';
+import { PaginatedResponse } from './inventory-items-service.service';
 
 @Injectable({
   providedIn: 'root'
@@ -18,6 +19,48 @@ export class SubRecipeService {
     private companiesService: CompaniesService,
     private inventoryItemsService: InventoryItemsService
   ) {}
+
+  // New method for paginated sub-recipe items
+  getPaginatedSubRecipeItems(
+    subRecipeId: number,
+    page: number = 0,
+    size: number = 10,
+    sort: string = "inventoryItemId,asc",
+    searchTerm?: string
+  ): Observable<PaginatedResponse<SubRecipeLine>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString())
+      .set('sort', sort);
+
+    if (searchTerm) {
+      params = params.set('search', searchTerm);
+    }
+    
+    return this.http.get<PaginatedResponse<SubRecipeLine>>(
+      `${this.apiUrl}/${subRecipeId}/items/paginated`,
+      { params }
+    ).pipe(
+      switchMap(response => {
+        // Enhance the items with names
+        if (response.content && response.content.length > 0) {
+          return this.enhanceLinesWithNames(response.content).pipe(
+            map(enhancedLines => {
+              return {
+                ...response,
+                content: enhancedLines
+              };
+            })
+          );
+        }
+        return of(response);
+      }),
+      catchError(error => {
+        console.error(`Error fetching paginated items for sub-recipe ID=${subRecipeId}:`, error);
+        return throwError(() => new Error(`Error fetching paginated items for sub-recipe ${subRecipeId}`));
+      })
+    );
+  }
 
   // Basic CRUD methods
   getSubRecipes(): Observable<SubRecipe[]> {

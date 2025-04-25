@@ -1,8 +1,8 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit, ViewChild, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableModule, MatTable } from '@angular/material/table';
-import { MatPaginatorModule, MatPaginator } from '@angular/material/paginator';
-import { MatSortModule, MatSort } from '@angular/material/sort';
+import { MatPaginatorModule, MatPaginator, PageEvent } from '@angular/material/paginator';
+import { MatSortModule, MatSort, Sort } from '@angular/material/sort';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -14,8 +14,10 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { FormsModule } from '@angular/forms';
+import { Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
-import { InventoryItemsService } from '../../services/inventory-items-service.service';
+import { InventoryItemsService, PaginatedResponse } from '../../services/inventory-items-service.service';
 import { InventoryItem } from '../../models/InventoryItem';
 import { InventoryItemDetailModalComponent } from '../inventory-item-detail-modal/inventory-item-detail-modal.component';
 import { Category } from '../../models/Category';
@@ -24,7 +26,6 @@ import { CategoriesService } from '../../services/categories.service';
 import { SupplierService } from '../../services/supplier.service';
 import { AddInventoryItemComponent } from '../add-inventory-item/add-inventory-item.component';
 import { InventoryItemLocationService } from '../../services/inventory-item-location.service';
-import { InventoryItemLocation } from '../../models/InventoryItem';
 
 interface Buyer {
   id: number;
@@ -55,7 +56,10 @@ interface Buyer {
   templateUrl: './inventory-items.component.html',
   styleUrl: './inventory-items.component.scss'
 })
-export class InventoryItemsComponent implements OnInit {
+export class InventoryItemsComponent implements OnInit, AfterViewInit {
+  // Make Math available to the template
+  Math = Math;
+  
   displayedColumns: string[] = [
     'name', 
     'supplier', 
@@ -72,8 +76,7 @@ export class InventoryItemsComponent implements OnInit {
     'taxRate'
   ];
   
-  // Original and filtered data sources
-  dataSource: InventoryItem[] = [];
+  // Filtered data source
   filteredItems: InventoryItem[] = [];
   
   // Loading and error states
@@ -98,6 +101,17 @@ export class InventoryItemsComponent implements OnInit {
   // Add inventory item panel flag
   showAddItemPanel = false;
 
+  // Pagination and sorting
+  totalItems = 0;
+  pageSize = 10;
+  pageIndex = 0;
+  pageSizeOptions = [5, 10, 25, 50, 100];
+  sortField = 'name';
+  sortDirection = 'asc';
+  
+  // Debounce for search
+  private searchSubject = new Subject<string>();
+
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
   @ViewChild(MatTable) table!: MatTable<InventoryItem>;
@@ -111,21 +125,52 @@ export class InventoryItemsComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.setupSearchDebounce();
     this.loadInventoryItems();
     this.loadCategories();
     this.loadSuppliers();
   }
+  
+  ngAfterViewInit() {
+    // Set up sort change listener after the view is initialized
+    if (this.sort) {
+      this.sort.sortChange.subscribe((sort: Sort) => {
+        this.sortField = sort.active;
+        this.sortDirection = sort.direction || 'asc';
+        this.pageIndex = 0; // Reset to first page on sort change
+        this.loadInventoryItems();
+      });
+    }
+  }
+  
+  setupSearchDebounce(): void {
+    this.searchSubject.pipe(
+      debounceTime(500),
+      distinctUntilChanged()
+    ).subscribe(() => {
+      this.pageIndex = 0; // Reset to first page when search changes
+      this.loadInventoryItems();
+    });
+  }
 
   loadInventoryItems(): void {
     this.isLoading = true;
-    this.inventoryService.getInventoryItemsByCompany().subscribe({
-      next: (items) => {
-        this.dataSource = items;
-        this.filteredItems = items;
+    
+    this.inventoryService.getPaginatedInventoryItems(
+      this.pageIndex,
+      this.pageSize,
+      `${this.sortField},${this.sortDirection}`,
+      this.categoryFilter || undefined,
+      this.nameFilter || undefined,
+      true
+    ).subscribe({
+      next: (response: PaginatedResponse<InventoryItem>) => {
+        this.filteredItems = response.content;
+        this.totalItems = response.totalElements;
         
         // Fetch location data for each item
         const selectedLocationId = this.inventoryItemLocationService.getSelectedLocationId();
-        items.forEach(item => {
+        this.filteredItems.forEach(item => {
           if (item.id) {
             this.inventoryItemLocationService.getItemLocationData(item.id, selectedLocationId)
               .subscribe({
@@ -135,9 +180,8 @@ export class InventoryItemsComponent implements OnInit {
                   item.par = locationData.parLevel;
                   item.lastCount = locationData.lastCount;
                 },
-                error: (error) => {
+                error: () => {
                   // If no location data exists or there's an error, keep the default values
-                  // console.log(`No location data for item ${item.id}`);
                 }
               });
           }
@@ -175,27 +219,22 @@ export class InventoryItemsComponent implements OnInit {
     });
   }
 
-  // Filtering methods
+  // Handle pagination events
+  onPageChange(event: PageEvent): void {
+    this.pageIndex = event.pageIndex;
+    this.pageSize = event.pageSize;
+    this.loadInventoryItems();
+  }
+
+  // Filtering methods - now trigger server-side filtering
   applyFilters(): void {
-    this.filteredItems = this.dataSource.filter(item => {
-      // Filter by name
-      const nameMatch = !this.nameFilter || 
-        item.name.toLowerCase().includes(this.nameFilter.toLowerCase());
-      
-      // Filter by category
-      const categoryMatch = !this.categoryFilter || 
-        item.category?.id === this.categoryFilter;
-      
-      // Filter by supplier - check all purchase options for any supplier match
-      const supplierMatch = !this.supplierFilter || 
-        item.purchaseOptions?.some(po => po.supplier?.id === this.supplierFilter);
-      
-      // Filter by buyer - example filter (using placeholder data)
-      const buyerMatch = !this.buyerFilter || this.buyerFilter === 1; // Always match Company buyer for now
-      
-      // Return true only if all filters match
-      return nameMatch && categoryMatch && supplierMatch && buyerMatch;
-    });
+    this.pageIndex = 0; // Reset to first page when filters change
+    this.loadInventoryItems();
+  }
+  
+  onSearchChange(value: string): void {
+    this.nameFilter = value;
+    this.searchSubject.next(value);
   }
 
   clearAllFilters(): void {
@@ -203,7 +242,8 @@ export class InventoryItemsComponent implements OnInit {
     this.categoryFilter = null;
     this.supplierFilter = null;
     this.buyerFilter = null;
-    this.applyFilters();
+    this.pageIndex = 0; // Reset to first page
+    this.loadInventoryItems();
   }
 
   hasActiveFilters(): boolean {

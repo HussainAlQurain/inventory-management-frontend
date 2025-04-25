@@ -1,9 +1,20 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { Observable, catchError, throwError } from 'rxjs';
 import { InventoryItem } from '../models/InventoryItem';
 import { CompaniesService } from './companies.service';
+
+// Define pagination response interface
+export interface PaginatedResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -15,6 +26,48 @@ export class InventoryItemsService {
     private http: HttpClient,
     private companiesService: CompaniesService
   ) {}
+
+  // New method for paginated inventory items
+  getPaginatedInventoryItems(
+    page: number = 0,
+    size: number = 10,
+    sort: string = "name,asc",
+    categoryId?: number,
+    searchTerm?: string,
+    includeDetails: boolean = false
+  ): Observable<PaginatedResponse<InventoryItem>> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    if (!companyId) {
+      return throwError(() => new Error('No company selected'));
+    }
+    
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString())
+      .set('sort', sort);
+
+    if (categoryId) {
+      params = params.set('categoryId', categoryId.toString());
+    }
+
+    if (searchTerm) {
+      params = params.set('search', searchTerm);
+    }
+
+    if (includeDetails) {
+      params = params.set('includeDetails', includeDetails.toString());
+    }
+    
+    return this.http.get<PaginatedResponse<InventoryItem>>(
+      `${this.baseUrl}/company/${companyId}/paginated`,
+      { params }
+    ).pipe(
+      catchError(error => {
+        console.error('Error fetching paginated inventory items:', error);
+        return throwError(() => new Error('Error fetching paginated inventory items.'));
+      })
+    );
+  }
 
   getInventoryItemsByCompany(): Observable<InventoryItem[]> {
     const companyId = this.companiesService.getSelectedCompanyId();

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -10,11 +10,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatPaginatorModule, MatPaginator, PageEvent } from '@angular/material/paginator';
+import { MatSortModule, MatSort, Sort } from '@angular/material/sort';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
 
 import { Supplier } from '../../models/Supplier';
 import { SupplierService } from '../../services/supplier.service';
+import { PaginatedResponse } from '../../services/inventory-items-service.service';
 import { SupplierDialogComponent } from '../supplier-dialog/supplier-dialog.component';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog/confirm-dialog.component';
 
@@ -31,18 +34,34 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog/confirm-dial
     MatIconModule,
     MatDialogModule,
     MatMenuModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    MatPaginatorModule,
+    MatSortModule
   ],
   templateUrl: './supplier-list.component.html',
   styleUrls: ['./supplier-list.component.scss']
 })
-export class SupplierListComponent implements OnInit {
+export class SupplierListComponent implements OnInit, AfterViewInit {
   displayedColumns: string[] = ['name', 'customerNumber', 'address', 'defaultContact', 'minimumOrder', 'actions'];
-  suppliers: Supplier[] = [];
+  
+  // For displaying data
   filteredSuppliers: Supplier[] = [];
+
+  // Pagination and sorting
   isLoading = true;
   searchQuery = '';
+  totalItems = 0;
+  pageSize = 10;
+  pageIndex = 0;
+  pageSizeOptions = [5, 10, 25, 50];
+  sortField = 'name';
+  sortDirection = 'asc';
+
   private searchSubject = new Subject<string>();
+  Math = Math; // For template usage
+
+  @ViewChild(MatPaginator) paginator!: MatPaginator;
+  @ViewChild(MatSort) sort!: MatSort;
 
   constructor(
     private supplierService: SupplierService,
@@ -52,16 +71,33 @@ export class SupplierListComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.loadSuppliers();
     this.setupSearch();
+    this.loadSuppliers();
+  }
+
+  ngAfterViewInit(): void {
+    // Set up sort change listener
+    if (this.sort) {
+      this.sort.sortChange.subscribe((sort: Sort) => {
+        this.sortField = sort.active;
+        this.sortDirection = sort.direction || 'asc';
+        this.pageIndex = 0; // Reset to first page
+        this.loadSuppliers();
+      });
+    }
   }
 
   loadSuppliers(): void {
     this.isLoading = true;
-    this.supplierService.getAllSuppliers().subscribe({
-      next: (suppliers) => {
-        this.suppliers = suppliers;
-        this.filteredSuppliers = suppliers;
+    this.supplierService.getPaginatedSuppliers(
+      this.pageIndex,
+      this.pageSize,
+      `${this.sortField},${this.sortDirection}`,
+      this.searchQuery || undefined
+    ).subscribe({
+      next: (response: PaginatedResponse<Supplier>) => {
+        this.filteredSuppliers = response.content;
+        this.totalItems = response.totalElements;
         this.isLoading = false;
       },
       error: (error) => {
@@ -77,7 +113,9 @@ export class SupplierListComponent implements OnInit {
       debounceTime(300),
       distinctUntilChanged()
     ).subscribe(searchTerm => {
-      this.filterSuppliers(searchTerm);
+      this.pageIndex = 0; // Reset to first page
+      this.searchQuery = searchTerm;
+      this.loadSuppliers();
     });
   }
 
@@ -85,31 +123,10 @@ export class SupplierListComponent implements OnInit {
     this.searchSubject.next(searchQuery);
   }
 
-  filterSuppliers(query: string): void {
-    if (!query.trim()) {
-      this.filteredSuppliers = [...this.suppliers];
-      return;
-    }
-
-    query = query.toLowerCase().trim();
-    this.filteredSuppliers = this.suppliers.filter(supplier => {
-      const nameMatch = supplier.name?.toLowerCase().includes(query);
-      const customerNumberMatch = supplier.customerNumber?.toLowerCase().includes(query);
-      const addressMatch = (supplier.address?.toLowerCase().includes(query) || 
-                          supplier.city?.toLowerCase().includes(query) ||
-                          supplier.state?.toLowerCase().includes(query) ||
-                          supplier.zip?.toLowerCase().includes(query));
-
-      // Search in emails
-      const emailMatch = supplier.orderEmails?.some(email => email.email.toLowerCase().includes(query)) || 
-                        supplier.emails?.some(email => email.email.toLowerCase().includes(query));
-      
-      // Search in phones
-      const phoneMatch = supplier.orderPhones?.some(phone => phone.phoneNumber.toLowerCase().includes(query)) ||
-                        supplier.phones?.some(phone => phone.phoneNumber.toLowerCase().includes(query));
-
-      return nameMatch || customerNumberMatch || addressMatch || emailMatch || phoneMatch;
-    });
+  onPageChange(event: PageEvent): void {
+    this.pageIndex = event.pageIndex;
+    this.pageSize = event.pageSize;
+    this.loadSuppliers();
   }
 
   openSupplierDialog(supplier?: Supplier): void {

@@ -1,9 +1,18 @@
 import { Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpErrorResponse } from '@angular/common/http';
 import { CompaniesService } from './companies.service';
 import { SubRecipe, SubRecipeLine } from '../models/SubRecipe';
-import { catchError, Observable, throwError } from 'rxjs';
+import { catchError, Observable, throwError, retry, retryWhen, mergeMap } from 'rxjs';
+import { HttpErrorHandlerService } from './http-error-handler.service';
+
+// Define an interface for the pagination response structure
+export interface PaginatedItemsResponse<T> {
+  items: T[];
+  currentPage: number;
+  totalItems: number;
+  totalPages: number;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -13,7 +22,8 @@ export class SubRecipesService {
 
   constructor(
     private http: HttpClient,
-    private companiesService: CompaniesService
+    private companiesService: CompaniesService,
+    private errorHandler: HttpErrorHandlerService
   ) {}
 
   getAllSubRecipes(): Observable<SubRecipe[]> {
@@ -106,6 +116,55 @@ export class SubRecipesService {
         console.error('Error searching sub recipes:', error);
         return throwError(() => new Error('Error searching sub recipes.'));
       })
+    );
+  }
+
+  // New method for paginated sub-recipes
+  getPaginatedSubRecipes(
+    page: number = 0,
+    size: number = 10,
+    sortBy: string = "name",
+    direction: string = "asc",
+    searchTerm?: string
+  ): Observable<PaginatedItemsResponse<SubRecipe>> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    if (!companyId) {
+      return throwError(() => new Error('No company selected'));
+    }
+
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString())
+      .set('sort', sortBy)
+      .set('direction', direction);
+
+    if (searchTerm) {
+      params = params.set('search', searchTerm);
+    }
+
+    return this.http.get<PaginatedItemsResponse<SubRecipe>>(
+      `${this.baseUrl}/company/${companyId}`,
+      { params }
+    ).pipe(
+      retryWhen(errors => 
+        errors.pipe(
+          mergeMap((error: any) => {
+            // If the error has a needsRetry flag and retryAttempt
+            if (error.needsRetry && error.retryAttempt) {
+              return this.errorHandler.handleError(
+                error.error, 
+                'Error fetching paginated sub-recipes',
+                error.retryAttempt
+              );
+            }
+            // Otherwise, just pass the error through
+            return throwError(() => error);
+          })
+        )
+      ),
+      catchError((error: HttpErrorResponse) => 
+        this.errorHandler.handleError(error, 'Error fetching paginated sub-recipes')
+      )
     );
   }
 

@@ -109,8 +109,20 @@
       margin-bottom: 16px;
       font-size: 16px;
     }
+    
+    .pagination-info {
+      color: rgba(0, 0, 0, 0.6);
+      padding: 8px 16px;
+      font-size: 14px;
+      text-align: right;
+      margin-top: 8px;
+      background-color: #f9f9f9;
+      border-radius: 4px;
+    }
   }
   
   mat-paginator {
     margin-top: 16px;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }

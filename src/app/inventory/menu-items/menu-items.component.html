@@ -24,8 +24,8 @@
     <div class="filter-row">
       <mat-form-field appearance="outline">
         <mat-label>Search by name</mat-label>
-        <input matInput [(ngModel)]="nameFilter" (keyup)="applyFilters()" placeholder="Search menu items...">
-        <button *ngIf="nameFilter" matSuffix mat-icon-button aria-label="Clear" (click)="nameFilter=''; applyFilters()">
+        <input matInput [(ngModel)]="nameFilter" (keyup)="onSearchChange(nameFilter)" placeholder="Search menu items...">
+        <button *ngIf="nameFilter" matSuffix mat-icon-button aria-label="Clear" (click)="nameFilter=''; onSearchChange('')">
           <mat-icon>close</mat-icon>
         </button>
       </mat-form-field>
@@ -52,7 +52,7 @@
     <div class="active-filters" *ngIf="hasActiveFilters()">
       <span class="filter-chip" *ngIf="nameFilter">
         Name: {{nameFilter}}
-        <button mat-icon-button (click)="nameFilter=''; applyFilters()">
+        <button mat-icon-button (click)="nameFilter=''; onSearchChange('')">
           <mat-icon>close</mat-icon>
         </button>
       </span>
@@ -132,7 +132,21 @@
           class="menu-item-row"></tr>
     </table>
     
-    <mat-paginator [pageSizeOptions]="[10, 25, 50, 100]" showFirstLastButtons></mat-paginator>
+    <!-- Updated paginator with server-side pagination properties -->
+    <mat-paginator 
+      [length]="totalItems" 
+      [pageSize]="pageSize" 
+      [pageIndex]="currentPage" 
+      [pageSizeOptions]="pageSizeOptions" 
+      (page)="onPageChange($event)"
+      showFirstLastButtons>
+    </mat-paginator>
+    
+    <!-- Pagination Information -->
+    <div class="pagination-info" *ngIf="totalItems > 0">
+      Showing {{ filteredMenuItems.length > 0 ? (currentPage * pageSize) + 1 : 0 }} - 
+      {{ Math.min((currentPage + 1) * pageSize, totalItems) }} of {{ totalItems }} menu items
+    </div>
   </div>
 
   <app-add-menu-item *ngIf="showAddMenuItemPanel" (closePanel)="handleCloseAddPanel($event)"></app-add-menu-item>

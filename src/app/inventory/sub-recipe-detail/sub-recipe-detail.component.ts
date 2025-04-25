@@ -1,9 +1,9 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit, ViewChild, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatTableModule, MatTable } from '@angular/material/table';
-import { MatPaginatorModule, MatPaginator } from '@angular/material/paginator';
-import { MatSortModule, MatSort } from '@angular/material/sort';
+import { MatPaginatorModule, MatPaginator, PageEvent } from '@angular/material/paginator';
+import { MatSortModule, MatSort, Sort } from '@angular/material/sort';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -18,12 +18,14 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 import { SubRecipe, SubRecipeLine, SubRecipeType } from '../../models/SubRecipe';
 import { Category } from '../../models/Category';
 import { UnitOfMeasure } from '../../models/UnitOfMeasure';
 import { SubRecipeService } from '../../services/sub-recipe.service';
-import { SubRecipesService } from '../../services/sub-recipes.service';
+import { SubRecipesService, PaginatedItemsResponse } from '../../services/sub-recipes.service';
 import { UomService } from '../../services/uom.service';
 import { CategoriesService } from '../../services/categories.service';
 
@@ -60,7 +62,7 @@ import { AddSubRecipeComponent } from '../add-sub-recipe/add-sub-recipe.componen
   templateUrl: './sub-recipe-detail.component.html',
   styleUrls: ['./sub-recipe-detail.component.scss']
 })
-export class SubRecipeDetailComponent implements OnInit {
+export class SubRecipeDetailComponent implements OnInit, AfterViewInit {
   // Display columns for the table
   displayedColumns: string[] = [
     'name',
@@ -75,7 +77,6 @@ export class SubRecipeDetailComponent implements OnInit {
   ];
   
   // Data sources
-  subRecipes: SubRecipe[] = [];
   filteredSubRecipes: SubRecipe[] = [];
   
   // Selected subrecipe for detail view
@@ -107,6 +108,18 @@ export class SubRecipeDetailComponent implements OnInit {
   showAddForm = false;
   showAddSubRecipePanel = false;
   
+  // Pagination and sorting
+  totalItems = 0;
+  currentPage = 0;
+  pageSize = 10;
+  pageSizeOptions = [5, 10, 25, 50];
+  sortBy = 'name';
+  sortDirection = 'asc';
+  
+  // For search debounce
+  private searchSubject = new Subject<string>();
+  Math = Math; // For template usage
+  
   // For pagination and sorting
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -130,25 +143,88 @@ export class SubRecipeDetailComponent implements OnInit {
   ) { }
 
   ngOnInit(): void {
+    this.setupSearchDebounce();
     this.loadSubRecipes();
     this.loadCategories();
     this.loadUoms();
   }
 
+  ngAfterViewInit(): void {
+    // Set up sort change listener
+    if (this.sort) {
+      this.sort.sortChange.subscribe((sort: Sort) => {
+        this.sortBy = sort.active;
+        this.sortDirection = sort.direction || 'asc';
+        this.currentPage = 0; // Reset to first page
+        this.loadSubRecipes();
+      });
+    }
+  }
+
+  setupSearchDebounce(): void {
+    this.searchSubject.pipe(
+      debounceTime(500),
+      distinctUntilChanged()
+    ).subscribe(() => {
+      this.currentPage = 0; // Reset to first page when search changes
+      this.loadSubRecipes();
+    });
+  }
+
   loadSubRecipes(): void {
     this.isLoading = true;
-    this.subRecipeService.getSubRecipes().subscribe({
-      next: (recipes) => {
-        this.subRecipes = recipes;
-        this.filteredSubRecipes = recipes;
+    this.error = null;
+    
+    this.subRecipesService.getPaginatedSubRecipes(
+      this.currentPage,
+      this.pageSize,
+      this.sortBy,
+      this.sortDirection,
+      this.getSearchTerm()
+    ).subscribe({
+      next: (response: PaginatedItemsResponse<SubRecipe>) => {
+        this.filteredSubRecipes = response.items;
+        this.totalItems = response.totalItems;
+        this.currentPage = response.currentPage;
         this.isLoading = false;
       },
-      error: (error) => {
-        console.error('Error loading sub-recipes:', error);
-        this.error = 'Failed to load sub-recipes. Please try again.';
+      error: (err: any) => {
+        console.error('Error loading sub-recipes:', err);
+        
+        // Customize error message based on error type
+        if (err.error && err.error.status === 0) {
+          this.error = 'Cannot connect to the server. Please check your internet connection.';
+        } else if (err.error && err.error.status === 500 && 
+                  (err.message?.includes('Connection') || err.message?.includes('HikariPool'))) {
+          this.error = 'Database connection issue. The server might be under heavy load. Please try again in a moment.';
+        } else {
+          this.error = 'Failed to load sub-recipes. Please try again.';
+        }
+        
         this.isLoading = false;
       }
     });
+  }
+
+  // Create a search term based on active filters
+  getSearchTerm(): string | undefined {
+    if (this.nameFilter) {
+      return this.nameFilter;
+    }
+    return undefined;
+  }
+
+  // Pagination event handler
+  onPageChange(event: PageEvent): void {
+    this.currentPage = event.pageIndex;
+    this.pageSize = event.pageSize;
+    this.loadSubRecipes();
+  }
+
+  // Handle search input changes
+  onSearchChange(value: string): void {
+    this.nameFilter = value;
+    this.searchSubject.next(value);
   }
 
   loadCategories(): void {
@@ -211,30 +287,18 @@ export class SubRecipeDetailComponent implements OnInit {
     });
   }
 
-  // Filtering methods
+  // Apply filters now triggers server-side filtering by reloading data
   applyFilters(): void {
-    this.filteredSubRecipes = this.subRecipes.filter(recipe => {
-      // Filter by name
-      const nameMatch = !this.nameFilter || 
-        recipe.name.toLowerCase().includes(this.nameFilter.toLowerCase());
-      
-      // Filter by category
-      const categoryMatch = !this.categoryFilter || 
-        recipe.categoryId === this.categoryFilter;
-      
-      // Filter by type
-      const typeMatch = !this.typeFilter || 
-        recipe.type === this.typeFilter;
-      
-      return nameMatch && categoryMatch && typeMatch;
-    });
+    this.currentPage = 0; // Reset to first page
+    this.loadSubRecipes();
   }
 
   clearAllFilters(): void {
     this.nameFilter = '';
     this.categoryFilter = null;
     this.typeFilter = null;
-    this.applyFilters();
+    this.currentPage = 0; // Reset to first page
+    this.loadSubRecipes();
   }
 
   hasActiveFilters(): boolean {
@@ -273,11 +337,15 @@ export class SubRecipeDetailComponent implements OnInit {
   handleCloseAddPanel(createdSubRecipe: SubRecipe | null): void {
     this.showAddSubRecipePanel = false;
     if (createdSubRecipe) {
-      this.subRecipes.push(createdSubRecipe);
-      this.applyFilters();
+      // Reload sub-recipes to include the new one
+      this.loadSubRecipes();
       
       // Optionally select the newly created sub-recipe
       this.selectSubRecipe(createdSubRecipe);
+      
+      this.snackBar.open('Sub-recipe created successfully', 'Close', {
+        duration: 3000
+      });
     }
   }
 
@@ -299,12 +367,9 @@ export class SubRecipeDetailComponent implements OnInit {
       // Update existing sub-recipe
       this.subRecipeService.updateSubRecipe(subRecipe).subscribe({
         next: (updated) => {
-          // Update in the list
-          const index = this.subRecipes.findIndex(item => item.id === updated.id);
-          if (index >= 0) {
-            this.subRecipes[index] = updated;
-            this.applyFilters();
-          }
+          // Reload list to show updated data
+          this.loadSubRecipes();
+          
           // Update selected sub-recipe
           this.selectedSubRecipe = updated;
           this.isLoading = false;
@@ -325,8 +390,7 @@ export class SubRecipeDetailComponent implements OnInit {
       // Create new sub-recipe
       this.subRecipeService.createSubRecipe(subRecipe).subscribe({
         next: (created) => {
-          this.subRecipes.push(created);
-          this.applyFilters();
+          this.loadSubRecipes();
           this.showAddForm = false;
           this.isLoading = false;
           this.snackBar.open('New sub-recipe created', 'Close', {
@@ -461,12 +525,8 @@ export class SubRecipeDetailComponent implements OnInit {
     }).subscribe({
       next: (updated) => {
         this.selectedSubRecipe = updated;
-        // Update in the list
-        const index = this.subRecipes.findIndex(item => item.id === updated.id);
-        if (index >= 0) {
-          this.subRecipes[index] = updated;
-          this.applyFilters();
-        }
+        // Update in the list by reloading
+        this.loadSubRecipes();
       },
       error: (error) => {
         console.error('Error updating sub-recipe:', error);
@@ -481,9 +541,8 @@ export class SubRecipeDetailComponent implements OnInit {
       this.isLoading = true;
       this.subRecipeService.deleteSubRecipe(this.selectedSubRecipe.id).subscribe({
         next: () => {
-          // Remove from list
-          this.subRecipes = this.subRecipes.filter(r => r.id !== this.selectedSubRecipe!.id);
-          this.filteredSubRecipes = this.filteredSubRecipes.filter(r => r.id !== this.selectedSubRecipe!.id);
+          // Reload list
+          this.loadSubRecipes();
           
           // Close panel
           this.closeDetailPanel();

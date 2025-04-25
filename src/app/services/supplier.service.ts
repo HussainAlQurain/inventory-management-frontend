@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, catchError, map, of } from 'rxjs';
 import { Supplier, SupplierEmail, SupplierPhone } from '../models/Supplier';
 import { environment } from '../../environments/environment';
 import { CompaniesService } from './companies.service';
+import { PaginatedResponse } from './inventory-items-service.service';
 
 @Injectable({
   providedIn: 'root'
@@ -15,6 +16,39 @@ export class SupplierService {
     private http: HttpClient,
     private companiesService: CompaniesService
   ) {}
+
+  // Get paginated suppliers
+  getPaginatedSuppliers(
+    page: number = 0,
+    size: number = 10,
+    sort: string = "name,asc",
+    searchTerm?: string
+  ): Observable<PaginatedResponse<Supplier>> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString())
+      .set('sort', sort);
+
+    if (searchTerm) {
+      params = params.set('search', searchTerm);
+    }
+    
+    return this.http.get<PaginatedResponse<Supplier>>(
+      `${this.apiUrl}/suppliers/company/${companyId}/paginated`,
+      { params }
+    ).pipe(
+      map(response => {
+        response.content = this.normalizeSupplierContacts(response.content);
+        return response;
+      }),
+      catchError(error => {
+        console.error('Error fetching paginated suppliers:', error);
+        throw error;
+      })
+    );
+  }
 
   // Get all suppliers for a company
   getAllSuppliers(): Observable<Supplier[]> {
