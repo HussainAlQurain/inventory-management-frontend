@@ -9,6 +9,7 @@ import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 
 import { NotificationService } from '../../services/notification.service';
+import { TransferNotificationService } from '../../services/transfer-notification.service';
 import { Notification } from '../../models/Notification';
 
 @Component({
@@ -32,6 +33,7 @@ export class NotificationComponent implements OnInit, OnDestroy {
 
   constructor(
     public notificationService: NotificationService,
+    private transferNotificationService: TransferNotificationService,
     private router: Router
   ) {}
 
@@ -78,9 +80,32 @@ export class NotificationComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Check for auto-transfer notifications with transfer ID
+    if (notification.title.includes('Auto-Transfer') || notification.title.includes('Auto‑Transfer')) {
+      // Extract the transfer ID from the notification message - handles "Draft #3 + 100.0" format
+      const transferIdMatch = notification.message.match(/Draft #(\d+)/);
+      if (transferIdMatch && transferIdMatch[1]) {
+        const transferId = parseInt(transferIdMatch[1]);
+        console.log('Found transfer ID in notification:', transferId);
+        // Navigate to transfers and open the transfer dialog
+        this.openTransferDetails(transferId);
+        return;
+      }
+    }
+
     // Add additional navigation logic for other notification types here
     
     // Default: no specific navigation
+  }
+
+  // Open transfer details dialog
+  private openTransferDetails(transferId: number): void {
+    // Navigate to the transfers page first
+    this.router.navigate(['/transfers']).then(() => {
+      // After navigation is complete, trigger the transfer notification service
+      // to open the dialog through the transfers component
+      this.transferNotificationService.openTransferDetails(transferId);
+    });
   }
 
   // Mark all visible notifications as read

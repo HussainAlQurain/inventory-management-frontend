@@ -19,6 +19,13 @@ import { Transfer, TransferLine } from '../../models/Transfer';
 import { Location } from '../../models/Location';
 import { UnitOfMeasure } from '../../models/UnitOfMeasure';
 
+// Updated interface for dialog data that can contain either the ID or the full transfer object
+interface TransferDetailsDialogData {
+  transferId: number;
+  isIncoming: boolean;
+  transferObject?: Transfer; // Optional transfer object
+}
+
 @Component({
   selector: 'app-transfer-details',
   standalone: true,
@@ -72,7 +79,7 @@ export class TransferDetailsComponent implements OnInit {
   
   constructor(
     private dialogRef: MatDialogRef<TransferDetailsComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { transferId: number, isIncoming: boolean },
+    @Inject(MAT_DIALOG_DATA) public data: TransferDetailsDialogData,
     private transferService: TransferService,
     private inventoryItemsService: InventoryItemsService,
     private subRecipeService: SubRecipeService,
@@ -87,7 +94,12 @@ export class TransferDetailsComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.loadTransferDetails();
+    if (this.data.transferObject) {
+      this.transfer = this.data.transferObject;
+      this.initLinesForm();
+    } else {
+      this.loadTransferDetails();
+    }
   }
   
   get lines(): FormArray {
