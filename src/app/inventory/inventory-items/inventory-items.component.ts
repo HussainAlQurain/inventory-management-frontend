@@ -163,7 +163,7 @@ export class InventoryItemsComponent implements OnInit, AfterViewInit {
       `${this.sortField},${this.sortDirection}`,
       this.categoryFilter || undefined,
       this.nameFilter || undefined,
-      true
+      false // Use lightweight DTOs for list view to avoid N+1 query problems
     ).subscribe({
       next: (response: PaginatedResponse<InventoryItem>) => {
         this.filteredItems = response.content;
