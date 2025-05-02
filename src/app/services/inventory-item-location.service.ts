@@ -1,10 +1,18 @@
 // inventory-item-location.service.ts
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { CompaniesService } from './companies.service';
 import { LocationInventory } from '../models/LocationInventory';
+import { PaginatedResponse } from './inventory-items-service.service';
+
+// Interface for the on-hand totals
+export interface ItemOnHandTotals {
+  itemId: number;
+  totalQuantity: number;
+  totalValue: number;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -49,6 +57,37 @@ export class InventoryItemLocationService {
     );
   }
 
+  // NEW METHOD: Get on-hand totals without loading all locations
+  getItemOnHandTotals(itemId: number): Observable<ItemOnHandTotals> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    return this.http.get<ItemOnHandTotals>(
+      `${this.baseUrl}/item/${itemId}/company/${companyId}/totals`
+    );
+  }
+
+  // UPDATED METHOD: Get paginated item locations with search
+  getPaginatedItemLocations(
+    itemId: number, 
+    page: number = 0, 
+    size: number = 10, 
+    locationSearch?: string
+  ): Observable<PaginatedResponse<LocationInventory>> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString());
+    
+    if (locationSearch) {
+      params = params.set('locationSearch', locationSearch);
+    }
+    
+    return this.http.get<PaginatedResponse<LocationInventory>>(
+      `${this.baseUrl}/item/${itemId}/company/${companyId}/paginated`,
+      { params }
+    );
+  }
+
+  // Keep for backwards compatibility until refactoring is complete
   getItemLocations(itemId: number): Observable<LocationInventory[]> {
     const companyId = this.companiesService.getSelectedCompanyId();
     return this.http.get<LocationInventory[]>(

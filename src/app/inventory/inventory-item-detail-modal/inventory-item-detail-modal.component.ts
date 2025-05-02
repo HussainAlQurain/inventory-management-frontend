@@ -18,7 +18,7 @@ import { UomService } from '../../services/uom.service';
 import { LocationService } from '../../services/location.service';
 import { CategoriesService } from '../../services/categories.service';
 import { PurchaseOptionService } from '../../services/purchase-option.service';
-import { InventoryItemLocationService } from '../../services/inventory-item-location.service';
+import { InventoryItemLocationService, ItemOnHandTotals } from '../../services/inventory-item-location.service';
 
 // Import the service for partial update of the item
 import { InventoryItemsService } from '../../services/inventory-items-service.service';
@@ -52,6 +52,7 @@ import { SupplierDialogComponent } from '../../suppliers/supplier-dialog/supplie
 
 // Import the LocationInventory interface from models
 import { LocationInventory } from '../../models/LocationInventory';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 
 @Component({
   selector: 'app-inventory-item-detail-modal',
@@ -79,7 +80,8 @@ import { LocationInventory } from '../../models/LocationInventory';
     MatSelectModule,
     MatTooltipModule,
     MatSnackBarModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    MatPaginatorModule
   ],
 })
 export class InventoryItemDetailModalComponent implements OnInit {
@@ -98,6 +100,14 @@ export class InventoryItemDetailModalComponent implements OnInit {
   selectedCountingUomId: number | null = null;
   isDefaultCountingUom = false;
   loadingCountUoms = false;
+
+  // Pagination properties for location inventory
+  locationSearch = new FormControl<string>('');
+  currentPage = 0;
+  pageSize = 10;
+  totalLocations = 0;
+  loadingLocations = false;
+  locationDisplayedColumns: string[] = ['location', 'quantity', 'value', 'actions'];
 
   constructor(
     public dialogRef: MatDialogRef<InventoryItemDetailModalComponent>,
@@ -136,8 +146,18 @@ export class InventoryItemDetailModalComponent implements OnInit {
 
     this.setupPurchaseOptionUomControls();
 
-    // Load location-based on-hand info
-    this.loadLocationInventory();
+    // Add search functionality for location inventory
+    this.locationSearch.valueChanges.pipe(
+      debounceTime(300),
+      distinctUntilChanged()
+    ).subscribe(() => {
+      this.currentPage = 0; // Reset to first page when search changes
+      this.loadPaginatedLocationInventory();
+    });
+
+    // Load totals and initial page of locations
+    this.loadItemOnHandTotals();
+    this.loadPaginatedLocationInventory();
 
     // Load supplier from PurchaseOptionModal component if available
     if (window.history.state && window.history.state.newSupplier) {
@@ -159,6 +179,79 @@ export class InventoryItemDetailModalComponent implements OnInit {
     });
   }
 
+  /**
+   * Load the total on-hand quantity and value efficiently
+   * without fetching all location data
+   */
+  private loadItemOnHandTotals() {
+    if (!this.item.id) return;
+    
+    this.inventoryItemLocationService.getItemOnHandTotals(this.item.id).subscribe({
+      next: (totals: ItemOnHandTotals) => {
+        this.item.onHand = totals.totalQuantity;
+        this.item.onHandValue = totals.totalValue;
+      },
+      error: (err) => {
+        console.error('Error loading on-hand totals:', err);
+        this.snackBar.open('Failed to load on-hand totals', 'Close', {
+          duration: 3000
+        });
+      }
+    });
+  }
+
+  /**
+   * Load paginated location inventory data with optional search
+   */
+  loadPaginatedLocationInventory() {
+    if (!this.item.id) return;
+    
+    this.loadingLocations = true;
+    
+    this.inventoryItemLocationService.getPaginatedItemLocations(
+      this.item.id,
+      this.currentPage,
+      this.pageSize,
+      this.locationSearch.value || undefined
+    ).subscribe({
+      next: (response) => {
+        this.locationInventory = response.content.map(item => ({
+          location: { 
+            id: item.locationId || 0, 
+            name: item.locationName || 'Unknown' 
+          },
+          quantity: item.quantity || 0,
+          value: item.value || 0
+        }));
+        
+        this.totalLocations = response.totalElements;
+        this.loadingLocations = false;
+      },
+      error: (err) => {
+        console.error('Error loading location inventory:', err);
+        this.loadingLocations = false;
+        this.snackBar.open('Failed to load location inventory', 'Close', {
+          duration: 3000
+        });
+      }
+    });
+  }
+
+  /**
+   * Handle page changes from the paginator
+   */
+  onPageChange(event: PageEvent) {
+    this.currentPage = event.pageIndex;
+    this.pageSize = event.pageSize;
+    this.loadPaginatedLocationInventory();
+  }
+
+  /**
+   * Clear the location search field
+   */
+  clearLocationSearch() {
+    this.locationSearch.setValue('');
+  }
 
   private setupPurchaseOptionSupplierControls(): void {
     if (!this.item.purchaseOptions) return;
@@ -339,29 +432,6 @@ export class InventoryItemDetailModalComponent implements OnInit {
           duration: 3000
         });
       }
-    });
-  }
-
-  /** Load table of on-hand by location (for the 3rd tab) */
-  loadLocationInventory() {
-    const itemId = this.item.id || 0;
-    this.inventoryItemLocationService.getItemLocations(itemId).subscribe({
-      next: (list) => {
-        this.locationInventory = list.map(dto => ({
-          location: { 
-            id: dto.locationId, 
-            name: dto.locationName || 'Unknown' 
-          },
-          quantity: dto.quantity || 0,
-          value: dto.value || 0
-        }));
-        // compute total
-        const totalQty = this.locationInventory.reduce((sum, row) => sum + row.quantity, 0);
-        const totalVal = this.locationInventory.reduce((sum, row) => sum + row.value, 0);
-        this.item.onHand = totalQty;
-        this.item.onHandValue = totalVal;
-      },
-      error: err => console.error(err)
     });
   }
 

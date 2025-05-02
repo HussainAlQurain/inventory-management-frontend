@@ -248,36 +248,74 @@
 
       <!-- 3) On-Hand Tab -->
       <mat-tab label="On Hand">
-        <table mat-table [dataSource]="locationInventory" class="location-inventory-table">
-          <ng-container matColumnDef="location">
-            <th mat-header-cell *matHeaderCellDef>Location</th>
-            <td mat-cell *matCellDef="let row">{{ row.location?.name }}</td>
-          </ng-container>
+        <div class="on-hand-tab-container" style="padding: 16px;">
+          <!-- Loading indicator -->
+          <div *ngIf="loadingLocations" class="loading-container" style="display: flex; align-items: center; justify-content: center; padding: 20px;">
+            <mat-spinner diameter="30"></mat-spinner>
+            <span style="margin-left: 8px;">Loading location inventory...</span>
+          </div>
 
-          <ng-container matColumnDef="quantity">
-            <th mat-header-cell *matHeaderCellDef>On Hand</th>
-            <td mat-cell *matCellDef="let row">{{ row.quantity }}</td>
-          </ng-container>
-
-          <ng-container matColumnDef="value">
-            <th mat-header-cell *matHeaderCellDef>Value</th>
-            <td mat-cell *matCellDef="let row">{{ row.value | currency }}</td>
-          </ng-container>
-
-          <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef>Actions</th>
-            <td mat-cell *matCellDef="let row">
-              <button mat-icon-button color="primary" 
-                      (click)="updateLocationThresholds(row.location.id)" 
-                      matTooltip="Update thresholds for this location">
-                <mat-icon>update</mat-icon>
+          <!-- Search and controls row -->
+          <div class="search-controls" style="display: flex; margin-bottom: 16px; align-items: center;">
+            <mat-form-field appearance="outline" style="flex: 1;">
+              <mat-label>Search Locations</mat-label>
+              <input matInput [formControl]="locationSearch" placeholder="Enter location name">
+              <button *ngIf="locationSearch.value" matSuffix mat-icon-button aria-label="Clear" (click)="clearLocationSearch()">
+                <mat-icon>close</mat-icon>
               </button>
-            </td>
-          </ng-container>
+              <mat-hint>Search locations by name</mat-hint>
+            </mat-form-field>
+          </div>
 
-          <tr mat-header-row *matHeaderRowDef="['location', 'quantity', 'value', 'actions']"></tr>
-          <tr mat-row *matRowDef="let row; columns: ['location', 'quantity', 'value', 'actions']"></tr>
-        </table>
+          <!-- No results message -->
+          <div *ngIf="!loadingLocations && locationInventory.length === 0" class="no-results" style="text-align: center; padding: 20px; color: rgba(0,0,0,0.6);">
+            <mat-icon style="font-size: 48px; height: 48px; width: 48px; margin-bottom: 8px;">search_off</mat-icon>
+            <p>No locations found with the current search criteria.</p>
+          </div>
+
+          <!-- Inventory table -->
+          <table *ngIf="!loadingLocations && locationInventory.length > 0" mat-table [dataSource]="locationInventory" class="location-inventory-table" style="width: 100%;">
+            <ng-container matColumnDef="location">
+              <th mat-header-cell *matHeaderCellDef>Location</th>
+              <td mat-cell *matCellDef="let row">{{ row.location?.name }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="quantity">
+              <th mat-header-cell *matHeaderCellDef>On Hand</th>
+              <td mat-cell *matCellDef="let row">{{ row.quantity }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="value">
+              <th mat-header-cell *matHeaderCellDef>Value</th>
+              <td mat-cell *matCellDef="let row">{{ row.value | currency }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Actions</th>
+              <td mat-cell *matCellDef="let row">
+                <button mat-icon-button color="primary" 
+                        (click)="updateLocationThresholds(row.location.id)" 
+                        matTooltip="Update thresholds for this location">
+                  <mat-icon>update</mat-icon>
+                </button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="locationDisplayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: locationDisplayedColumns"></tr>
+          </table>
+
+          <!-- Pagination controls -->
+          <mat-paginator 
+            *ngIf="!loadingLocations && totalLocations > 0"
+            [pageIndex]="currentPage"
+            [length]="totalLocations"
+            [pageSize]="pageSize"
+            [pageSizeOptions]="[5, 10, 25, 50, 100]"
+            (page)="onPageChange($event)"
+            aria-label="Select page of locations">
+          </mat-paginator>
+        </div>
       </mat-tab>
 
       <!-- Add a new tab for Counting UOMs -->
