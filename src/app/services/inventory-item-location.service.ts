@@ -5,7 +5,7 @@ import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { CompaniesService } from './companies.service';
 import { LocationInventory } from '../models/LocationInventory';
-import { PaginatedResponse } from './inventory-items-service.service';
+import { PaginatedResponse } from '../models/paginated-response';
 
 // Interface for the on-hand totals
 export interface ItemOnHandTotals {

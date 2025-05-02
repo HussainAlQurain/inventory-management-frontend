@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormGroup, FormBuilder, Validators, AbstractControl } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormGroup, FormBuilder, Validators, AbstractControl, FormControl } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -13,9 +13,9 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatDividerModule } from '@angular/material/divider';
 import { Router } from '@angular/router';
-import { Observable, of, catchError, finalize, forkJoin, map, startWith, switchMap } from 'rxjs';
+import { Observable, of, catchError, finalize, combineLatest, map, startWith, switchMap, debounceTime, distinctUntilChanged } from 'rxjs';
 
-import { OrderService, CreateOrderRequest, OrderItemCreate } from '../../services/order.service';
+import { OrderService, CreateOrderRequest, OrderItemCreate, AvailableInventoryItem } from '../../services/order.service';
 import { OrderDetail } from '../../orders/order-details/order-details.component';
 import { LocationService } from '../../services/location.service';
 import { SupplierService } from '../../services/supplier.service';
@@ -25,6 +25,7 @@ import { AuthService } from '../../services/auth.service';
 import { Location } from '../../models/Location';
 import { Supplier } from '../../models/Supplier';
 import { InventoryItem } from '../../models/InventoryItem';
+import { Lookup } from '../../models/Lookup';
 
 interface OrderItem {
   inventoryItemId: number;
@@ -60,13 +61,17 @@ export class OrderCreateComponent implements OnInit {
   orderForm!: FormGroup;
   itemForm!: FormGroup;
 
-  // Data for dropdowns and selections
-  locations: Location[] = [];
-  suppliers: Supplier[] = [];
-  inventoryItems: InventoryItem[] = [];
-  filteredInventoryItems!: Observable<InventoryItem[]>;
+  // Search control for autocomplete search fields
+  locationSearchCtrl = new FormControl('');
+  supplierSearchCtrl = new FormControl('');
+  inventorySearchCtrl = new FormControl('');
 
-  // Order items - now using MatTableDataSource for better change detection
+  // Data for dropdowns and selections
+  filteredLocations$!: Observable<Location[]>;
+  filteredSuppliers$!: Observable<Supplier[]>;
+  filteredInventoryItems$!: Observable<AvailableInventoryItem[]>;
+
+  // Order items list
   orderItems: OrderItem[] = [];
   dataSource = new MatTableDataSource<OrderItem>([]);
 
@@ -74,6 +79,10 @@ export class OrderCreateComponent implements OnInit {
   isLoading = false;
   isSubmitting = false;
   loadingError: string | null = null;
+  
+  // Selected entities
+  selectedLocation: Location | null = null;
+  selectedSupplier: Supplier | null = null;
 
   // Table columns for order items
   displayedColumns: string[] = ['name', 'quantity', 'actions'];
@@ -92,35 +101,9 @@ export class OrderCreateComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.isLoading = true;
-
-    // Load all necessary data in parallel
-    forkJoin({
-      locations: this.locationService.getAllLocations(),
-      suppliers: this.supplierService.getAllSuppliers(),
-      inventoryItems: this.inventoryItemsService.getInventoryItemsByCompany()
-    }).pipe(
-      catchError(err => {
-        console.error('Error loading form data:', err);
-        this.loadingError = 'Failed to load necessary data. Please try again.';
-        return of({ locations: [], suppliers: [], inventoryItems: [] });
-      }),
-      finalize(() => {
-        this.isLoading = false;
-      })
-    ).subscribe(result => {
-      this.locations = result.locations;
-      this.suppliers = result.suppliers;
-      this.inventoryItems = result.inventoryItems;
-
-      // If there's only one location, auto-select it
-      if (this.locations.length === 1) {
-        this.orderForm.patchValue({ buyerLocationId: this.locations[0].id });
-      }
-
-      // Setup inventory item filtering for autocomplete
-      this.setupInventoryItemFiltering();
-    });
+    this.setupLocationAutocomplete();
+    this.setupSupplierAutocomplete();
+    this.setupInventoryItemFiltering();
   }
 
   createForms(): void {
@@ -139,43 +122,101 @@ export class OrderCreateComponent implements OnInit {
     });
   }
 
-  setupInventoryItemFiltering(): void {
-    this.filteredInventoryItems = this.itemForm.get('inventoryItemInput')!.valueChanges.pipe(
+  setupLocationAutocomplete(): void {
+    // Use the locationSearchCtrl for text input filtering
+    this.filteredLocations$ = this.locationSearchCtrl.valueChanges.pipe(
       startWith(''),
-      map(value => {
-        if (typeof value === 'number') {
-          // If value is already an ID (selected from dropdown), don't filter
-          return this.inventoryItems;
-        }
-        return this.filterInventoryItems(value || '');
+      debounceTime(300),
+      distinctUntilChanged(),
+      switchMap(search => {
+        // Type check to handle objects in event of selection
+        const searchText = typeof search === 'string' ? search : '';
+        return this.locationService.getPaginatedLocations(0, 10, "name,asc", searchText);
+      }),
+      map(response => response.content),
+      catchError(() => {
+        // Fallback to non-paginated endpoint if paginated endpoint fails
+        return this.locationService.getAllLocations();
       })
     );
   }
 
-  filterInventoryItems(value: string): InventoryItem[] {
-    if (!value) return this.inventoryItems;
-    
-    const filterValue = value.toLowerCase();
-    return this.inventoryItems.filter(item =>
-      item.name.toLowerCase().includes(filterValue) ||
-      (item.productCode && item.productCode.toLowerCase().includes(filterValue))
+  setupSupplierAutocomplete(): void {
+    // Use the supplierSearchCtrl for text input filtering
+    this.filteredSuppliers$ = this.supplierSearchCtrl.valueChanges.pipe(
+      startWith(''),
+      debounceTime(300),
+      distinctUntilChanged(),
+      switchMap(search => {
+        // Type check to handle objects in event of selection
+        const searchText = typeof search === 'string' ? search : '';
+        return this.supplierService.getPaginatedSuppliers(0, 10, "name,asc", searchText);
+      }),
+      map(response => response.content),
+      catchError(() => {
+        // Fallback to non-paginated endpoint if paginated endpoint fails
+        return this.supplierService.getAllSuppliers();
+      })
     );
   }
 
-  displayInventoryItemFn = (itemId: number | null): string => {
-    if (itemId == null) return '';
-    const item = this.inventoryItems.find(i => i.id === itemId);
-    return item ? item.name : '';
+  setupInventoryItemFiltering(): void {
+    // Get available inventory items only when both location and supplier are selected
+    this.filteredInventoryItems$ = combineLatest([
+      this.orderForm.get('buyerLocationId')!.valueChanges.pipe(startWith(this.orderForm.get('buyerLocationId')?.value)),
+      this.orderForm.get('supplierId')!.valueChanges.pipe(startWith(this.orderForm.get('supplierId')?.value)),
+      this.inventorySearchCtrl.valueChanges.pipe(startWith(''), debounceTime(300))
+    ]).pipe(
+      switchMap(([locationId, supplierId, search]) => {
+        if (!locationId || !supplierId) {
+          return of({ content: [] });
+        }
+        
+        // Type check to handle objects in event of selection
+        const searchText = typeof search === 'string' ? search : '';
+        
+        return this.orderService.getAvailableItems(supplierId, locationId, 0, 10, searchText);
+      }),
+      map(response => response.content),
+      catchError(() => {
+        // Fallback to non-paginated endpoint
+        const locationId = this.orderForm.get('buyerLocationId')?.value;
+        const supplierId = this.orderForm.get('supplierId')?.value;
+        return (locationId && supplierId)
+          ? this.orderService.getAvailableInventoryItems(supplierId, locationId)   // returns array ✅
+          : of([]);
+      })
+    );
+  }
+
+  onLocationSelected(event: any): void {
+    const location = event.option.value;
+    this.selectedLocation = location;
+    this.orderForm.patchValue({ buyerLocationId: location.id });
+  }
+
+  onSupplierSelected(event: any): void {
+    const supplier = event.option.value;
+    this.selectedSupplier = supplier;
+    this.orderForm.patchValue({ supplierId: supplier.id });
   }
 
   onInventoryItemSelected(event: any): void {
-    const itemId = event.option.value;
+    const inventoryItem = event.option.value;
     this.itemForm.patchValue({ 
-      inventoryItemId: itemId,
-      // Keep the item name in the input field
-      inventoryItemInput: itemId
+      inventoryItemId: inventoryItem.id,
+      inventoryItemInput: inventoryItem
     });
   }
+
+  displayLocationFn = (loc?: Location | string): string => 
+    typeof loc === 'object' ? loc?.name ?? '' : '';
+
+  displaySupplierFn = (supplier?: Supplier | string): string => 
+    typeof supplier === 'object' ? supplier?.name ?? '' : '';
+
+  displayInventoryItemFn = (item?: AvailableInventoryItem | string): string => 
+    typeof item === 'object' ? item?.name ?? '' : '';
 
   addItem(): void {
     if (this.itemForm.invalid) {
@@ -187,11 +228,11 @@ export class OrderCreateComponent implements OnInit {
       return;
     }
 
-    const inventoryItemId = this.itemForm.get('inventoryItemId')?.value;
+    const inventoryItem = this.itemForm.get('inventoryItemInput')?.value;
     const quantity = this.itemForm.get('quantity')?.value;
 
     // Check if item already exists in the list
-    const existingItemIndex = this.orderItems.findIndex(item => item.inventoryItemId === inventoryItemId);
+    const existingItemIndex = this.orderItems.findIndex(item => item.inventoryItemId === inventoryItem.id);
 
     if (existingItemIndex !== -1) {
       // Update quantity of existing item
@@ -199,16 +240,13 @@ export class OrderCreateComponent implements OnInit {
       this.snackBar.open('Updated quantity of existing item', 'Close', { duration: 3000 });
     } else {
       // Add new item
-      const inventoryItem = this.inventoryItems.find(item => item.id === inventoryItemId);
-      if (inventoryItem) {
-        this.orderItems.push({
-          inventoryItemId: inventoryItemId,
-          inventoryItemName: inventoryItem.name,
-          quantity: quantity,
-          uomName: inventoryItem.inventoryUom?.name
-        });
-        this.snackBar.open('Item added to order', 'Close', { duration: 3000 });
-      }
+      this.orderItems.push({
+        inventoryItemId: inventoryItem.id,
+        inventoryItemName: inventoryItem.name,
+        quantity: quantity,
+        uomName: inventoryItem.inventoryUom?.name
+      });
+      this.snackBar.open('Item added to order', 'Close', { duration: 3000 });
     }
 
     // Update the table data source
@@ -220,6 +258,7 @@ export class OrderCreateComponent implements OnInit {
       inventoryItemInput: '',
       quantity: 1
     });
+    this.inventorySearchCtrl.setValue('');
   }
 
   removeItem(index: number): void {

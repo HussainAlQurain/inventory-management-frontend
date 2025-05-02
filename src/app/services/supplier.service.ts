@@ -4,7 +4,7 @@ import { Observable, catchError, map, of } from 'rxjs';
 import { Supplier, SupplierEmail, SupplierPhone } from '../models/Supplier';
 import { environment } from '../../environments/environment';
 import { CompaniesService } from './companies.service';
-import { PaginatedResponse } from './inventory-items-service.service';
+import { PaginatedResponse } from '../models/paginated-response';
 
 @Injectable({
   providedIn: 'root'

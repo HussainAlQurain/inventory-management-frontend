@@ -17,7 +17,7 @@ import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
 
 import { Supplier } from '../../models/Supplier';
 import { SupplierService } from '../../services/supplier.service';
-import { PaginatedResponse } from '../../services/inventory-items-service.service';
+import { PaginatedResponse } from '../../models/paginated-response';
 import { SupplierDialogComponent } from '../supplier-dialog/supplier-dialog.component';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog/confirm-dialog.component';
 

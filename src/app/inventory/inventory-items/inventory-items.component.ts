@@ -17,7 +17,8 @@ import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
-import { InventoryItemsService, PaginatedResponse } from '../../services/inventory-items-service.service';
+import { InventoryItemsService } from '../../services/inventory-items-service.service';
+import { PaginatedResponse } from '../../models/paginated-response';
 import { InventoryItem } from '../../models/InventoryItem';
 import { InventoryItemDetailModalComponent } from '../inventory-item-detail-modal/inventory-item-detail-modal.component';
 import { Category } from '../../models/Category';

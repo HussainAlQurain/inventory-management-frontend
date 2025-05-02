@@ -6,7 +6,7 @@ import { environment } from '../../environments/environment';
 import { SubRecipe, SubRecipeLine } from '../models/SubRecipe';
 import { CompaniesService } from './companies.service';
 import { InventoryItemsService } from './inventory-items-service.service';
-import { PaginatedResponse } from './inventory-items-service.service';
+import { PaginatedResponse } from '../models/paginated-response';
 
 @Injectable({
   providedIn: 'root'

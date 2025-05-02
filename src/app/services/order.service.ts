@@ -5,6 +5,8 @@ import { environment } from '../../environments/environment';
 import { OrderSummary } from '../models/OrderSummary';
 import { CompaniesService } from './companies.service';
 import { OrderDetail } from '../orders/order-details/order-details.component';
+import { PaginatedResponse } from '../models/paginated-response';
+import { Lookup } from '../models/Lookup';
 
 // Interface for order item creation
 export interface OrderItemCreate {
@@ -257,6 +259,37 @@ export class OrderService {
   }
 
   /**
+   * Get available inventory items for adding to an order with pagination
+   * @param supplierId The supplier ID 
+   * @param locationId The location ID
+   * @param page The page number (0-based)
+   * @param size The page size
+   * @param search Optional search term to filter items
+   * @returns Observable of paginated AvailableInventoryItem response
+   */
+  getAvailableItems(
+    supplierId: number, 
+    locationId: number, 
+    page: number = 0, 
+    size: number = 10,
+    search: string = ''
+  ): Observable<PaginatedResponse<AvailableInventoryItem>> {
+    const companyId = this.companiesService.getSelectedCompanyId()!;
+    const params = new HttpParams()
+      .set('supplierId', String(supplierId))
+      .set('locationId', String(locationId))
+      .set('page', String(page))
+      .set('size', String(size))
+      .set('search', search);
+      
+    return this.http.get<PaginatedResponse<AvailableInventoryItem>>(
+      `${this.apiUrl}/companies/${companyId}/purchase-orders/available-items`,
+      { params }
+    );
+  }
+  
+  /**
+   * @deprecated Use getAvailableItems with pagination instead
    * Get available inventory items for adding to an order
    * @param supplierId The supplier ID 
    * @param locationId The location ID

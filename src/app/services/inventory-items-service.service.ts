@@ -4,17 +4,7 @@ import { environment } from '../../environments/environment';
 import { Observable, catchError, throwError } from 'rxjs';
 import { InventoryItem } from '../models/InventoryItem';
 import { CompaniesService } from './companies.service';
-
-// Define pagination response interface
-export interface PaginatedResponse<T> {
-  content: T[];
-  totalElements: number;
-  totalPages: number;
-  currentPage: number;
-  pageSize: number;
-  hasNext: boolean;
-  hasPrevious: boolean;
-}
+import { PaginatedResponse } from '../models/paginated-response';
 
 @Injectable({
   providedIn: 'root'

@@ -215,7 +215,7 @@ export class InventoryItemDetailModalComponent implements OnInit {
       this.locationSearch.value || undefined
     ).subscribe({
       next: (response) => {
-        this.locationInventory = response.content.map(item => ({
+        this.locationInventory = response.content.map((item: any) => ({
           location: { 
             id: item.locationId || 0, 
             name: item.locationName || 'Unknown' 
