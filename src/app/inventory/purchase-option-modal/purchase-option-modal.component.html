@@ -18,6 +18,19 @@
           <mat-option *ngFor="let supplier of filteredSuppliers" [value]="supplier.name">
             {{ supplier.name }}
           </mat-option>
+          
+          <!-- Loading indicator -->
+          <mat-option *ngIf="suppliersLoading" disabled>
+            Loading...
+          </mat-option>
+          
+          <!-- Load more option -->
+          <mat-option *ngIf="filteredSuppliers.length > 0 && filteredSuppliers.length < suppliersTotal" 
+                     disabled class="load-more-option">
+            <button mat-button color="primary" (click)="loadMoreSuppliers(); $event.stopPropagation()">
+              Load more
+            </button>
+          </mat-option>
         </mat-autocomplete>
       </mat-form-field>
       <!-- Add button for creating new supplier -->
@@ -48,7 +61,20 @@
         <input type="text" matInput [formControl]="uomCtrl" [matAutocomplete]="uomAuto">
         <mat-autocomplete #uomAuto="matAutocomplete" (optionSelected)="onUomSelected($event.option.value)">
           <mat-option *ngFor="let uom of filteredUoms" [value]="uom.name">
-            {{ uom.name }} ({{ uom.abbreviation }})
+            {{ uom.name }} {{ uom.abbreviation ? '(' + uom.abbreviation + ')' : '' }}
+          </mat-option>
+          
+          <!-- Loading indicator -->
+          <mat-option *ngIf="uomLoading" disabled>
+            Loading...
+          </mat-option>
+          
+          <!-- Load more option -->
+          <mat-option *ngIf="filteredUoms.length > 0 && filteredUoms.length < uomTotal" 
+                     disabled class="load-more-option">
+            <button mat-button color="primary" (click)="loadMoreUoms(); $event.stopPropagation()">
+              Load more
+            </button>
           </mat-option>
         </mat-autocomplete>
       </mat-form-field>

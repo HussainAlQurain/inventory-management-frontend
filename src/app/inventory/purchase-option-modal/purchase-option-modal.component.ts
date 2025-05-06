@@ -2,7 +2,7 @@ import { Component, Inject, OnInit } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { Observable, of } from 'rxjs';
-import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, switchMap, tap, catchError, map } from 'rxjs/operators';
 
 import { PurchaseOption } from '../../models/PurchaseOption';
 import { Supplier, SupplierEmail, SupplierPhone } from '../../models/Supplier';
@@ -90,6 +90,19 @@ export class PurchaseOptionModalComponent implements OnInit {
   // Add declarations for email and phone forms
   emailForm: FormGroup;
   phoneForm: FormGroup;
+
+  // Add these properties for pagination
+  suppliersPage = 0;
+  suppliersSize = 20;
+  suppliersTotal = 0;
+  suppliersLoading = false;
+
+  // Add these properties for pagination
+  uomPage = 0;
+  uomSize = 20;
+  uomTotal = 0;
+  uomLoading = false;
+  uomSearchTerm = '';
 
   constructor(
     public dialogRef: MatDialogRef<PurchaseOptionModalComponent>,
@@ -211,33 +224,99 @@ export class PurchaseOptionModalComponent implements OnInit {
   }
   
   private setupSupplierAutocomplete(): void {
-    // Initialize with a search if we have a value
+    // Initial search if we have a value
     if (this.supplierCtrl.value) {
-      this.searchSuppliers(this.supplierCtrl.value).subscribe(suppliers => {
-        this.filteredSuppliers = suppliers;
-      });
+      this.loadPaginatedSuppliers(this.supplierCtrl.value);
     }
     
     this.supplierCtrl.valueChanges.pipe(
-      debounceTime(300),
+      debounceTime(500), // Increased from 300ms to reduce load
       distinctUntilChanged(),
-      switchMap(term => this.searchSuppliers(term))
-    ).subscribe({
-      next: (suppliers) => {
-        this.filteredSuppliers = suppliers;
-        const exact = suppliers.some(s => s.name.toLowerCase() === this.supplierCtrl.value.toLowerCase());
-        this.canCreateNewSupplier = !!this.supplierCtrl.value && !exact;
-      },
-      error: (err) => console.error('Error searching suppliers:', err)
-    });
+      switchMap(term => {
+        this.suppliersPage = 0; // Reset to first page on new search
+        return this.loadPaginatedSuppliers(term);
+      })
+    ).subscribe();
   }
-  
-  private searchSuppliers(term: string): Observable<Supplier[]> {
+
+  // Add this method to use paginated supplier API
+  private loadPaginatedSuppliers(term: string): Observable<any> {
     if (!term || !term.trim()) {
-      return of([]);
+      this.filteredSuppliers = [];
+      return of(null);
     }
-    console.log('Searching suppliers with term:', term);
-    return this.supplierService.searchSuppliers(term);
+    
+    this.suppliersLoading = true;
+    
+    return this.supplierService.getPaginatedSupplierFilterOptions(
+      this.suppliersPage,
+      this.suppliersSize,
+      term
+    ).pipe(
+      switchMap(response => {
+        // Get supplier details for the returned IDs
+        if (response.content.length > 0) {
+          return this.supplierService.searchSuppliers(term).pipe(
+            map(suppliers => {
+              // Filter suppliers to match the IDs from the paginated response
+              const ids = response.content.map(s => s.id);
+              return suppliers.filter(s => ids.includes(s.id!));
+            })
+          );
+        }
+        return of([]);
+      }),
+      tap(suppliers => {
+        this.filteredSuppliers = suppliers;
+        this.suppliersTotal = suppliers.length; // Update the total for UI
+        this.suppliersLoading = false;
+        const exact = suppliers.some(s => s.name.toLowerCase() === term.toLowerCase());
+        this.canCreateNewSupplier = !!term && !exact;
+      }),
+      catchError(error => {
+        console.error('Error loading suppliers:', error);
+        this.suppliersLoading = false;
+        return of([]);
+      })
+    );
+  }
+
+  // Add load more suppliers method
+  loadMoreSuppliers(): void {
+    if (this.suppliersLoading) return;
+    
+    this.suppliersLoading = true;
+    this.suppliersPage++;
+    
+    this.supplierService.getPaginatedSupplierFilterOptions(
+      this.suppliersPage,
+      this.suppliersSize,
+      this.supplierCtrl.value || ''
+    ).subscribe({
+      next: (response) => {
+        if (response.content.length > 0) {
+          // Get supplier details for new page
+          this.supplierService.searchSuppliers(this.supplierCtrl.value || '').subscribe({
+            next: (suppliers) => {
+              // Filter to match the IDs from the paginated response and avoid duplicates
+              const ids = response.content.map(s => s.id);
+              const newSuppliers = suppliers.filter(s => 
+                ids.includes(s.id!) && !this.filteredSuppliers.some(fs => fs.id === s.id)
+              );
+              this.filteredSuppliers = [...this.filteredSuppliers, ...newSuppliers];
+              this.suppliersLoading = false;
+            }
+          });
+        } else {
+          this.suppliersLoading = false;
+        }
+      },
+      error: (err) => {
+        console.error('Error loading more suppliers:', err);
+        this.suppliersLoading = false;
+        this.suppliersPage--;
+      }
+    });
   }
   
   onSupplierSelected(value: string): void {
@@ -396,33 +475,81 @@ export class PurchaseOptionModalComponent implements OnInit {
   }
   
   private setupUomAutocomplete(): void {
-    // Load all UOMs
-    this.uomService.getAllUoms().subscribe({
-      next: (uoms) => {
-        this.allUoms = uoms;
-        this.filteredUoms = uoms;
-      },
-      error: (err) => console.error('Error loading UOMs:', err)
-    });
+    // Load initial UOMs with pagination
+    this.loadPaginatedUoms('');
     
-    // Filter UOMs based on input
+    // Filter UOMs with pagination based on input
     this.uomCtrl.valueChanges.pipe(
-      debounceTime(300),
-      distinctUntilChanged()
-    ).subscribe({
-      next: (term) => {
-        if (!term) {
-          this.filteredUoms = this.allUoms;
-          return;
-        }
+      debounceTime(500),
+      distinctUntilChanged(),
+      switchMap(term => {
+        this.uomSearchTerm = term || '';
+        this.uomPage = 0; // Reset to first page on new search
+        return this.loadPaginatedUoms(term || '');
+      })
+    ).subscribe();
+  }
+
+  // Add this method for paginated UOM loading
+  private loadPaginatedUoms(term: string): Observable<any> {
+    this.uomLoading = true;
+    
+    return this.uomService.getPaginatedUomFilterOptions(
+      this.uomPage,
+      this.uomSize,
+      term
+    ).pipe(
+      tap(response => {
+        // For UOMs, we can add the lightweight DTOs to the filtered list since
+        // we only need name and abbreviation for display
+        this.filteredUoms = response.content.map(dto => ({
+          id: dto.id,
+          name: dto.name,
+          abbreviation: dto.abbreviation,
+          // Add other required fields with default values
+          conversionFactor: 1
+        }) as UnitOfMeasure);
         
-        const lowerTerm = term.toLowerCase();
-        this.filteredUoms = this.allUoms.filter(uom => 
-          uom.name.toLowerCase().includes(lowerTerm) ||
-          (uom.abbreviation && uom.abbreviation.toLowerCase().includes(lowerTerm))
-        );
+        this.uomTotal = response.totalElements;
+        this.uomLoading = false;
+      }),
+      catchError(error => {
+        console.error('Error loading UOMs:', error);
+        this.uomLoading = false;
+        return of(null);
+      })
+    );
+  }
+
+  // Add load more UOMs method
+  loadMoreUoms(): void {
+    if (this.uomLoading) return;
+    
+    this.uomLoading = true;
+    this.uomPage++;
+    
+    this.uomService.getPaginatedUomFilterOptions(
+      this.uomPage,
+      this.uomSize,
+      this.uomSearchTerm
+    ).subscribe({
+      next: (response) => {
+        // Convert DTOs to UnitOfMeasure objects and append to list
+        const moreUoms = response.content.map(dto => ({
+          id: dto.id,
+          name: dto.name,
+          abbreviation: dto.abbreviation,
+          conversionFactor: 1
+        }) as UnitOfMeasure);
+        
+        this.filteredUoms = [...this.filteredUoms, ...moreUoms];
+        this.uomLoading = false;
       },
-      error: (err) => console.error('Error filtering UOMs:', err)
+      error: (err) => {
+        console.error('Error loading more UOMs:', err);
+        this.uomLoading = false;
+        this.uomPage--;
+      }
     });
   }
   
