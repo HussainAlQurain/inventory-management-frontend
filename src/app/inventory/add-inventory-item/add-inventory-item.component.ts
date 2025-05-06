@@ -106,7 +106,7 @@ export class AddInventoryItemComponent implements OnInit {
   
   private setupCategoryAutocomplete(): void {
     this.categoryCtrl.valueChanges.pipe(
-      debounceTime(300),
+      debounceTime(500), // Increase from 300ms to 500ms to reduce database load
       distinctUntilChanged(),
       switchMap(term => this.onCategorySearchChange(term))
     ).subscribe();
@@ -114,10 +114,12 @@ export class AddInventoryItemComponent implements OnInit {
   
   private onCategorySearchChange(term: string): Observable<void> {
     if (!term) term = '';
-    return this.categoriesService.getAllCategories(term).pipe(
-      switchMap((cats: Category[]) => {
-        this.filteredCategories = cats;
-        const exactMatch = cats.some(c => c.name.toLowerCase() === term.toLowerCase());
+    
+    // Use the lightweight paginated endpoint
+    return this.categoriesService.getPaginatedCategoryFilterOptions(0, 20, term).pipe(
+      switchMap((response) => {
+        this.filteredCategories = response.content;
+        const exactMatch = response.content.some(c => c.name.toLowerCase() === term.toLowerCase());
         this.canCreateNewCategory = term.length > 0 && !exactMatch;
         return of();
       })
