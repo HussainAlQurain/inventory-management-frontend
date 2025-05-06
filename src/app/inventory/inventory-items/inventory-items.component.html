@@ -40,20 +40,76 @@
 
         <mat-form-field appearance="outline">
           <mat-label>Category</mat-label>
-          <mat-select [(ngModel)]="categoryFilter" (selectionChange)="applyFilters()">
+          <mat-select #categorySelect [(ngModel)]="categoryFilter" (selectionChange)="applyFilters()">
             <mat-option>All Categories</mat-option>
+            
+            <!-- Search input option -->
+            <mat-option disabled class="search-input-option">
+              <div class="supplier-search-container" (click)="$event.stopPropagation()">
+                <mat-form-field appearance="outline" class="supplier-search-field">
+                  <input matInput placeholder="Search categories..." 
+                         #categorySearchInput
+                         (input)="onCategorySearch($event)" 
+                         (click)="$event.stopPropagation()"
+                         (keydown)="$event.stopPropagation()"
+                         (keypress)="$event.stopPropagation()"
+                         [ngModel]="categoriesSearchTerm">
+                  <button *ngIf="categoriesSearchTerm" matSuffix mat-icon-button 
+                          (click)="clearCategorySearch(); $event.stopPropagation()">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </mat-form-field>
+              </div>
+            </mat-option>
+            
+            <!-- List categories -->
             <mat-option *ngFor="let category of categories" [value]="category.id">
               {{category.name}}
+            </mat-option>
+            
+            <!-- Load more option -->
+            <mat-option *ngIf="categories.length < categoriesTotal" disabled class="load-more-option">
+              <button mat-button color="primary" (click)="loadMoreCategories(); $event.stopPropagation()">
+                Load more ({{categories.length}}/{{categoriesTotal}})
+              </button>
             </mat-option>
           </mat-select>
         </mat-form-field>
 
         <mat-form-field appearance="outline">
           <mat-label>Supplier</mat-label>
-          <mat-select [(ngModel)]="supplierFilter" (selectionChange)="applyFilters()">
+          <mat-select #supplierSelect [(ngModel)]="supplierFilter" (selectionChange)="applyFilters()">
             <mat-option>All Suppliers</mat-option>
+            
+            <!-- Fix the search input option -->
+            <mat-option disabled class="search-input-option">
+              <div class="supplier-search-container" (click)="$event.stopPropagation()">
+                <mat-form-field appearance="outline" class="supplier-search-field">
+                  <input matInput placeholder="Search suppliers..." 
+                         #supplierSearchInput
+                         (input)="onSupplierSearch($event)" 
+                         (click)="$event.stopPropagation()"
+                         (keydown)="$event.stopPropagation()"
+                         (keypress)="$event.stopPropagation()"
+                         [ngModel]="suppliersSearchTerm">
+                  <button *ngIf="suppliersSearchTerm" matSuffix mat-icon-button 
+                          (click)="clearSupplierSearch(); $event.stopPropagation()">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </mat-form-field>
+              </div>
+            </mat-option>
+            
+            <!-- List suppliers -->
             <mat-option *ngFor="let supplier of suppliers" [value]="supplier.id">
               {{supplier.name}}
+            </mat-option>
+            
+            <!-- Load more option -->
+            <mat-option *ngIf="suppliers.length < suppliersTotal" disabled class="load-more-option">
+              <button mat-button color="primary" (click)="loadMoreSuppliers(); $event.stopPropagation()">
+                Load more ({{suppliers.length}}/{{suppliersTotal}})
+              </button>
             </mat-option>
           </mat-select>
         </mat-form-field>
@@ -125,7 +181,7 @@
           <!-- Supplier Column -->
           <ng-container matColumnDef="supplier">
             <th mat-header-cell *matHeaderCellDef mat-sort-header> Supplier </th>
-            <td mat-cell *matCellDef="let item"> {{ getMainSupplier(item) }} </td>
+            <td mat-cell *matCellDef="let item"> {{ item.mainSupplierName || 'N/A' }} </td>
           </ng-container>
   
           <!-- Buyer Column -->
@@ -137,7 +193,7 @@
           <!-- Category Column -->
           <ng-container matColumnDef="category">
             <th mat-header-cell *matHeaderCellDef mat-sort-header> Category </th>
-            <td mat-cell *matCellDef="let item"> {{ item.category?.name || 'N/A' }} </td>
+            <td mat-cell *matCellDef="let item"> {{ item.categoryName || 'N/A' }} </td>
           </ng-container>
   
           <!-- Price per UOM Column -->
@@ -149,7 +205,7 @@
           <!-- UOM Column -->
           <ng-container matColumnDef="uom">
             <th mat-header-cell *matHeaderCellDef> UOM </th>
-            <td mat-cell *matCellDef="let item"> {{ item.inventoryUom?.abbreviation || 'N/A' }} </td>
+            <td mat-cell *matCellDef="let item"> {{ item.inventoryUomAbbreviation || 'N/A' }} </td>
           </ng-container>
   
           <!-- Min On Hand Column -->
@@ -188,7 +244,7 @@
           <ng-container matColumnDef="ordering">
             <th mat-header-cell *matHeaderCellDef> Ordering </th>
             <td mat-cell *matCellDef="let item">
-              @if (getOrderingStatus(item)) {
+              @if (item.orderingEnabled) {
                 <mat-chip-option selected color="primary">Enabled</mat-chip-option>
               } @else {
                 <mat-chip-option disabled>Disabled</mat-chip-option>
@@ -199,7 +255,7 @@
           <!-- Tax Rate Column -->
           <ng-container matColumnDef="taxRate">
             <th mat-header-cell *matHeaderCellDef mat-sort-header> Tax Rate </th>
-            <td mat-cell *matCellDef="let item"> {{ getTaxRate(item) }}% </td>
+            <td mat-cell *matCellDef="let item"> {{ item.taxRate ? (item.taxRate * 100).toFixed(2) + '%' : 'N/A' }} </td>
           </ng-container>
   
           <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>

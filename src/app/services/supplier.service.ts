@@ -5,6 +5,7 @@ import { Supplier, SupplierEmail, SupplierPhone } from '../models/Supplier';
 import { environment } from '../../environments/environment';
 import { CompaniesService } from './companies.service';
 import { PaginatedResponse } from '../models/paginated-response';
+import { FilterOptionDTO } from '../models/FilterOptionDTO';
 
 @Injectable({
   providedIn: 'root'
@@ -167,5 +168,40 @@ export class SupplierService {
       
       return normalizedSupplier;
     });
+  }
+
+  getSupplierFilterOptions(searchTerm: string = ''): Observable<FilterOptionDTO[]> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    let params = new HttpParams();
+    
+    if (searchTerm) {
+      params = params.set('search', searchTerm);
+    }
+    
+    return this.http.get<FilterOptionDTO[]>(
+      `${this.apiUrl}/suppliers/company/${companyId}/filter-options`,
+      { params }
+    );
+  }
+
+  // Fix the getPaginatedSupplierFilterOptions method
+  getPaginatedSupplierFilterOptions(
+    page: number = 0,
+    size: number = 10,
+    searchTerm: string = ''
+  ): Observable<PaginatedResponse<FilterOptionDTO>> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString());
+    
+    if (searchTerm) {
+      params = params.set('search', searchTerm);
+    }
+    
+    return this.http.get<PaginatedResponse<FilterOptionDTO>>(
+      `${this.apiUrl}/suppliers/company/${companyId}/filter-options/paginated`,
+      { params }
+    );
   }
 }

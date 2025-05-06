@@ -1,9 +1,11 @@
 import { Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { CompaniesService } from './companies.service';
 import { Observable } from 'rxjs';
 import { Category } from '../models/Category';
+import { FilterOptionDTO } from '../models/FilterOptionDTO';
+import { PaginatedResponse } from '../models/paginated-response';
 
 @Injectable({
   providedIn: 'root'
@@ -34,5 +36,39 @@ export class CategoriesService {
   deleteCategory(categoryId: number): Observable<void> {
     const companyId = this.companiesService.getSelectedCompanyId();
     return this.http.delete<void>(`${this.baseUrl}/${categoryId}/company/${companyId}`);
+  }
+
+  getCategoryFilterOptions(searchTerm: string = ''): Observable<FilterOptionDTO[]> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    let params = new HttpParams();
+    
+    if (searchTerm) {
+      params = params.set('search', searchTerm);
+    }
+    
+    return this.http.get<FilterOptionDTO[]>(
+      `${this.baseUrl}/company/${companyId}/filter-options`,
+      { params }
+    );
+  }
+
+  getPaginatedCategoryFilterOptions(
+    page: number = 0,
+    size: number = 10,
+    searchTerm: string = ''
+  ): Observable<PaginatedResponse<FilterOptionDTO>> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString());
+    
+    if (searchTerm) {
+      params = params.set('search', searchTerm);
+    }
+    
+    return this.http.get<PaginatedResponse<FilterOptionDTO>>(
+      `${this.baseUrl}/company/${companyId}/filter-options/paginated`,
+      { params }
+    );
   }
 }

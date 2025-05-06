@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, OnInit, ViewChild, AfterViewInit, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableModule, MatTable } from '@angular/material/table';
 import { MatPaginatorModule, MatPaginator, PageEvent } from '@angular/material/paginator';
@@ -12,7 +12,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatFormFieldModule } from '@angular/material/form-field'; 
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
+import { MatSelectModule, MatSelect } from '@angular/material/select';
 import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
@@ -27,6 +27,8 @@ import { CategoriesService } from '../../services/categories.service';
 import { SupplierService } from '../../services/supplier.service';
 import { AddInventoryItemComponent } from '../add-inventory-item/add-inventory-item.component';
 import { InventoryItemLocationService } from '../../services/inventory-item-location.service';
+import { InventoryItemListDTO } from '../../models/InventoryItemListDTO';
+import { FilterOptionDTO } from '../../models/FilterOptionDTO';
 
 interface Buyer {
   id: number;
@@ -78,7 +80,7 @@ export class InventoryItemsComponent implements OnInit, AfterViewInit {
   ];
   
   // Filtered data source
-  filteredItems: InventoryItem[] = [];
+  filteredItems: InventoryItemListDTO[] = [];
   
   // Loading and error states
   isLoading = true;
@@ -91,8 +93,14 @@ export class InventoryItemsComponent implements OnInit, AfterViewInit {
   buyerFilter: number | null = null;
   
   // Filter options
-  categories: Category[] = [];
-  suppliers: Supplier[] = [];
+  categories: FilterOptionDTO[] = [];
+  suppliers: FilterOptionDTO[] = [];
+  suppliersPage = 0;
+  suppliersSize = 20; // Load a reasonable initial number for the dropdown
+  suppliersTotal = 0;
+  suppliersLoading = false;
+  suppliersSearchTerm = '';
+
   buyers: Buyer[] = [
     { id: 1, name: 'Company' },
     { id: 2, name: 'Store Manager' },
@@ -116,6 +124,17 @@ export class InventoryItemsComponent implements OnInit, AfterViewInit {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
   @ViewChild(MatTable) table!: MatTable<InventoryItem>;
+  @ViewChild('supplierSelect') supplierSelect!: MatSelect;
+  @ViewChild('supplierSearchInput') supplierSearchInput!: ElementRef;
+  @ViewChild('categorySelect') categorySelect!: MatSelect;
+  @ViewChild('categorySearchInput') categorySearchInput!: ElementRef;
+
+  // Add these properties for category search and pagination
+  categoriesPage = 0;
+  categoriesSize = 20;
+  categoriesTotal = 0;
+  categoriesLoading = false;
+  categoriesSearchTerm = '';
 
   constructor(
     private inventoryService: InventoryItemsService,
@@ -142,6 +161,44 @@ export class InventoryItemsComponent implements OnInit, AfterViewInit {
         this.loadInventoryItems();
       });
     }
+
+    // Set up the panel scroll listener after view is initialized
+    if (this.supplierSelect) {
+      this.supplierSelect.openedChange.subscribe(opened => {
+        if (opened) {
+          // Focus the search input when the dropdown opens
+          setTimeout(() => {
+            if (this.supplierSearchInput) {
+              this.supplierSearchInput.nativeElement.focus();
+            }
+            
+            // Set up scroll listener
+            const panel = document.querySelector('.mat-mdc-select-panel') as HTMLElement;
+            if (panel) {
+              panel.addEventListener('scroll', this.onDropdownScroll.bind(this));
+            }
+          }, 100);
+        }
+      });
+    }
+
+    // Add this code for category select
+    if (this.categorySelect) {
+      this.categorySelect.openedChange.subscribe(opened => {
+        if (opened) {
+          setTimeout(() => {
+            if (this.categorySearchInput) {
+              this.categorySearchInput.nativeElement.focus();
+            }
+            
+            const panel = document.querySelector('.mat-mdc-select-panel') as HTMLElement;
+            if (panel) {
+              panel.addEventListener('scroll', this.onCategoryDropdownScroll.bind(this));
+            }
+          }, 100);
+        }
+      });
+    }
   }
   
   setupSearchDebounce(): void {
@@ -157,37 +214,16 @@ export class InventoryItemsComponent implements OnInit, AfterViewInit {
   loadInventoryItems(): void {
     this.isLoading = true;
     
-    this.inventoryService.getPaginatedInventoryItems(
+    this.inventoryService.getPaginatedInventoryItemsList(
       this.pageIndex,
       this.pageSize,
       `${this.sortField},${this.sortDirection}`,
       this.categoryFilter || undefined,
-      this.nameFilter || undefined,
-      false // Use lightweight DTOs for list view to avoid N+1 query problems
+      this.nameFilter || undefined
     ).subscribe({
-      next: (response: PaginatedResponse<InventoryItem>) => {
+      next: (response: PaginatedResponse<InventoryItemListDTO>) => {
         this.filteredItems = response.content;
         this.totalItems = response.totalElements;
-        
-        // Fetch location data for each item
-        const selectedLocationId = this.inventoryItemLocationService.getSelectedLocationId();
-        this.filteredItems.forEach(item => {
-          if (item.id) {
-            this.inventoryItemLocationService.getItemLocationData(item.id, selectedLocationId)
-              .subscribe({
-                next: (locationData) => {
-                  // Update the item with location-specific data
-                  item.minOnHand = locationData.minOnHand;
-                  item.par = locationData.parLevel;
-                  item.lastCount = locationData.lastCount;
-                },
-                error: () => {
-                  // If no location data exists or there's an error, keep the default values
-                }
-              });
-          }
-        });
-        
         this.isLoading = false;
       },
       error: (error) => {
@@ -199,25 +235,157 @@ export class InventoryItemsComponent implements OnInit, AfterViewInit {
   }
 
   loadCategories(): void {
-    this.categoriesService.getAllCategories('').subscribe({
-      next: (categories) => {
-        this.categories = categories;
+    this.categoriesLoading = true;
+    this.categoriesService.getPaginatedCategoryFilterOptions(
+      this.categoriesPage,
+      this.categoriesSize,
+      this.categoriesSearchTerm
+    ).subscribe({
+      next: (response) => {
+        this.categories = response.content;
+        this.categoriesTotal = response.totalElements;
+        this.categoriesLoading = false;
       },
       error: (error) => {
-        console.error('Error loading categories:', error);
+        console.error('Error loading category options:', error);
+        this.categoriesLoading = false;
       }
     });
   }
 
   loadSuppliers(): void {
-    this.supplierService.searchSuppliers('').subscribe({
-      next: (suppliers) => {
-        this.suppliers = suppliers;
+    this.suppliersLoading = true;
+    this.supplierService.getPaginatedSupplierFilterOptions(
+      this.suppliersPage,
+      this.suppliersSize,
+      this.suppliersSearchTerm
+    ).subscribe({
+      next: (response) => {
+        this.suppliers = response.content;
+        this.suppliersTotal = response.totalElements;
+        this.suppliersLoading = false;
       },
       error: (error) => {
-        console.error('Error loading suppliers:', error);
+        console.error('Error loading supplier options:', error);
+        this.suppliersLoading = false;
       }
     });
+  }
+  
+  onSupplierSearch(event: Event): void {
+    // Stop propagation to prevent the dropdown from closing
+    event.stopPropagation();
+    
+    const inputElement = event.target as HTMLInputElement;
+    this.suppliersSearchTerm = inputElement.value;
+    
+    // Reset pagination and clear existing suppliers
+    this.suppliersPage = 0;
+    this.suppliers = [];
+    
+    // Load suppliers with the search term
+    this.loadSuppliers();
+  }
+  
+  // Add a method to clear the search
+  clearSupplierSearch(): void {
+    this.suppliersSearchTerm = '';
+    this.suppliersPage = 0;
+    this.suppliers = [];
+    this.loadSuppliers();
+  }
+
+  // Add this method for loading more suppliers
+  loadMoreSuppliers(): void {
+    if (this.suppliersLoading) return;
+    
+    this.suppliersLoading = true;
+    this.suppliersPage++;
+    
+    this.supplierService.getPaginatedSupplierFilterOptions(
+      this.suppliersPage,
+      this.suppliersSize,
+      this.suppliersSearchTerm
+    ).subscribe({
+      next: (response) => {
+        // Append new suppliers to existing array
+        this.suppliers = [...this.suppliers, ...response.content];
+        this.suppliersTotal = response.totalElements;
+        this.suppliersLoading = false;
+      },
+      error: (error) => {
+        console.error('Error loading more suppliers:', error);
+        this.suppliersLoading = false;
+        this.suppliersPage--; // Revert page increment on error
+      }
+    });
+  }
+
+  onDropdownScroll(event: Event): void {
+    const panel = event.target as HTMLElement;
+    // Check if scrolled near bottom
+    if (panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 50) {
+      if (!this.suppliersLoading && this.suppliers.length < this.suppliersTotal) {
+        this.loadMoreSuppliers();
+      }
+    }
+  }
+
+  // Add these methods for category search functionality
+  onCategorySearch(event: Event): void {
+    event.stopPropagation();
+    
+    const inputElement = event.target as HTMLInputElement;
+    this.categoriesSearchTerm = inputElement.value;
+    
+    // Reset pagination and clear existing categories
+    this.categoriesPage = 0;
+    this.categories = [];
+    
+    // Load categories with the search term
+    this.loadCategories();
+  }
+
+  clearCategorySearch(): void {
+    this.categoriesSearchTerm = '';
+    this.categoriesPage = 0;
+    this.categories = [];
+    this.loadCategories();
+  }
+
+  loadMoreCategories(): void {
+    if (this.categoriesLoading) return;
+    
+    this.categoriesLoading = true;
+    this.categoriesPage++;
+    
+    this.categoriesService.getPaginatedCategoryFilterOptions(
+      this.categoriesPage,
+      this.categoriesSize,
+      this.categoriesSearchTerm
+    ).subscribe({
+      next: (response) => {
+        // Append new categories to existing array
+        this.categories = [...this.categories, ...response.content];
+        this.categoriesTotal = response.totalElements;
+        this.categoriesLoading = false;
+      },
+      error: (error) => {
+        console.error('Error loading more categories:', error);
+        this.categoriesLoading = false;
+        this.categoriesPage--; // Revert page increment on error
+      }
+    });
+  }
+
+  onCategoryDropdownScroll(event: Event): void {
+    const panel = event.target as HTMLElement;
+    // Check if scrolled near bottom
+    if (panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 50) {
+      if (!this.categoriesLoading && this.categories.length < this.categoriesTotal) {
+        this.loadMoreCategories();
+      }
+    }
   }
 
   // Handle pagination events
@@ -249,15 +417,6 @@ export class InventoryItemsComponent implements OnInit, AfterViewInit {
 
   hasActiveFilters(): boolean {
     return !!(this.nameFilter || this.categoryFilter || this.supplierFilter || this.buyerFilter);
-  }
-
-  // Helper methods to get names for display
-  getCategoryName(id: number): string {
-    return this.categories.find(c => c.id === id)?.name || 'Unknown';
-  }
-
-  getSupplierName(id: number): string {
-    return this.suppliers.find(s => s.id === id)?.name || 'Unknown';
   }
 
   getBuyerName(id: number): string {
@@ -296,29 +455,31 @@ export class InventoryItemsComponent implements OnInit, AfterViewInit {
     alert('Download purchase options functionality will be implemented later');
   }
 
-  openItemDetails(item: InventoryItem): void {
-    this.dialog.open(InventoryItemDetailModalComponent, {
-      width: '800px',
-      data: item
+  openItemDetails(item: InventoryItemListDTO): void {
+    // If your detail modal needs a full InventoryItem object, fetch it first
+    this.inventoryService.getInventoryItemById(item.id).subscribe({
+      next: (fullItem) => {
+        this.dialog.open(InventoryItemDetailModalComponent, {
+          width: '800px',
+          data: fullItem
+        });
+      },
+      error: (error) => {
+        console.error('Error fetching item details:', error);
+      }
     });
   }
 
-  getMainPurchaseOption(item: InventoryItem) {
-    return item.purchaseOptions?.find(po => po.mainPurchaseOption);
+  getCategoryName(id: number | null): string {
+    if (!id) return '';
+    const category = this.categories.find(c => c.id === id);
+    return category?.name || '';
   }
-
-  getMainSupplier(item: InventoryItem): string {
-    const mainOption = this.getMainPurchaseOption(item);
-    return mainOption?.supplier?.name || 'N/A';
+  
+  getSupplierName(id: number | null): string {
+    if (!id) return '';
+    const supplier = this.suppliers.find(s => s.id === id);
+    return supplier?.name || '';
   }
-
-  getOrderingStatus(item: InventoryItem): boolean {
-    const mainOption = this.getMainPurchaseOption(item);
-    return mainOption?.orderingEnabled || false;
-  }
-
-  getTaxRate(item: InventoryItem): number {
-    const mainOption = this.getMainPurchaseOption(item);
-    return mainOption?.taxRate || 0;
-  }
+  
 }

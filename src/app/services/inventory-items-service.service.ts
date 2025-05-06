@@ -5,6 +5,7 @@ import { Observable, catchError, throwError } from 'rxjs';
 import { InventoryItem } from '../models/InventoryItem';
 import { CompaniesService } from './companies.service';
 import { PaginatedResponse } from '../models/paginated-response';
+import { InventoryItemListDTO } from '../models/InventoryItemListDTO';
 
 @Injectable({
   providedIn: 'root'
@@ -124,6 +125,34 @@ export class InventoryItemsService {
         console.error('Error searching inventory items:', error);
         return throwError(() => new Error('Error searching inventory items.'));
       })
+    );
+  }
+
+  //optimized inventory-items
+  getPaginatedInventoryItemsList(
+    page: number = 0,
+    size: number = 10,
+    sort: string = "name,asc",
+    categoryId?: number,
+    search?: string
+  ): Observable<PaginatedResponse<InventoryItemListDTO>> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString())
+      .set('sort', sort);
+    
+    if (search) {
+      params = params.set('search', search);
+    }
+    
+    if (categoryId) {
+      params = params.set('categoryId', categoryId.toString());
+    }
+    
+    return this.http.get<PaginatedResponse<InventoryItemListDTO>>(
+      `${this.baseUrl}/company/${companyId}/paginated-list`,
+      { params }
     );
   }
 
