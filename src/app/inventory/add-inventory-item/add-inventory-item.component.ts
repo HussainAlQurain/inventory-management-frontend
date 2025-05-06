@@ -1,7 +1,7 @@
 import { Component, EventEmitter, OnInit, Output } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Observable, of } from 'rxjs';
-import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, switchMap, catchError } from 'rxjs/operators';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
 import { InventoryItem } from '../../models/InventoryItem';
@@ -30,6 +30,8 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { CommonModule } from '@angular/common';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { UomFilterOptionDTO } from '../../models/UomFilterOptionDTO';
 
 @Component({
   selector: 'app-add-inventory-item',
@@ -47,7 +49,8 @@ import { CommonModule } from '@angular/common';
     MatTabsModule,
     MatCheckboxModule,
     MatSelectModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatProgressSpinnerModule
   ],
   templateUrl: './add-inventory-item.component.html',
   styleUrls: ['./add-inventory-item.component.scss']
@@ -65,8 +68,15 @@ export class AddInventoryItemComponent implements OnInit {
   
   // UOM selection
   uomCtrl = new FormControl<string>('', { nonNullable: true });
-  filteredUoms: UnitOfMeasure[] = [];
+  filteredUoms: UomFilterOptionDTO[] = [];
   allUoms: UnitOfMeasure[] = [];
+  
+  // Pagination and search for UOMs
+  uomPage = 0;
+  uomSize = 20; 
+  uomTotal = 0;
+  uomLoading = false;
+  uomSearchTerm = '';
   
   // Purchase options
   purchaseOptions: PurchaseOption[] = [];
@@ -159,45 +169,84 @@ export class AddInventoryItemComponent implements OnInit {
   }
   
   private setupUomAutocomplete(): void {
-    // Load all UOMs
-    this.uomService.getAllUoms().subscribe({
-      next: (uoms) => {
-        this.allUoms = uoms;
-        this.filteredUoms = uoms;
-      },
-      error: (err) => console.error('Error loading UOMs:', err)
-    });
-    
-    // Filter UOMs based on input
+    // Load UOMs with search and pagination
     this.uomCtrl.valueChanges.pipe(
-      debounceTime(300),
-      distinctUntilChanged()
+      debounceTime(500), // Increased from 300ms to reduce load
+      distinctUntilChanged(),
+      switchMap(term => {
+        this.uomSearchTerm = term || '';
+        this.uomPage = 0;
+        this.filteredUoms = [];
+        return this.loadUoms();
+      })
+    ).subscribe();
+  }
+
+  private loadUoms(): Observable<any> {
+    this.uomLoading = true;
+    
+    return this.uomService.getPaginatedUomFilterOptions(
+      this.uomPage,
+      this.uomSize,
+      this.uomSearchTerm
+    ).pipe(
+      switchMap((response) => {
+        this.filteredUoms = response.content;
+        this.uomTotal = response.totalElements;
+        this.uomLoading = false;
+        return of(null);
+      }),
+      catchError(error => {
+        console.error('Error loading UOMs:', error);
+        this.uomLoading = false;
+        return of(null);
+      })
+    );
+  }
+
+  loadMoreUoms(): void {
+    if (this.uomLoading) return;
+    
+    this.uomLoading = true;
+    this.uomPage++;
+    
+    this.uomService.getPaginatedUomFilterOptions(
+      this.uomPage,
+      this.uomSize,
+      this.uomSearchTerm
     ).subscribe({
-      next: (term) => {
-        if (!term) {
-          this.filteredUoms = this.allUoms;
-          return;
-        }
-        
-        const lowerTerm = term.toLowerCase();
-        this.filteredUoms = this.allUoms.filter(uom => 
-          uom.name.toLowerCase().includes(lowerTerm) ||
-          (uom.abbreviation && uom.abbreviation.toLowerCase().includes(lowerTerm))
-        );
+      next: (response) => {
+        this.filteredUoms = [...this.filteredUoms, ...response.content];
+        this.uomLoading = false;
       },
-      error: (err) => console.error('Error filtering UOMs:', err)
+      error: (error) => {
+        console.error('Error loading more UOMs:', error);
+        this.uomLoading = false;
+        this.uomPage--;
+      }
     });
   }
   
   onUomSelected(selectedName: string): void {
     if (!selectedName) return;
     
-    const found = this.allUoms.find(uom => 
+    // First check in filteredUoms (which are now UomFilterOptionDTOs)
+    const found = this.filteredUoms.find(uom => 
       uom.name && uom.name.toLowerCase() === selectedName.toLowerCase()
     );
     
     if (found) {
       this.itemForm.get('inventoryUomId')?.setValue(found.id);
+      return;
+    }
+    
+    // As a fallback, check in allUoms
+    const foundInAll = this.allUoms.find(uom => 
+      uom.name && uom.name.toLowerCase() === selectedName.toLowerCase()
+    );
+    
+    if (foundInAll) {
+      this.itemForm.get('inventoryUomId')?.setValue(foundInAll.id);
     }
   }
   
@@ -208,8 +257,19 @@ export class AddInventoryItemComponent implements OnInit {
     
     dialogRef.afterClosed().subscribe((newUom: UnitOfMeasure) => {
       if (newUom) {
+        // Add to allUoms for compatibility
         this.allUoms.push(newUom);
-        this.filteredUoms = [...this.allUoms];
+        
+        // Create a lightweight version for the filteredUoms array
+        const lightUom: UomFilterOptionDTO = {
+          id: newUom.id!,
+          name: newUom.name,
+          abbreviation: newUom.abbreviation!
+        };
+        
+        // Update filteredUoms
+        this.filteredUoms = [...this.filteredUoms, lightUom];
+        
         this.uomCtrl.setValue(newUom.name);
         this.itemForm.get('inventoryUomId')?.setValue(newUom.id);
       }

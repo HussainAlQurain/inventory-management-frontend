@@ -79,8 +79,15 @@
                 <mat-option *ngFor="let uom of filteredUoms" [value]="uom.name">
                   {{ uom.name }} ({{ uom.abbreviation }})
                 </mat-option>
+                <!-- Load more option -->
+                <mat-option *ngIf="filteredUoms.length < uomTotal" disabled class="load-more-option">
+                  <button mat-button color="primary" (click)="loadMoreUoms(); $event.stopPropagation()">
+                    Load more ({{filteredUoms.length}}/{{uomTotal}})
+                    <mat-spinner *ngIf="uomLoading" diameter="20"></mat-spinner>
+                  </button>
+                </mat-option>
                 <!-- Create new UOM option -->
-                <mat-option *ngIf="uomCtrl.value && filteredUoms.length === 0" (click)="openNewUomDialog()">
+                <mat-option *ngIf="uomCtrl.value && filteredUoms.length === 0 && !uomLoading" (click)="openNewUomDialog()">
                   Create new UOM: "{{ uomCtrl.value }}"
                 </mat-option>
               </mat-autocomplete>

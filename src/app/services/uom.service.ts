@@ -1,9 +1,11 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { UnitOfMeasure, UnitOfMeasureCategory } from '../models/UnitOfMeasure';
 import { CompaniesService } from './companies.service';
+import { UomFilterOptionDTO } from '../models/UomFilterOptionDTO';
+import { PaginatedResponse } from '../models/paginated-response';
 
 @Injectable({
   providedIn: 'root'
@@ -44,5 +46,25 @@ export class UomService {
   getAllUomCategories(): Observable<UnitOfMeasureCategory[]> {
     const companyId = this.companiesService.getSelectedCompanyId();
     return this.http.get<UnitOfMeasureCategory[]>(`${this.baseUrl}/categories/company/${companyId}`);
+  }
+  
+  getPaginatedUomFilterOptions(
+    page: number = 0,
+    size: number = 10,
+    searchTerm: string = ''
+  ): Observable<PaginatedResponse<UomFilterOptionDTO>> {
+    const companyId = this.companiesService.getSelectedCompanyId();
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString());
+    
+    if (searchTerm) {
+      params = params.set('search', searchTerm);
+    }
+    
+    return this.http.get<PaginatedResponse<UomFilterOptionDTO>>(
+      `${this.baseUrl}/company/${companyId}/filter-options/paginated`,
+      { params }
+    );
   }
 }
