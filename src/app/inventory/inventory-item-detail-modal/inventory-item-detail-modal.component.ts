@@ -1,7 +1,7 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef, MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, switchMap, catchError } from 'rxjs/operators';
 import { Observable, of } from 'rxjs';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 
@@ -108,6 +108,10 @@ export class InventoryItemDetailModalComponent implements OnInit {
   totalLocations = 0;
   loadingLocations = false;
   locationDisplayedColumns: string[] = ['location', 'quantity', 'value', 'actions'];
+
+  categoriesLoading = false;
+  categoriesPage = 0;
+  categoriesPageSize = 20;
 
   constructor(
     public dialogRef: MatDialogRef<InventoryItemDetailModalComponent>,
@@ -340,11 +344,31 @@ export class InventoryItemDetailModalComponent implements OnInit {
   /** For Category searching */
   onCategorySearchChange(term: string): Observable<void> {
     if (!term) term = '';
-    return this.categoriesService.getAllCategories(term).pipe(
-      switchMap((cats: Category[]) => {
-        this.filteredCategories = cats;
-        const exactMatch = cats.some(c => c.name.toLowerCase() === term.toLowerCase());
+    this.categoriesLoading = true;
+    
+    return this.categoriesService.getPaginatedCategoryFilterOptions(
+      this.categoriesPage, 
+      this.categoriesPageSize, 
+      term
+    ).pipe(
+      switchMap(response => {
+        // Convert FilterOptionDTO[] to Category[]
+        this.filteredCategories = response.content.map(option => ({
+          id: option.id,
+          name: option.name,
+          description: '' // FilterOptionDTO doesn't include description
+        } as Category));
+        
+        const exactMatch = this.filteredCategories.some(c => 
+          c.name.toLowerCase() === term.toLowerCase()
+        );
         this.canCreateNewCategory = term.length > 0 && !exactMatch;
+        this.categoriesLoading = false;
+        return of();
+      }),
+      catchError(error => {
+        console.error('Error loading categories:', error);
+        this.categoriesLoading = false;
         return of();
       })
     );
@@ -377,13 +401,22 @@ export class InventoryItemDetailModalComponent implements OnInit {
 
   /** Actually create the new category */
   createNewCategory(name: string) {
+    this.categoriesLoading = true;
     const newCat: Partial<Category> = { name };
-    this.categoriesService.createCategory(newCat).subscribe(created => {
-      this.item.category = created;
-      // update the control with the newly created category name
-      this.categoryCtrl.setValue(created.name);
-      this.filteredCategories.push(created);
-      this.canCreateNewCategory = false;
+    
+    this.categoriesService.createCategory(newCat).subscribe({
+      next: (created) => {
+        this.item.category = created;
+        // update the control with the newly created category name
+        this.categoryCtrl.setValue(created.name);
+        this.filteredCategories.push(created);
+        this.canCreateNewCategory = false;
+        this.categoriesLoading = false;
+      },
+      error: (err) => {
+        console.error('Error creating category:', err);
+        this.categoriesLoading = false;
+      }
     });
   }
 

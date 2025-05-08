@@ -33,17 +33,25 @@
               <input type="text" matInput [formControl]="categoryCtrl" [matAutocomplete]="autoCat"
                 placeholder="Category" />
 
-              <mat-autocomplete #autoCat="matAutocomplete" (optionSelected)="onOptionSelected($event.option.value)">
-                <!-- Normal category options -->
-                <mat-option *ngFor="let cat of filteredCategories" [value]="cat.name">
-                  {{ cat.name }}
-                </mat-option>
-
-                <!-- CREATE NEW category -->
-                <mat-option *ngIf="canCreateNewCategory" [value]="categoryCtrl.value">
-                  Create "<b>{{ categoryCtrl.value }}</b>" as new category
-                </mat-option>
-              </mat-autocomplete>
+                <mat-autocomplete #autoCat="matAutocomplete" (optionSelected)="onOptionSelected($event.option.value)">
+                  <!-- Loading indicator -->
+                  <mat-option *ngIf="categoriesLoading" disabled>
+                    <div style="display: flex; align-items: center;">
+                      <mat-spinner diameter="20" style="margin-right: 8px;"></mat-spinner>
+                      Loading categories...
+                    </div>
+                  </mat-option>
+                
+                  <!-- Normal category options -->
+                  <mat-option *ngFor="let cat of filteredCategories" [value]="cat.name">
+                    {{ cat.name }}
+                  </mat-option>
+                
+                  <!-- CREATE NEW category -->
+                  <mat-option *ngIf="canCreateNewCategory" [value]="categoryCtrl.value">
+                    Create "<b>{{ categoryCtrl.value }}</b>" as new category
+                  </mat-option>
+                </mat-autocomplete>
             </mat-form-field>
 
           </div>
