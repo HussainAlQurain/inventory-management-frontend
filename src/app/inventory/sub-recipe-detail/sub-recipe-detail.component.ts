@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, OnInit, ViewChild, AfterViewInit, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatTableModule, MatTable } from '@angular/material/table';
@@ -65,6 +65,9 @@ import { PaginatedSubRecipeResponse } from '../../models/PaginatedSubRecipeRespo
   styleUrls: ['./sub-recipe-detail.component.scss']
 })
 export class SubRecipeDetailComponent implements OnInit, AfterViewInit {
+
+  @ViewChild('categorySearchInput', { static: false }) categorySearchInput!: ElementRef;
+  
   // Display columns for the table
   displayedColumns: string[] = [
     'name',
@@ -228,21 +231,37 @@ export class SubRecipeDetailComponent implements OnInit, AfterViewInit {
     this.searchSubject.next(value);
   }
 
-  loadCategoriesLazy(): void {
-    if (this.categories.length === 0) {
-      this.categoriesService.getPaginatedCategoryFilterOptions(0, 50, '').subscribe({
-        next: (response) => {
-          this.categories = response.content.map(dto => ({
-            id: dto.id,
-            name: dto.name,
-            description: ''
-          } as Category));
-        },
-        error: (error) => {
-          console.error('Error loading categories:', error);
-        }
-      });
-    }
+  private categorySearchTerm = '';
+  categoriesLoading = false;
+  
+  loadCategoriesLazy(searchTerm: string = ''): void {
+    // Don't make duplicate requests while loading
+    if (this.categoriesLoading) return;
+    
+    this.categoriesLoading = true;
+    this.categorySearchTerm = searchTerm;
+    
+    this.categoriesService.getPaginatedCategoryFilterOptions(0, 20, searchTerm).subscribe({
+      next: (response) => {
+        this.categories = response.content.map(dto => ({
+          id: dto.id,
+          name: dto.name,
+          description: ''
+        } as Category));
+        this.categoriesLoading = false;
+      },
+      error: (error) => {
+        console.error('Error loading categories:', error);
+        this.categoriesLoading = false;
+      }
+    });
+  }
+  
+  // Add this method to handle category search
+  onCategorySearch(event: Event): void {
+    event.stopPropagation(); // Prevent dropdown from closing on input click
+    const input = event.target as HTMLInputElement;
+    this.loadCategoriesLazy(input.value);
   }
 
   loadUomsLazy(): void {
@@ -608,7 +627,15 @@ export class SubRecipeDetailComponent implements OnInit, AfterViewInit {
   }
 
   onCategoryDropdownOpened(): void {
-    this.loadCategoriesLazy();
+    // Initialize with empty search instead of loading all categories right away
+    this.loadCategoriesLazy('');
+    
+    // Focus the search input when dropdown opens
+    setTimeout(() => {
+      if (this.categorySearchInput) {
+        this.categorySearchInput.nativeElement.focus();
+      }
+    }, 100);
   }
 
   onUomDropdownOpened(): void {

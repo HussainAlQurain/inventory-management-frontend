@@ -33,7 +33,25 @@
       <mat-form-field appearance="outline">
         <mat-label>Category</mat-label>
         <mat-select [(ngModel)]="categoryFilter" (selectionChange)="applyFilters()" (opened)="onCategoryDropdownOpened()">
+          <!-- Add search input at the top of the dropdown -->
+          <mat-option>
+            <div class="search-container">
+              <input 
+                placeholder="Search categories..." 
+                (keyup)="onCategorySearch($event)" 
+                (click)="$event.stopPropagation()"
+                #categorySearchInput>
+            </div>
+          </mat-option>
+          
           <mat-option>All Categories</mat-option>
+          
+          <!-- Show loading indicator -->
+          <mat-option *ngIf="categoriesLoading" disabled>
+            <mat-spinner diameter="20"></mat-spinner> Loading...
+          </mat-option>
+          
+          <!-- Categories list -->
           <mat-option *ngFor="let category of categories" [value]="category.id">
             {{category.name}}
           </mat-option>
