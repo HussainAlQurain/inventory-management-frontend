@@ -68,20 +68,34 @@
       </mat-form-field>
     </div>
 
-    <div class="form-row">
-      <mat-form-field appearance="outline">
-        <mat-label>Default Category</mat-label>
-        <input type="text" matInput [formControl]="categoryCtrl" [matAutocomplete]="categoryAuto">
-        <mat-autocomplete #categoryAuto="matAutocomplete" (optionSelected)="onCategoryOptionSelected($event)">
-          <mat-option *ngFor="let category of filteredCategories" [value]="category.name">
-            {{ category.name }}
-          </mat-option>
-          <mat-option *ngIf="canCreateNewCategory" [value]="categoryCtrl.value">
-            Create new category: "{{ categoryCtrl.value }}"
-          </mat-option>
-        </mat-autocomplete>            
-      </mat-form-field>
-    </div>
+    <mat-form-field appearance="outline">
+      <mat-label>Default Category</mat-label>
+      <input type="text" matInput [formControl]="categoryCtrl" [matAutocomplete]="categoryAuto">
+      <mat-autocomplete #categoryAuto="matAutocomplete" (optionSelected)="onCategoryOptionSelected($event)">
+        <!-- Loading indicator -->
+        <mat-option *ngIf="categoriesLoading" disabled>
+          <div style="display: flex; align-items: center;">
+            <mat-spinner diameter="20" style="margin-right: 8px;"></mat-spinner>
+            Loading categories...
+          </div>
+        </mat-option>
+        
+        <!-- No results message -->
+        <mat-option *ngIf="!categoriesLoading && filteredCategories.length === 0 && categoryCtrl.value" disabled>
+          No matching categories found
+        </mat-option>
+        
+        <!-- Categories list -->
+        <mat-option *ngFor="let category of filteredCategories" [value]="category.name">
+          {{ category.name }}
+        </mat-option>
+        
+        <!-- Create new option -->
+        <mat-option *ngIf="canCreateNewCategory" [value]="categoryCtrl.value">
+          Create "{{ categoryCtrl.value }}" as new category
+        </mat-option>
+      </mat-autocomplete>            
+    </mat-form-field>
 
     <div class="form-row">
       <mat-form-field appearance="outline" class="full-width">

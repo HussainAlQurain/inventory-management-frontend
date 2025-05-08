@@ -97,8 +97,6 @@ export class AddMenuItemComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    // Setup category autocomplete
-    this.setupCategoryAutocomplete();
     
     // Watch for changes to retail price to recalculate food cost percentage
     this.menuItemForm.get('retailPriceExclTax')?.valueChanges.subscribe(() => {
@@ -106,25 +104,6 @@ export class AddMenuItemComponent implements OnInit {
     });
   }
   
-  private setupCategoryAutocomplete(): void {
-    this.categoryCtrl.valueChanges.pipe(
-      debounceTime(300),
-      distinctUntilChanged(),
-      switchMap(term => this.onCategorySearchChange(term))
-    ).subscribe();
-  }
-  
-  private onCategorySearchChange(term: string): Observable<void> {
-    if (!term) term = '';
-    return this.categoriesService.getAllCategories(term).pipe(
-      switchMap((cats: Category[]) => {
-        this.filteredCategories = cats;
-        const exactMatch = cats.some(c => c.name.toLowerCase() === term.toLowerCase());
-        this.canCreateNewCategory = term.length > 0 && !exactMatch;
-        return of();
-      })
-    );
-  }
   
   onCategorySelected(value: string): void {
     const category = this.filteredCategories.find(c => c.name === value);

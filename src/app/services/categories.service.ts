@@ -18,10 +18,10 @@ export class CategoriesService {
     private companiesService: CompaniesService
   ) { }
 
-  getAllCategories(searchTerm: string = ''): Observable<Category[]> {
-    const companyId = this.companiesService.getSelectedCompanyId();
-    return this.http.get<Category[]>(`${this.baseUrl}/company/${companyId}?search=${searchTerm}`);
-  }
+  // getAllCategories(searchTerm: string = ''): Observable<Category[]> {
+  //   const companyId = this.companiesService.getSelectedCompanyId();
+  //   return this.http.get<Category[]>(`${this.baseUrl}/company/${companyId}?search=${searchTerm}`);
+  // }
   
   createCategory(newCat: Partial<Category>): Observable<Category> {
     const companyId = this.companiesService.getSelectedCompanyId();

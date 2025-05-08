@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Observable, of } from 'rxjs';
-import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, switchMap, map, catchError } from 'rxjs/operators';
 
 import { Supplier, SupplierEmail, SupplierPhone } from '../../models/Supplier';
 import { Category } from '../../models/Category';
@@ -17,6 +17,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatDialogModule } from '@angular/material/dialog';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 @Component({
   selector: 'app-supplier-form',
@@ -30,7 +31,8 @@ import { MatDialogModule } from '@angular/material/dialog';
     MatIconModule,
     MatCheckboxModule,
     MatAutocompleteModule,
-    MatDialogModule
+    MatDialogModule,
+    MatProgressSpinnerModule
   ],
   templateUrl: './supplier-form.component.html',
   styleUrls: ['./supplier-form.component.scss']
@@ -103,10 +105,11 @@ export class SupplierFormComponent implements OnInit {
       this.populateForm();
     }
   }
+  categoriesLoading = false;
 
   private populateForm(): void {
     if (!this.supplier) return;
-
+  
     // Populate the form with the supplier data
     this.supplierForm.patchValue({
       name: this.supplier.name,
@@ -126,14 +129,29 @@ export class SupplierFormComponent implements OnInit {
     
     // Fetch and set the category name if a categoryId exists
     if (this.supplier && this.supplier.defaultCategoryId) {
-      this.categoriesService.getAllCategories('').subscribe({
+      this.categoriesLoading = true;
+      this.categoriesService.getPaginatedCategoryFilterOptions(0, 50, '').pipe(
+        map(response => response.content.map(option => ({
+          id: option.id,
+          name: option.name,
+          description: '' // FilterOptionDTO doesn't include description
+        } as Category))),
+        catchError(err => {
+          console.error('Error fetching categories:', err);
+          return of([] as Category[]);
+        })
+      ).subscribe({
         next: (categories: Category[]) => {
           const category = categories.find(c => c.id === this.supplier?.defaultCategoryId);
           if (category) {
             this.categoryCtrl.setValue(category.name);
           }
+          this.categoriesLoading = false;
         },
-        error: (err: any) => console.error('Error fetching categories:', err)
+        error: (err) => {
+          console.error('Error fetching categories:', err);
+          this.categoriesLoading = false;
+        }
       });
     }
     
@@ -146,7 +164,20 @@ export class SupplierFormComponent implements OnInit {
     this.categoryCtrl.valueChanges.pipe(
       debounceTime(300),
       distinctUntilChanged(),
-      switchMap(term => this.categoriesService.getAllCategories(term || ''))
+      switchMap(term => {
+        this.categoriesLoading = true;
+        return this.categoriesService.getPaginatedCategoryFilterOptions(0, 20, term || '').pipe(
+          map(response => response.content.map(option => ({
+            id: option.id,
+            name: option.name,
+            description: '' // FilterOptionDTO doesn't include description
+          } as Category))),
+          catchError(err => {
+            console.error('Error loading categories:', err);
+            return of([] as Category[]);
+          })
+        );
+      })
     ).subscribe({
       next: (categories) => {
         this.filteredCategories = categories || [];
@@ -155,8 +186,12 @@ export class SupplierFormComponent implements OnInit {
           c?.name && c.name.toLowerCase() === ctrlValue.toLowerCase()
         );
         this.canCreateNewCategory = !!ctrlValue && !exact;
+        this.categoriesLoading = false;
       },
-      error: (err) => console.error('Error loading categories:', err)
+      error: (err) => {
+        console.error('Error loading categories:', err);
+        this.categoriesLoading = false;
+      }
     });
   }
 
@@ -178,6 +213,7 @@ export class SupplierFormComponent implements OnInit {
   createNewCategory(categoryName: string): void {
     if (!categoryName) return;
     
+    this.categoriesLoading = true;
     const newCategory = { 
       name: categoryName,
       description: ''
@@ -191,8 +227,12 @@ export class SupplierFormComponent implements OnInit {
           this.categoryCtrl.setValue(createdCategory.name);
           this.canCreateNewCategory = false;
         }
+        this.categoriesLoading = false;
       },
-      error: (err) => console.error('Error creating category:', err)
+      error: (err) => {
+        console.error('Error creating category:', err);
+        this.categoriesLoading = false;
+      }
     });
   }
 
