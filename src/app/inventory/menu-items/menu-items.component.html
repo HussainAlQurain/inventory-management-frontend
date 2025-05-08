@@ -34,8 +34,23 @@
         <mat-label>Category</mat-label>
         <mat-select [(ngModel)]="categoryFilter" (selectionChange)="applyFilters()">
           <mat-option>All Categories</mat-option>
+          
+          <!-- Loading indicator -->
+          <mat-option *ngIf="categoriesLoading" disabled>
+            <div style="display: flex; align-items: center;">
+              <mat-spinner diameter="20" style="margin-right: 8px;"></mat-spinner>
+              Loading categories...
+            </div>
+          </mat-option>
+          
+          <!-- Categories list -->
           <mat-option *ngFor="let category of categories" [value]="category.id">
             {{category.name}}
+          </mat-option>
+          
+          <!-- No results message -->
+          <mat-option *ngIf="!categoriesLoading && categories.length === 0" disabled>
+            No categories available
           </mat-option>
         </mat-select>
       </mat-form-field>

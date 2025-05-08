@@ -29,6 +29,7 @@ import { MatDialog } from '@angular/material/dialog';
 
 // Import the new supplier form component
 import { SupplierFormComponent } from '../../suppliers/supplier-form/supplier-form.component';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 export interface PurchaseOptionModalData {
   inventoryItemId: number;
@@ -52,7 +53,8 @@ export interface PurchaseOptionModalData {
     MatIconModule,
     MatTabsModule,
     MatSelectModule,
-    SupplierFormComponent
+    SupplierFormComponent,
+    MatProgressSpinnerModule
   ],
   templateUrl: './purchase-option-modal.component.html',
   styleUrls: ['./purchase-option-modal.component.scss']
@@ -103,6 +105,13 @@ export class PurchaseOptionModalComponent implements OnInit {
   uomTotal = 0;
   uomLoading = false;
   uomSearchTerm = '';
+  
+  // Add these properties for category pagination
+  categoriesPage = 0;
+  categoriesSize = 20;
+  categoriesTotal = 0;
+  categoriesLoading = false;
+  categoriesSearchTerm = '';
 
   constructor(
     public dialogRef: MatDialogRef<PurchaseOptionModalComponent>,
@@ -396,14 +405,30 @@ export class PurchaseOptionModalComponent implements OnInit {
     
     // Fetch and set the category name if a categoryId exists
     if (this.selectedSupplier && this.selectedSupplier.defaultCategoryId) {
-      this.categoriesService.getAllCategories('').subscribe({
-        next: (categories: Category[]) => {
+      this.categoriesLoading = true;
+      this.categoriesService.getPaginatedCategoryFilterOptions(0, 50, '').pipe(
+        map(response => response.content.map(option => ({
+          id: option.id,
+          name: option.name,
+          description: ''
+        } as Category))),
+        catchError(err => {
+          console.error('Error fetching categories:', err);
+          return of([] as Category[]);
+        })
+      ).subscribe({
+        next: (categories) => {
+          this.filteredCategories = categories;
           const category = categories.find(c => c.id === this.selectedSupplier?.defaultCategoryId);
           if (category) {
             this.categoryCtrl.setValue(category.name);
           }
+          this.categoriesLoading = false;
         },
-        error: (err: any) => console.error('Error fetching categories:', err)
+        error: (err) => {
+          console.error('Error fetching categories:', err);
+          this.categoriesLoading = false;
+        }
       });
     }
     
@@ -582,19 +607,79 @@ export class PurchaseOptionModalComponent implements OnInit {
   
   private setupCategoryAutocomplete(): void {
     this.categoryCtrl.valueChanges.pipe(
-      debounceTime(300),
+      debounceTime(500),
       distinctUntilChanged(),
-      switchMap(term => this.categoriesService.getAllCategories(term || ''))
-    ).subscribe({
-      next: (categories) => {
-        this.filteredCategories = categories || [];
+      switchMap(term => {
+        this.categoriesSearchTerm = term || '';
+        this.categoriesPage = 0; // Reset to first page on new search
+        return this.loadPaginatedCategories(term || '');
+      })
+    ).subscribe();
+  }
+
+  private loadPaginatedCategories(term: string): Observable<any> {
+    this.categoriesLoading = true;
+    
+    return this.categoriesService.getPaginatedCategoryFilterOptions(
+      this.categoriesPage,
+      this.categoriesSize,
+      term
+    ).pipe(
+      map(response => {
+        // Convert FilterOptionDTO[] to Category[]
+        this.filteredCategories = response.content.map(option => ({
+          id: option.id,
+          name: option.name,
+          description: '' // FilterOptionDTO doesn't include description
+        } as Category));
+        
+        this.categoriesTotal = response.totalElements;
+        
+        // Check if we can create a new category
         const ctrlValue = this.categoryCtrl.value || '';
         const exact = this.filteredCategories.some(c => 
           c?.name && c.name.toLowerCase() === ctrlValue.toLowerCase()
         );
         this.canCreateNewCategory = !!ctrlValue && !exact;
+        
+        this.categoriesLoading = false;
+        return this.filteredCategories;
+      }),
+      catchError(error => {
+        console.error('Error loading categories:', error);
+        this.categoriesLoading = false;
+        return of([]);
+      })
+    );
+  }
+
+  loadMoreCategories(): void {
+    if (this.categoriesLoading) return;
+    
+    this.categoriesLoading = true;
+    this.categoriesPage++;
+    
+    this.categoriesService.getPaginatedCategoryFilterOptions(
+      this.categoriesPage,
+      this.categoriesSize,
+      this.categoriesSearchTerm
+    ).subscribe({
+      next: (response) => {
+        // Convert DTOs to Category objects and append to list
+        const moreCategories = response.content.map(option => ({
+          id: option.id,
+          name: option.name,
+          description: ''
+        } as Category));
+        
+        this.filteredCategories = [...this.filteredCategories, ...moreCategories];
+        this.categoriesLoading = false;
       },
-      error: (err) => console.error('Error loading categories:', err)
+      error: (err) => {
+        console.error('Error loading more categories:', err);
+        this.categoriesLoading = false;
+        this.categoriesPage--;
+      }
     });
   }
   

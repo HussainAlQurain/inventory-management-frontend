@@ -83,6 +83,41 @@
       </button>
     </div>
 
+    <!-- Category Selection -->
+    <div class="form-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Category</mat-label>
+        <input type="text" matInput [formControl]="categoryCtrl" [matAutocomplete]="categoryAuto">
+        <mat-autocomplete #categoryAuto="matAutocomplete" (optionSelected)="onCategoryOptionSelected($event)">
+          <!-- Categories list -->
+          <mat-option *ngFor="let category of filteredCategories" [value]="category.name">
+            {{ category.name }}
+          </mat-option>
+          
+          <!-- Loading indicator -->
+          <mat-option *ngIf="categoriesLoading" disabled>
+            <div style="display: flex; align-items: center;">
+              <mat-spinner diameter="20" style="margin-right: 8px;"></mat-spinner>
+              Loading categories...
+            </div>
+          </mat-option>
+          
+          <!-- Load more option -->
+          <mat-option *ngIf="filteredCategories.length > 0 && filteredCategories.length < categoriesTotal" 
+                     disabled class="load-more-option">
+            <button mat-button color="primary" (click)="loadMoreCategories(); $event.stopPropagation()">
+              Load more categories
+            </button>
+          </mat-option>
+          
+          <!-- Create new option -->
+          <mat-option *ngIf="canCreateNewCategory" [value]="categoryCtrl.value">
+            Create "{{ categoryCtrl.value }}" as new category
+          </mat-option>
+        </mat-autocomplete>
+      </mat-form-field>
+    </div>
+
     <!-- Price Information -->
     <div class="form-row">
       <mat-form-field appearance="outline">

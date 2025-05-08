@@ -28,6 +28,9 @@ import { AddMenuItemComponent } from '../add-menu-item/add-menu-item.component';
 import { MenuItemDetailComponent } from '../menu-item-detail/menu-item-detail.component';
 import { PaginatedItemsResponse } from '../../services/sub-recipes.service';
 
+import { of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
+
 @Component({
   selector: 'app-menu-items',
   standalone: true,
@@ -102,6 +105,8 @@ export class MenuItemsComponent implements OnInit, AfterViewInit {
   // For search debounce
   private searchSubject = new Subject<string>();
   Math = Math; // For template usage
+
+  categoriesLoading = false;
   
   // For pagination and sorting
   @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -177,12 +182,26 @@ export class MenuItemsComponent implements OnInit, AfterViewInit {
   }
 
   loadCategories(): void {
-    this.categoriesService.getAllCategories('').subscribe({
+    this.categoriesLoading = true;
+    // Use a larger page size since we're loading for a dropdown
+    this.categoriesService.getPaginatedCategoryFilterOptions(0, 100, '').pipe(
+      map(response => response.content.map(option => ({
+        id: option.id,
+        name: option.name,
+        description: '' // FilterOptionDTO doesn't include description
+      } as Category))),
+      catchError(err => {
+        console.error('Error loading categories:', err);
+        return of([] as Category[]);
+      })
+    ).subscribe({
       next: (categories) => {
         this.categories = categories;
+        this.categoriesLoading = false;
       },
       error: (error) => {
         console.error('Error loading categories:', error);
+        this.categoriesLoading = false;
       }
     });
   }
