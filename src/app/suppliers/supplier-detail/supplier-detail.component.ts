@@ -26,6 +26,8 @@ import { Category } from '../../models/Category';
 import { Location } from '../../models/Location';
 import { debounceTime, distinctUntilChanged, switchMap, Observable, of } from 'rxjs';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog/confirm-dialog.component';
+import { catchError, map } from 'rxjs/operators';
+
 
 @Component({
   selector: 'app-supplier-detail',
@@ -62,6 +64,7 @@ export class SupplierDetailComponent implements OnInit, AfterViewInit {
   isLoading: boolean = false;
   isEditing: boolean = false;
   selectedTabIndex: number = 0;
+  categoriesLoading = false;
 
   // Category management
   categories: Category[] = [];
@@ -270,15 +273,28 @@ export class SupplierDetailComponent implements OnInit, AfterViewInit {
       defaultCategoryId: this.supplier.defaultCategoryId || null
     });
   }
-
+  
   loadCategories(): void {
-    this.categoriesService.getAllCategories('').subscribe({
+    this.categoriesLoading = true;
+    this.categoriesService.getPaginatedCategoryFilterOptions(0, 50, '').pipe(
+      map(response => response.content.map(option => ({
+        id: option.id,
+        name: option.name,
+        description: '' // FilterOptionDTO doesn't include description
+      } as Category))),
+      catchError(err => {
+        console.error('Error loading categories:', err);
+        return of([] as Category[]);
+      })
+    ).subscribe({
       next: (categories) => {
         this.categories = categories;
         this.filteredCategories = categories;
+        this.categoriesLoading = false;
       },
       error: (err) => {
         console.error('Error loading categories:', err);
+        this.categoriesLoading = false;
       }
     });
   }
@@ -297,7 +313,31 @@ export class SupplierDetailComponent implements OnInit, AfterViewInit {
   // Form filtering and editing methods
   onCategoryInput(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
-    this.filteredCategories = this._filterCategories(value);
+    this.searchCategories(value);
+  }
+
+  searchCategories(query: string): void {
+    this.categoriesLoading = true;
+    this.categoriesService.getPaginatedCategoryFilterOptions(0, 20, query).pipe(
+      map(response => response.content.map(option => ({
+        id: option.id,
+        name: option.name,
+        description: '' // FilterOptionDTO doesn't include description
+      } as Category))),
+      catchError(err => {
+        console.error('Error searching categories:', err);
+        return of([] as Category[]);
+      })
+    ).subscribe({
+      next: (categories) => {
+        this.filteredCategories = categories;
+        this.categoriesLoading = false;
+      },
+      error: (err) => {
+        console.error('Error searching categories:', err);
+        this.categoriesLoading = false;
+      }
+    });
   }
 
   private _filterCategories(value: string): Category[] {
