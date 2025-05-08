@@ -35,20 +35,34 @@
             </div>
 
             <!-- Category -->
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Category</mat-label>
-              <input type="text" matInput [formControl]="categoryCtrl" [matAutocomplete]="autoCat">
-              <mat-autocomplete #autoCat="matAutocomplete" (optionSelected)="onCategoryOptionSelected($event.option.value)">
-                <!-- Existing categories -->
-                <mat-option *ngFor="let cat of filteredCategories" [value]="cat.name">
-                  {{ cat.name }}
-                </mat-option>
-                <!-- Create new category option -->
-                <mat-option *ngIf="canCreateNewCategory" [value]="categoryCtrl.value">
-                  Create "<b>{{ categoryCtrl.value }}</b>" as new category
-                </mat-option>
-              </mat-autocomplete>
-            </mat-form-field>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Category</mat-label>
+            <input type="text" matInput [formControl]="categoryCtrl" [matAutocomplete]="autoCat">
+            <mat-autocomplete #autoCat="matAutocomplete" (optionSelected)="onCategoryOptionSelected($event.option.value)">
+              <!-- Loading indicator -->
+              <mat-option *ngIf="categoriesLoading" disabled>
+                <div style="display: flex; align-items: center;">
+                  <mat-spinner diameter="20" style="margin-right: 8px;"></mat-spinner> 
+                  Loading categories...
+                </div>
+              </mat-option>
+              
+              <!-- No results message -->
+              <mat-option *ngIf="!categoriesLoading && filteredCategories.length === 0 && categoryCtrl.value" disabled>
+                No matching categories found
+              </mat-option>
+              
+              <!-- Existing categories -->
+              <mat-option *ngFor="let cat of filteredCategories" [value]="cat.name">
+                {{ cat.name }}
+              </mat-option>
+              
+              <!-- Create new category option -->
+              <mat-option *ngIf="canCreateNewCategory" [value]="categoryCtrl.value">
+                Create "<b>{{ categoryCtrl.value }}</b>" as new category
+              </mat-option>
+            </mat-autocomplete>
+          </mat-form-field>
 
             <!-- Yield & UOM Fields -->
             <div class="form-row">

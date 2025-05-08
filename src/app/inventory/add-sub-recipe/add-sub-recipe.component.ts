@@ -1,9 +1,8 @@
 import { Component, EventEmitter, OnInit, Output } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Observable, of } from 'rxjs';
-import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, switchMap, catchError } from 'rxjs/operators';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-
 import { SubRecipe, SubRecipeLine, SubRecipeType } from '../../models/SubRecipe';
 import { Category } from '../../models/Category';
 import { UnitOfMeasure } from '../../models/UnitOfMeasure';
@@ -30,6 +29,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { CommonModule } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { SubRecipeLineItemComponent } from '../../components/sub-recipe-line-item/sub-recipe-line-item.component';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
 
 @Component({
   selector: 'app-add-sub-recipe',
@@ -49,7 +49,8 @@ import { SubRecipeLineItemComponent } from '../../components/sub-recipe-line-ite
     MatSelectModule,
     MatTooltipModule,
     MatTableModule,
-    SubRecipeLineItemComponent
+    SubRecipeLineItemComponent,
+    MatProgressSpinner
   ],
   templateUrl: './add-sub-recipe.component.html',
   styleUrls: ['./add-sub-recipe.component.scss']
@@ -138,25 +139,44 @@ export class AddSubRecipeComponent implements OnInit {
     });
   }
   
-  private setupCategoryAutocomplete(): void {
-    this.categoryCtrl.valueChanges.pipe(
-      debounceTime(300),
-      distinctUntilChanged(),
-      switchMap(term => this.onCategorySearchChange(term))
-    ).subscribe();
-  }
-  
-  private onCategorySearchChange(term: string): Observable<void> {
-    if (!term) term = '';
-    return this.categoriesService.getAllCategories(term).pipe(
-      switchMap((cats: Category[]) => {
-        this.filteredCategories = cats;
-        const exactMatch = cats.some(c => c.name.toLowerCase() === term.toLowerCase());
-        this.canCreateNewCategory = term.length > 0 && !exactMatch;
-        return of();
-      })
-    );
-  }
+// Add these properties to the class
+categoriesLoading = false;
+
+private setupCategoryAutocomplete(): void {
+  this.categoryCtrl.valueChanges.pipe(
+    debounceTime(300),
+    distinctUntilChanged(),
+    switchMap(term => {
+      this.categoriesLoading = true;
+      return this.onCategorySearchChange(term);
+    })
+  ).subscribe();
+}
+
+private onCategorySearchChange(term: string): Observable<void> {
+  if (!term) term = '';
+  // Use paginated endpoint instead of getAllCategories
+  return this.categoriesService.getPaginatedCategoryFilterOptions(0, 20, term).pipe(
+    switchMap((response) => {
+      // Convert FilterOptionDTO[] to Category[]
+      this.filteredCategories = response.content.map(option => ({
+        id: option.id,
+        name: option.name,
+        description: '' // FilterOptionDTO doesn't include description
+      } as Category));
+      
+      const exactMatch = this.filteredCategories.some(c => c.name.toLowerCase() === term.toLowerCase());
+      this.canCreateNewCategory = term.length > 0 && !exactMatch;
+      this.categoriesLoading = false;
+      return of();
+    }),
+    catchError(error => {
+      console.error('Error loading categories:', error);
+      this.categoriesLoading = false;
+      return of();
+    })
+  );
+}
   
   onCategorySelected(value: string): void {
     const category = this.filteredCategories.find(c => c.name === value);
@@ -178,15 +198,27 @@ export class AddSubRecipeComponent implements OnInit {
   }
   
   private createNewCategory(name: string): void {
+    this.categoriesLoading = true;
     const newCat: Partial<Category> = { name };
     this.categoriesService.createCategory(newCat).subscribe({
       next: (created) => {
         this.subRecipeForm.get('categoryId')?.setValue(created.id);
-        this.categoryCtrl.setValue(created.name);
-        this.filteredCategories.push(created);
+        this.categoryCtrl.setValue(created.name, { emitEvent: false }); // Prevent triggering another search
+        
+        // Make sure we have a filteredCategories array
+        if (!this.filteredCategories) {
+          this.filteredCategories = [];
+        }
+        
+        // Add the new category to the filtered list
+        this.filteredCategories = [created, ...this.filteredCategories];
         this.canCreateNewCategory = false;
+        this.categoriesLoading = false;
       },
-      error: (err) => console.error('Error creating category:', err)
+      error: (err) => {
+        console.error('Error creating category:', err);
+        this.categoriesLoading = false;
+      }
     });
   }
   
