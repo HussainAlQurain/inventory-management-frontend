@@ -2,9 +2,10 @@ import { Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { HttpClient, HttpParams, HttpErrorResponse } from '@angular/common/http';
 import { CompaniesService } from './companies.service';
-import { SubRecipe, SubRecipeLine } from '../models/SubRecipe';
+import { SubRecipe, SubRecipeLine, SubRecipeType } from '../models/SubRecipe';
 import { catchError, Observable, throwError, retry, retryWhen, mergeMap } from 'rxjs';
 import { HttpErrorHandlerService } from './http-error-handler.service';
+import { PaginatedSubRecipeResponse } from '../models/PaginatedSubRecipeResponse';
 
 // Define an interface for the pagination response structure
 export interface PaginatedItemsResponse<T> {
@@ -252,4 +253,32 @@ export class SubRecipesService {
     
     return subRecipe.lines.reduce((total, line) => total + (line.lineCost || 0), 0);
   }
+
+  getPaginatedSubRecipesList(
+    page       = 0,
+    size       = 10,
+    sortBy     = 'name',
+    direction  = 'asc',
+    searchTerm?: string,
+    categoryId?: number,
+    type?      : SubRecipeType      // <-- new
+  ): Observable<PaginatedSubRecipeResponse> {
+  
+    const companyId = this.companiesService.getSelectedCompanyId();
+    if (!companyId) return throwError(() => new Error('No company selected'));
+  
+    let params = new HttpParams()
+      .set('page',     page.toString())
+      .set('size',     size.toString())
+      .set('sort',     sortBy)
+      .set('direction',direction);
+  
+    if (searchTerm)  params = params.set('search',  searchTerm);
+    if (categoryId)  params = params.set('categoryId', categoryId);
+    if (type)        params = params.set('type',    type);   // <-- new
+  
+    return this.http.get<PaginatedSubRecipeResponse>(
+      `${this.baseUrl}/company/${companyId}/list`, { params });
+  }
+  
 }

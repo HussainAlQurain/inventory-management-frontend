@@ -31,6 +31,8 @@ import { CategoriesService } from '../../services/categories.service';
 
 import { SubRecipeLineItemComponent } from '../../components/sub-recipe-line-item/sub-recipe-line-item.component';
 import { AddSubRecipeComponent } from '../add-sub-recipe/add-sub-recipe.component';
+import { SubRecipeListDTO } from '../../models/SubRecipeListDTO';
+import { PaginatedSubRecipeResponse } from '../../models/PaginatedSubRecipeResponse';
 
 @Component({
   selector: 'app-sub-recipe-detail',
@@ -77,7 +79,7 @@ export class SubRecipeDetailComponent implements OnInit, AfterViewInit {
   ];
   
   // Data sources
-  filteredSubRecipes: SubRecipe[] = [];
+  filteredSubRecipes: SubRecipeListDTO[] = [];
   
   // Selected subrecipe for detail view
   selectedSubRecipe: SubRecipe | null = null;
@@ -144,9 +146,13 @@ export class SubRecipeDetailComponent implements OnInit, AfterViewInit {
 
   ngOnInit(): void {
     this.setupSearchDebounce();
+    // Only load sub-recipes initially
     this.loadSubRecipes();
-    this.loadCategories();
-    this.loadUoms();
+    
+    // Delay loading categories and UOMs to spread out database load
+    setTimeout(() => {
+      // Don't load categories until the category dropdown is opened
+    }, 500);
   }
 
   ngAfterViewInit(): void {
@@ -173,38 +179,33 @@ export class SubRecipeDetailComponent implements OnInit, AfterViewInit {
 
   loadSubRecipes(): void {
     this.isLoading = true;
-    this.error = null;
-    
-    this.subRecipesService.getPaginatedSubRecipes(
-      this.currentPage,
-      this.pageSize,
-      this.sortBy,
-      this.sortDirection,
-      this.getSearchTerm()
-    ).subscribe({
-      next: (response: PaginatedItemsResponse<SubRecipe>) => {
-        this.filteredSubRecipes = response.items;
-        this.totalItems = response.totalItems;
-        this.currentPage = response.currentPage;
-        this.isLoading = false;
+    this.error     = null;
+
+    this.subRecipesService.getPaginatedSubRecipesList(
+        this.currentPage,
+        this.pageSize,
+        this.sortBy,
+        this.sortDirection,
+        this.nameFilter || undefined,   // search
+        this.categoryFilter || undefined,
+        this.typeFilter    || undefined // <-- new arg
+    )
+    .subscribe({
+      next: (res) => {
+        this.filteredSubRecipes = res.items;
+        this.totalItems         = res.totalItems;
+        this.currentPage        = res.currentPage;
+        this.isLoading          = false;
       },
-      error: (err: any) => {
-        console.error('Error loading sub-recipes:', err);
-        
-        // Customize error message based on error type
-        if (err.error && err.error.status === 0) {
-          this.error = 'Cannot connect to the server. Please check your internet connection.';
-        } else if (err.error && err.error.status === 500 && 
-                  (err.message?.includes('Connection') || err.message?.includes('HikariPool'))) {
-          this.error = 'Database connection issue. The server might be under heavy load. Please try again in a moment.';
-        } else {
-          this.error = 'Failed to load sub-recipes. Please try again.';
-        }
-        
+      error: (error) => {
+        console.error('Error loading sub-recipes:', error);
         this.isLoading = false;
+        this.error = 'Failed to load sub-recipes. Please try again.';
       }
     });
   }
+
+  
 
   // Create a search term based on active filters
   getSearchTerm(): string | undefined {
@@ -227,35 +228,60 @@ export class SubRecipeDetailComponent implements OnInit, AfterViewInit {
     this.searchSubject.next(value);
   }
 
-  loadCategories(): void {
-    this.categoriesService.getAllCategories('').subscribe({
-      next: (categories) => {
-        this.categories = categories;
-      },
-      error: (error) => {
-        console.error('Error loading categories:', error);
-      }
-    });
+  loadCategoriesLazy(): void {
+    if (this.categories.length === 0) {
+      this.categoriesService.getPaginatedCategoryFilterOptions(0, 50, '').subscribe({
+        next: (response) => {
+          this.categories = response.content.map(dto => ({
+            id: dto.id,
+            name: dto.name,
+            description: ''
+          } as Category));
+        },
+        error: (error) => {
+          console.error('Error loading categories:', error);
+        }
+      });
+    }
   }
 
-  loadUoms(): void {
-    this.uomService.getAllUoms().subscribe({
-      next: (uoms) => {
-        this.allUoms = uoms;
-      },
-      error: (error) => {
-        console.error('Error loading UOMs:', error);
-      }
-    });
+  loadUomsLazy(): void {
+    if (this.allUoms.length === 0) {
+      this.uomService.getPaginatedUomFilterOptions(0, 50, '').subscribe({
+        next: (response) => {
+          this.allUoms = response.content.map(dto => ({
+            id: dto.id,
+            name: dto.name,
+            abbreviation: dto.abbreviation,
+            conversionFactor: 1 // Default value since this isn't in the DTO
+          } as UnitOfMeasure));
+        },
+        error: (error) => {
+          console.error('Error loading UOMs:', error);
+        }
+      });
+    }
   }
 
-  selectSubRecipe(recipe: SubRecipe): void {
+  selectSubRecipe(recipe: SubRecipeListDTO): void {
     // Reset editing states when selecting a new recipe
     this.isEditingLine = false;
     this.currentLine = undefined;
     this.editMode = false;
     
-    this.selectedSubRecipe = recipe;
+    // Only loading basic info from the list DTO
+    const basicRecipe: SubRecipe = {
+      id: recipe.id,
+      name: recipe.name,
+      type: recipe.type as SubRecipeType,
+      categoryId: recipe.categoryId,
+      uomId: recipe.uomId,
+      yieldQty: recipe.yieldQty,
+      cost: recipe.cost,
+      lines: [] // Empty array initially
+    };
+    
+    this.selectedSubRecipe = basicRecipe;
     this.showDetailPanel = true;
     
     // Load full details including lines
@@ -263,6 +289,7 @@ export class SubRecipeDetailComponent implements OnInit, AfterViewInit {
       this.loadSubRecipeDetails(recipe.id);
     }
   }
+  
 
   loadSubRecipeDetails(id: number): void {
     // Reset line editing state when loading new sub-recipe details
@@ -306,18 +333,17 @@ export class SubRecipeDetailComponent implements OnInit, AfterViewInit {
   }
 
   // Helper methods for display
-  getCategoryName(categoryId: number): string {
-    return this.categories.find(c => c.id === categoryId)?.name || 'Unknown';
+  getCategoryName(id: number): string {
+    return this.filteredSubRecipes.find(r => r.categoryId === id)?.categoryName ?? '…';
   }
   
   getTypeName(type: SubRecipeType): string {
     return this.recipeTypes.find(t => t.value === type)?.label || type;
   }
 
-  getUomInfo(uomId: number | undefined): string {
-    if (!uomId) return 'N/A';
-    const uom = this.allUoms.find(u => u.id === uomId);
-    return uom ? `${uom.name} (${uom.abbreviation})` : 'Unknown';
+  getUomInfo(id: number|undefined): string {
+    const rec = this.filteredSubRecipes.find(r => r.uomId === id);
+    return rec ? `${rec.uomName} (${rec.uomAbbreviation})` : '…';
   }
 
   // Action methods
@@ -340,8 +366,25 @@ export class SubRecipeDetailComponent implements OnInit, AfterViewInit {
       // Reload sub-recipes to include the new one
       this.loadSubRecipes();
       
-      // Optionally select the newly created sub-recipe
-      this.selectSubRecipe(createdSubRecipe);
+      // Convert SubRecipe to SubRecipeListDTO format
+      const categoryName = this.categories.find(c => c.id === createdSubRecipe.categoryId)?.name || '';
+      const uom = this.allUoms.find(u => u.id === createdSubRecipe.uomId);
+      
+      const subRecipeDTO: SubRecipeListDTO = {
+        id: createdSubRecipe.id!,
+        name: createdSubRecipe.name,
+        type: createdSubRecipe.type,
+        categoryId: createdSubRecipe.categoryId!,
+        categoryName: categoryName,
+        uomId: createdSubRecipe.uomId!,
+        uomName: uom?.name || '',
+        uomAbbreviation: uom?.abbreviation || '',
+        yieldQty: createdSubRecipe.yieldQty!,
+        cost: createdSubRecipe.cost || 0
+      };
+      
+      // Now select the converted object
+      this.selectSubRecipe(subRecipeDTO);
       
       this.snackBar.open('Sub-recipe created successfully', 'Close', {
         duration: 3000
@@ -411,6 +454,8 @@ export class SubRecipeDetailComponent implements OnInit, AfterViewInit {
   // Enable edit mode
   enableEditMode(): void {
     this.editMode = true;
+    this.loadCategoriesLazy();
+    this.loadUomsLazy();
   }
 
   // Cancel edit mode
@@ -560,5 +605,13 @@ export class SubRecipeDetailComponent implements OnInit, AfterViewInit {
         }
       });
     }
+  }
+
+  onCategoryDropdownOpened(): void {
+    this.loadCategoriesLazy();
+  }
+
+  onUomDropdownOpened(): void {
+    this.loadUomsLazy();
   }
 }

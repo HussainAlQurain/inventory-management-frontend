@@ -32,7 +32,7 @@
 
       <mat-form-field appearance="outline">
         <mat-label>Category</mat-label>
-        <mat-select [(ngModel)]="categoryFilter" (selectionChange)="applyFilters()">
+        <mat-select [(ngModel)]="categoryFilter" (selectionChange)="applyFilters()" (opened)="onCategoryDropdownOpened()">
           <mat-option>All Categories</mat-option>
           <mat-option *ngFor="let category of categories" [value]="category.id">
             {{category.name}}
@@ -107,7 +107,9 @@
       <!-- Category Column -->
       <ng-container matColumnDef="category">
         <th mat-header-cell *matHeaderCellDef mat-sort-header> Category </th>
-        <td mat-cell *matCellDef="let recipe"> {{ getCategoryName(recipe.categoryId) }} </td>
+        <td mat-cell *matCellDef="let recipe"> 
+          {{ recipe.categoryName || getCategoryName(recipe.categoryId) }} 
+        </td>
       </ng-container>
 
       <!-- Cost Column -->
@@ -120,7 +122,7 @@
       <ng-container matColumnDef="uom">
         <th mat-header-cell *matHeaderCellDef> UOM </th>
         <td mat-cell *matCellDef="let recipe"> 
-          {{ getUomInfo(recipe.uomId) }}
+          {{ recipe.uomName && recipe.uomAbbreviation ? recipe.uomName + ' (' + recipe.uomAbbreviation + ')' : getUomInfo(recipe.uomId) }}
         </td>
       </ng-container>
 
@@ -377,7 +379,7 @@
           <div class="form-row">
             <mat-form-field appearance="outline" class="form-field-medium">
               <mat-label>Category</mat-label>
-              <mat-select [(ngModel)]="selectedSubRecipe.categoryId" name="categoryId" required>
+              <mat-select [(ngModel)]="selectedSubRecipe.categoryId" name="categoryId" required (opened)="onCategoryDropdownOpened()">
                 <mat-option *ngFor="let category of categories" [value]="category.id">
                   {{ category.name }}
                 </mat-option>
@@ -391,7 +393,7 @@
 
             <mat-form-field appearance="outline" class="form-field-medium">
               <mat-label>Unit of Measure</mat-label>
-              <mat-select [(ngModel)]="selectedSubRecipe.uomId" name="uomId" required>
+              <mat-select [(ngModel)]="selectedSubRecipe.uomId" name="uomId" required (opened)="onUomDropdownOpened()">
                 <mat-option *ngFor="let uom of allUoms" [value]="uom.id">
                   {{ uom.name }} ({{ uom.abbreviation }})
                 </mat-option>
