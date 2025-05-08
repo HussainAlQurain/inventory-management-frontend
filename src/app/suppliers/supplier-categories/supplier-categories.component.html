@@ -47,6 +47,16 @@
 
       <mat-card *ngIf="!isLoading">
         <mat-card-content>
+
+          <div class="search-container">
+            <mat-form-field appearance="outline" class="search-field">
+              <mat-label>Search Categories</mat-label>
+              <input matInput (input)="onSearch($event)" placeholder="Search by name">
+              <mat-icon matSuffix>search</mat-icon>
+            </mat-form-field>
+          </div>
+
+          
           <table mat-table [dataSource]="categories" class="categories-table">
             <!-- Name Column -->
             <ng-container matColumnDef="name">
@@ -77,6 +87,15 @@
             <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
           </table>
 
+
+            <mat-paginator 
+            [length]="totalItems"
+            [pageSize]="pageSize"
+            [pageIndex]="pageIndex"
+            [pageSizeOptions]="[5, 10, 25, 50]"
+            (page)="onPageChange($event)"
+            *ngIf="categories.length > 0">
+          </mat-paginator>
           <div class="no-data-message" *ngIf="categories.length === 0">
             No categories found. Create a new category using the form above.
           </div>

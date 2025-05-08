@@ -14,6 +14,10 @@ import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 
 import { Category } from '../../models/Category';
 import { CategoriesService } from '../../services/categories.service';
+import { catchError, map } from 'rxjs/operators';
+import { of } from 'rxjs';
+import { PageEvent } from '@angular/material/paginator';
+import { MatPaginatorModule } from '@angular/material/paginator';
 
 @Component({
   selector: 'app-supplier-categories',
@@ -31,7 +35,8 @@ import { CategoriesService } from '../../services/categories.service';
     MatSnackBarModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
-    MatDialogModule
+    MatDialogModule,
+    MatPaginatorModule
   ],
   templateUrl: './supplier-categories.component.html',
   styleUrls: ['./supplier-categories.component.scss']
@@ -42,6 +47,13 @@ export class SupplierCategoriesComponent implements OnInit {
   displayedColumns: string[] = ['name', 'description', 'actions'];
   isLoading: boolean = false;
   editingCategoryId: number | null = null;
+  
+  // Add these pagination properties
+  pageSize: number = 10;
+  pageIndex: number = 0;
+  totalItems: number = 0;
+  searchText: string = '';
+
 
   constructor(
     private categoriesService: CategoriesService,
@@ -59,9 +71,26 @@ export class SupplierCategoriesComponent implements OnInit {
     this.loadCategories();
   }
 
-  loadCategories(): void {
+  loadCategories(search: string = '', page: number = 0, size: number = 10): void {
     this.isLoading = true;
-    this.categoriesService.getAllCategories('').subscribe({
+    this.categoriesService.getPaginatedCategoryFilterOptions(page, size, search).pipe(
+      map(response => {
+        // Extract pagination metadata
+        this.totalItems = response.totalElements;
+        
+        // Convert FilterOptionDTO[] to Category[]
+        return response.content.map(option => ({
+          id: option.id,
+          name: option.name,
+          description: '' // FilterOptionDTO doesn't include description
+        } as Category));
+      }),
+      catchError(err => {
+        console.error('Error loading categories:', err);
+        this.snackBar.open('Failed to load categories', 'Close', { duration: 3000 });
+        return of([] as Category[]);
+      })
+    ).subscribe({
       next: (categories) => {
         this.categories = categories;
         this.isLoading = false;
@@ -72,6 +101,19 @@ export class SupplierCategoriesComponent implements OnInit {
         this.isLoading = false;
       }
     });
+  }
+
+  onPageChange(event: PageEvent): void {
+    this.pageIndex = event.pageIndex;
+    this.pageSize = event.pageSize;
+    this.loadCategories(this.searchText, this.pageIndex, this.pageSize);
+  }
+
+  onSearch(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.searchText = value;
+    this.pageIndex = 0; // Reset to first page when searching
+    this.loadCategories(this.searchText, this.pageIndex, this.pageSize);
   }
 
   onSubmit(): void {
@@ -93,10 +135,10 @@ export class SupplierCategoriesComponent implements OnInit {
   createCategory(categoryData: Partial<Category>): void {
     this.isLoading = true;
     this.categoriesService.createCategory(categoryData).subscribe({
-      next: (createdCategory) => {
-        this.categories.push(createdCategory);
+      next: () => {
         this.resetForm();
-        this.isLoading = false;
+        // Reload the current page to reflect changes
+        this.loadCategories(this.searchText, this.pageIndex, this.pageSize);
         this.snackBar.open('Category created successfully', 'Close', { duration: 3000 });
       },
       error: (err: Error) => {
@@ -112,13 +154,10 @@ export class SupplierCategoriesComponent implements OnInit {
     const updatedCategory = { ...categoryData, id };
     
     this.categoriesService.updateCategory(updatedCategory).subscribe({
-      next: (updated: Category) => {
-        const index = this.categories.findIndex(c => c.id === id);
-        if (index !== -1) {
-          this.categories[index] = updated;
-        }
+      next: () => {
         this.resetForm();
-        this.isLoading = false;
+        // Reload the current page to reflect changes
+        this.loadCategories(this.searchText, this.pageIndex, this.pageSize);
         this.snackBar.open('Category updated successfully', 'Close', { duration: 3000 });
       },
       error: (err: Error) => {
@@ -134,8 +173,13 @@ export class SupplierCategoriesComponent implements OnInit {
       this.isLoading = true;
       this.categoriesService.deleteCategory(category.id!).subscribe({
         next: () => {
-          this.categories = this.categories.filter(c => c.id !== category.id);
-          this.isLoading = false;
+          // If we delete the last item on a page, go back one page (except on first page)
+          if (this.categories.length === 1 && this.pageIndex > 0) {
+            this.pageIndex -= 1;
+          }
+          
+          // Reload the current page to reflect changes
+          this.loadCategories(this.searchText, this.pageIndex, this.pageSize);
           this.snackBar.open('Category deleted successfully', 'Close', { duration: 3000 });
         },
         error: (err: Error) => {
