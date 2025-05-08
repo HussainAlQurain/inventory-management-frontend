@@ -1,6 +1,6 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -11,6 +11,8 @@ import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 
 import { Supplier, SupplierEmail, SupplierPhone } from '../../models/Supplier';
 import { Category } from '../../models/Category';
@@ -35,7 +37,7 @@ import { LocationService } from '../../services/location.service';
     MatSnackBarModule,
     MatProgressSpinnerModule,
     MatTabsModule,
-    MatCheckboxModule
+    MatCheckboxModule,
   ],
   templateUrl: './supplier-dialog.component.html',
   styleUrls: ['./supplier-dialog.component.scss']
@@ -45,6 +47,7 @@ export class SupplierDialogComponent implements OnInit {
   isLoading = false;
   categories: Category[] = [];
   locations: Location[] = [];
+  categoriesLoading = false;
   
   // For email/phone management
   emailForm: FormGroup;
@@ -132,12 +135,25 @@ export class SupplierDialogComponent implements OnInit {
   }
 
   loadCategories(): void {
-    this.categoriesService.getAllCategories('').subscribe({
+    this.categoriesLoading = true;
+    this.categoriesService.getPaginatedCategoryFilterOptions(0, 50, '').pipe(
+      map(response => response.content.map(option => ({
+        id: option.id,
+        name: option.name,
+        description: '' // FilterOptionDTO doesn't include description
+      } as Category))),
+      catchError(error => {
+        console.error('Error loading categories', error);
+        return of([] as Category[]);
+      })
+    ).subscribe({
       next: (categories) => {
         this.categories = categories;
+        this.categoriesLoading = false;
       },
       error: (error) => {
         console.error('Error loading categories', error);
+        this.categoriesLoading = false;
       }
     });
   }
@@ -286,5 +302,32 @@ export class SupplierDialogComponent implements OnInit {
     if (!locationId) return 'All Locations';
     const location = this.locations.find(loc => loc.id === locationId);
     return location ? location.name : 'Unknown';
+  }
+
+  categoryCtrl = new FormControl<string>('', { nonNullable: true });
+  filteredCategories: Category[] = [];
+
+  searchCategories(term: string): void {
+    this.categoriesLoading = true;
+    this.categoriesService.getPaginatedCategoryFilterOptions(0, 20, term).pipe(
+      map(response => response.content.map(option => ({
+        id: option.id,
+        name: option.name,
+        description: '' // FilterOptionDTO doesn't include description
+      } as Category))),
+      catchError(error => {
+        console.error('Error searching categories', error);
+        return of([] as Category[]);
+      })
+    ).subscribe({
+      next: (categories) => {
+        this.filteredCategories = categories;
+        this.categoriesLoading = false;
+      },
+      error: (error) => {
+        console.error('Error searching categories', error);
+        this.categoriesLoading = false;
+      }
+    });
   }
 }

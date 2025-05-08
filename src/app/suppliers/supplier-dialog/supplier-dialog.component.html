@@ -50,12 +50,17 @@
               <input matInput formControlName="paymentTerms">
             </mat-form-field>
             
-            <mat-form-field appearance="outline" class="full-width">
+            <mat-form-field appearance="outline">
               <mat-label>Default Category</mat-label>
               <mat-select formControlName="defaultCategoryId">
-                <mat-option [value]="null">None</mat-option>
+                <mat-option *ngIf="categoriesLoading">
+                  <mat-spinner diameter="20"></mat-spinner> Loading categories...
+                </mat-option>
+                <mat-option *ngIf="!categoriesLoading && categories.length === 0" value="">
+                  No categories available
+                </mat-option>
                 <mat-option *ngFor="let category of categories" [value]="category.id">
-                  {{ category.name }}
+                  {{category.name}}
                 </mat-option>
               </mat-select>
             </mat-form-field>
