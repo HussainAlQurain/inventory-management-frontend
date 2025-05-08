@@ -40,17 +40,41 @@
             </div>
 
             <!-- Category -->
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Category</mat-label>
-              <mat-select formControlName="categoryId" required>
-                <mat-option *ngFor="let category of categories" [value]="category.id">
-                  {{ category.name }}
-                </mat-option>
-              </mat-select>
-              <mat-error *ngIf="menuItemForm.get('categoryId')?.hasError('required')">
-                Category is required
-              </mat-error>
-            </mat-form-field>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Category</mat-label>
+            <mat-select formControlName="categoryId" required>
+              <mat-option disabled>
+                <div style="padding: 0;" (click)="$event.stopPropagation()">
+                  <input
+                    #searchInput
+                    placeholder="Search categories..."
+                    (input)="searchCategories(searchInput.value)"
+                    style="width: 100%; padding: 8px; box-sizing: border-box;">
+                    style="width: 100%; padding: 8px; box-sizing: border-box;">
+                </div>
+              </mat-option>
+              <!-- Loading indicator -->
+              <mat-option *ngIf="categoriesLoading" disabled>
+                <div style="display: flex; align-items: center;">
+                  <mat-spinner diameter="20" style="margin-right: 8px;"></mat-spinner>
+                  Loading categories...
+                </div>
+              </mat-option>
+
+              <!-- No results message -->
+              <mat-option *ngIf="!categoriesLoading && categories.length === 0" disabled>
+                No categories available
+              </mat-option>
+              
+              <!-- Categories list -->
+              <mat-option *ngFor="let category of categories" [value]="category.id">
+                {{ category.name }}
+              </mat-option>
+            </mat-select>
+            <mat-error *ngIf="menuItemForm.get('categoryId')?.hasError('required')">
+              Category is required
+            </mat-error>
+          </mat-form-field>
 
             <!-- Price & Food Cost Fields -->
             <div class="form-row">

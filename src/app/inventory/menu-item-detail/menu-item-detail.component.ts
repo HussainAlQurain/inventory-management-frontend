@@ -13,7 +13,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { forkJoin, of, Observable } from 'rxjs';
-import { switchMap } from 'rxjs/operators';
+import { switchMap, catchError, map } from 'rxjs/operators';
+
 
 import { MenuItem } from '../../models/MenuItem';
 import { MenuItemLine } from '../../models/MenuItemLine';
@@ -28,6 +29,8 @@ import { MenuItemLineComponent } from '../../components/menu-item-line/menu-item
 import { InventoryItemsService } from '../../services/inventory-items-service.service';
 import { SubRecipeService } from '../../services/sub-recipe.service';
 import { UomService } from '../../services/uom.service';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+
 
 @Component({
   selector: 'app-menu-item-detail',
@@ -46,7 +49,8 @@ import { UomService } from '../../services/uom.service';
     MatTabsModule,
     MatTooltipModule,
     MatSnackBarModule,
-    MenuItemLineComponent
+    MenuItemLineComponent,
+    MatProgressSpinnerModule
   ],
   templateUrl: './menu-item-detail.component.html',
   styleUrls: ['./menu-item-detail.component.scss']
@@ -74,6 +78,14 @@ export class MenuItemDetailComponent implements OnInit, OnChanges {
   subRecipes: Map<number, SubRecipe> = new Map();
   menuItems: Map<number, MenuItem> = new Map();
   uoms: Map<number, UnitOfMeasure> = new Map();
+
+
+  // Add these properties to the component class
+  categoriesLoading = false;
+  categorySearchTerm = '';
+  categoriesPage = 0;
+  categoriesPageSize = 50; // Load a reasonable number for a dropdown
+
 
   constructor(
     private fb: FormBuilder,
@@ -118,12 +130,38 @@ export class MenuItemDetailComponent implements OnInit, OnChanges {
   }
 
   private loadCategories(): void {
-    this.categoriesService.getAllCategories('').subscribe({
+    this.categoriesLoading = true;
+    this.categoriesService.getPaginatedCategoryFilterOptions(
+      this.categoriesPage, 
+      this.categoriesPageSize, 
+      this.categorySearchTerm
+    ).pipe(
+      map(response => response.content.map(option => ({
+        id: option.id,
+        name: option.name,
+        description: '' // FilterOptionDTO doesn't include description
+      } as Category))),
+      catchError(err => {
+        console.error('Error loading categories:', err);
+        return of([] as Category[]);
+      })
+    ).subscribe({
       next: (categories) => {
         this.categories = categories;
+        this.categoriesLoading = false;
       },
-      error: (err) => console.error('Error loading categories:', err)
+      error: (err) => {
+        console.error('Error loading categories:', err);
+        this.categoriesLoading = false;
+      }
     });
+  }
+
+  // Add this method to support category searching
+  searchCategories(term: string): void {
+    this.categorySearchTerm = term;
+    this.categoriesPage = 0; // Reset to first page on new search
+    this.loadCategories();
   }
 
   private initializeForm(): void {
