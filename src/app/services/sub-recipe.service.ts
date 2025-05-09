@@ -63,13 +63,30 @@ export class SubRecipeService {
   }
 
   // Basic CRUD methods
+  // Update to handle paginated responses
   getSubRecipes(): Observable<SubRecipe[]> {
     const companyId = this.companiesService.getSelectedCompanyId();
     if (!companyId) {
       return throwError(() => new Error('No company selected'));
     }
     
-    return this.http.get<SubRecipe[]>(`${this.apiUrl}/company/${companyId}`);
+    let params = new HttpParams()
+      .set('page', '0')
+      .set('size', '100')  // Get a larger number to simulate "get all"
+      .set('sort', 'name')
+      .set('direction', 'asc');
+    
+    return this.http.get<any>(`${this.apiUrl}/company/${companyId}`, { params })
+      .pipe(
+        map(response => {
+          // Extract items from paginated response
+          return response.items || [];
+        }),
+        catchError(err => {
+          console.error('Error fetching sub recipes', err);
+          return throwError(() => new Error('Error fetching sub recipes'));
+        })
+      );
   }
 
   getSubRecipeById(id: number): Observable<SubRecipe> {
@@ -234,21 +251,33 @@ export class SubRecipeService {
     );
   }
 
-  // Search sub-recipes by name
+  // Update the search method to handle paginated responses
   searchSubRecipes(term: string): Observable<SubRecipe[]> {
     const companyId = this.companiesService.getSelectedCompanyId();
     if (!companyId) {
       return throwError(() => new Error('No company selected'));
     }
     
-    return this.http.get<SubRecipe[]>(`${this.apiUrl}/company/${companyId}`, {
-      params: { search: term }
-    }).pipe(
-      catchError(err => {
-        console.error('Error searching sub recipes', err);
-        return throwError(() => new Error('Error searching sub recipes.'));
-      })
-    );
+    // Create parameters for pagination
+    let params = new HttpParams()
+      .set('search', term)
+      .set('page', '0')
+      .set('size', '20')
+      .set('sort', 'name')
+      .set('direction', 'asc');
+    
+    // Use the properly structured endpoint
+    return this.http.get<any>(`${this.apiUrl}/company/${companyId}`, { params })
+      .pipe(
+        map(response => {
+          // Extract items from paginated response
+          return response.items || [];
+        }),
+        catchError(err => {
+          console.error('Error searching sub recipes', err);
+          return throwError(() => new Error('Error searching sub recipes.'));
+        })
+      );
   }
 
   // Calculate the total cost of a sub-recipe based on its lines

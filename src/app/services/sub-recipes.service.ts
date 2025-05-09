@@ -3,7 +3,7 @@ import { environment } from '../../environments/environment';
 import { HttpClient, HttpParams, HttpErrorResponse } from '@angular/common/http';
 import { CompaniesService } from './companies.service';
 import { SubRecipe, SubRecipeLine, SubRecipeType } from '../models/SubRecipe';
-import { catchError, Observable, throwError, retry, retryWhen, mergeMap } from 'rxjs';
+import { catchError, Observable, throwError, retry, retryWhen, mergeMap, map } from 'rxjs';
 import { HttpErrorHandlerService } from './http-error-handler.service';
 import { PaginatedSubRecipeResponse } from '../models/PaginatedSubRecipeResponse';
 
@@ -102,22 +102,31 @@ export class SubRecipesService {
       );
   }
 
+  // Update to use pagination and properly extract items
   searchSubRecipesByName(name: string): Observable<SubRecipe[]> {
     const companyId = this.companiesService.getSelectedCompanyId();
     if (!companyId) {
       return throwError(() => new Error('No company selected'));
     }
     
-    return this.http.get<SubRecipe[]>(`${this.baseUrl}/company/${companyId}`, {
-      params: {
-        search: name
-      }
-    }).pipe(
-      catchError(error => {
-        console.error('Error searching sub recipes:', error);
-        return throwError(() => new Error('Error searching sub recipes.'));
-      })
-    );
+    let params = new HttpParams()
+      .set('search', name)
+      .set('page', '0')
+      .set('size', '20')
+      .set('sort', 'name')
+      .set('direction', 'asc');
+    
+    return this.http.get<any>(`${this.baseUrl}/company/${companyId}`, { params })
+      .pipe(
+        map(response => {
+          // Extract items from paginated response
+          return response.items || [];
+        }),
+        catchError(error => {
+          console.error('Error searching sub recipes:', error);
+          return throwError(() => new Error('Error searching sub recipes.'));
+        })
+      );
   }
 
   // New method for paginated sub-recipes
