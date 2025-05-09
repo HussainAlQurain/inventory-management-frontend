@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams, HttpErrorResponse } from '@angular/common/http';
-import { Observable, throwError, catchError, retryWhen, mergeMap } from 'rxjs';
+import { Observable, throwError, catchError, retryWhen, mergeMap, map } from 'rxjs';
 import { MenuItem } from '../models/MenuItem';
 import { MenuItemLine } from '../models/MenuItemLine';
 import { environment } from '../../environments/environment';
@@ -201,10 +201,23 @@ export class MenuItemsService {
   // Search menu items by name
   searchMenuItemsByName(name: string): Observable<MenuItem[]> {
     const companyId = this.companyContext.getCompanyId();
+    if (!companyId) {
+      return throwError(() => new Error('No company selected'));
+    }
     
-    return this.http.get<MenuItem[]>(`${this.baseUrl}/company/${companyId}`, {
-      params: { search: name }
-    }).pipe(
+    // Use the paginated endpoint with proper parameters
+    let params = new HttpParams()
+      .set('search', name)
+      .set('page', '0')
+      .set('size', '20')
+      .set('sort', 'name')
+      .set('direction', 'asc');
+    
+    return this.http.get<PaginatedItemsResponse<MenuItem>>(
+      `${this.baseUrl}/company/${companyId}`,
+      { params }
+    ).pipe(
+      map(response => response.items || []),
       catchError(error => {
         console.error('Error searching menu items:', error);
         return throwError(() => new Error('Failed to search menu items.'));

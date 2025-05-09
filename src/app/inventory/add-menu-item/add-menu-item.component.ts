@@ -12,6 +12,8 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Observable, of, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { catchError } from 'rxjs/operators';
 
 import { MenuItem } from '../../models/MenuItem';
 import { MenuItemLine } from '../../models/MenuItemLine';
@@ -19,6 +21,7 @@ import { Category } from '../../models/Category';
 import { UnitOfMeasure } from '../../models/UnitOfMeasure';
 import { InventoryItem } from '../../models/InventoryItem';
 import { SubRecipe } from '../../models/SubRecipe';
+import { FilterOptionDTO } from '../../models/FilterOptionDTO';
 
 import { MenuItemsService } from '../../services/menu-items.service';
 import { CategoriesService } from '../../services/categories.service';
@@ -28,6 +31,7 @@ import { SubRecipeService } from '../../services/sub-recipe.service';
 import { CompaniesService } from '../../services/companies.service';
 
 import { MenuItemLineComponent } from '../../components/menu-item-line/menu-item-line.component';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 @Component({
   selector: 'app-add-menu-item',
@@ -45,7 +49,8 @@ import { MenuItemLineComponent } from '../../components/menu-item-line/menu-item
     MatTabsModule,
     MatTableModule,
     MatTooltipModule,
-    MenuItemLineComponent
+    MenuItemLineComponent,
+    MatProgressSpinnerModule
   ],
   templateUrl: './add-menu-item.component.html',
   styleUrls: ['./add-menu-item.component.scss']
@@ -60,6 +65,7 @@ export class AddMenuItemComponent implements OnInit {
   categoryCtrl = new FormControl<string>('', { nonNullable: true });
   filteredCategories: Category[] = [];
   canCreateNewCategory = false;
+  categoriesLoading = false;
   
   // Menu item lines (components)
   menuItemLines: MenuItemLine[] = [];
@@ -102,8 +108,44 @@ export class AddMenuItemComponent implements OnInit {
     this.menuItemForm.get('retailPriceExclTax')?.valueChanges.subscribe(() => {
       this.updateFoodCostPercentage();
     });
+
+    // Setup category autocomplete
+    this.setupCategoryAutocomplete();
   }
   
+  private setupCategoryAutocomplete(): void {
+    this.categoryCtrl.valueChanges.pipe(
+      debounceTime(500),
+      distinctUntilChanged(),
+      switchMap(term => this.onCategorySearchChange(term))
+    ).subscribe();
+  }
+  
+  private onCategorySearchChange(term: string): Observable<void> {
+    this.categoriesLoading = true;
+    if (!term) term = '';
+    
+    // Use the lightweight paginated endpoint
+    return this.categoriesService.getPaginatedCategoryFilterOptions(0, 20, term).pipe(
+      map(response => {
+        this.categoriesLoading = false;
+        this.filteredCategories = response.content.map(option => ({
+          id: option.id,
+          name: option.name,
+          description: '' // FilterOptionDTO doesn't include description
+        } as Category));
+        
+        const exactMatch = response.content.some(c => c.name.toLowerCase() === term.toLowerCase());
+        this.canCreateNewCategory = term.length > 0 && !exactMatch;
+        return;
+      }),
+      catchError(err => {
+        this.categoriesLoading = false;
+        console.error('Error loading categories:', err);
+        return of();
+      })
+    );
+  }
   
   onCategorySelected(value: string): void {
     const category = this.filteredCategories.find(c => c.name === value);

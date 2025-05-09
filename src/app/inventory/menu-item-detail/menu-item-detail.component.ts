@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -13,7 +13,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { forkJoin, of, Observable } from 'rxjs';
-import { switchMap, catchError, map } from 'rxjs/operators';
+import { switchMap, catchError, map, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 
 import { MenuItem } from '../../models/MenuItem';
@@ -30,6 +30,7 @@ import { InventoryItemsService } from '../../services/inventory-items-service.se
 import { SubRecipeService } from '../../services/sub-recipe.service';
 import { UomService } from '../../services/uom.service';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 
 
 @Component({
@@ -50,7 +51,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
     MatTooltipModule,
     MatSnackBarModule,
     MenuItemLineComponent,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    MatAutocompleteModule
   ],
   templateUrl: './menu-item-detail.component.html',
   styleUrls: ['./menu-item-detail.component.scss']
@@ -86,6 +88,9 @@ export class MenuItemDetailComponent implements OnInit, OnChanges {
   categoriesPage = 0;
   categoriesPageSize = 50; // Load a reasonable number for a dropdown
 
+  categoryCtrl = new FormControl<string>('', { nonNullable: true });
+  filteredCategories: Category[] = [];
+  canCreateNewCategory = false;
 
   constructor(
     private fb: FormBuilder,
@@ -113,6 +118,74 @@ export class MenuItemDetailComponent implements OnInit, OnChanges {
       this.initializeForm();
     }
     this.updateFormState();
+    this.setupCategoryAutocomplete();
+    if (this.menuItem && this.menuItem.category) {
+      this.categoryCtrl.setValue(this.menuItem.category.name || '');
+    }
+  }
+
+  private setupCategoryAutocomplete(): void {
+    this.categoryCtrl.valueChanges.pipe(
+      debounceTime(500),
+      distinctUntilChanged(),
+      switchMap(term => this.onCategorySearchChange(term))
+    ).subscribe();
+  }
+
+  private onCategorySearchChange(term: string): Observable<void> {
+    this.categoriesLoading = true;
+    if (!term) term = '';
+    
+    // Use the lightweight paginated endpoint
+    return this.categoriesService.getPaginatedCategoryFilterOptions(0, 20, term).pipe(
+      map(response => {
+        this.categoriesLoading = false;
+        this.filteredCategories = response.content.map(option => ({
+          id: option.id,
+          name: option.name,
+          description: '' // FilterOptionDTO doesn't include description
+        } as Category));
+        
+        const exactMatch = response.content.some(c => c.name.toLowerCase() === term.toLowerCase());
+        this.canCreateNewCategory = term.length > 0 && !exactMatch;
+        return;
+      }),
+      catchError(err => {
+        this.categoriesLoading = false;
+        console.error('Error loading categories:', err);
+        return of();
+      })
+    );
+  }
+
+  onCategorySelected(value: string): void {
+    const category = this.filteredCategories.find(c => c.name === value);
+    if (category) {
+      this.menuItemForm.get('categoryId')?.setValue(category.id);
+    }
+  }
+  onCategoryOptionSelected(fullValue: string): void {
+    // Check if selected an existing category
+    const existing = this.filteredCategories.find(c => c.name === fullValue);
+    if (existing) {
+      this.menuItemForm.get('categoryId')?.setValue(existing.id);
+      return;
+    }
+    
+    // Otherwise, create a new category
+    this.createNewCategory(fullValue);
+  }
+  private createNewCategory(name: string): void {
+    const newCat: Partial<Category> = { name };
+    this.categoriesService.createCategory(newCat).subscribe({
+      next: (created) => {
+        this.menuItemForm.get('categoryId')?.setValue(created.id);
+        this.categoryCtrl.setValue(created.name);
+        this.filteredCategories.push(created);
+        this.canCreateNewCategory = false;
+      },
+      error: (err) => console.error('Error creating category:', err)
+    });
   }
 
   private createForm(): FormGroup {
