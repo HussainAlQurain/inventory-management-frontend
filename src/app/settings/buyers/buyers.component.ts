@@ -14,6 +14,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 
 import { Location } from '../../models/Location';
 import { IntegrationSettings } from '../../models/IntegrationSettings';
@@ -44,6 +45,7 @@ import { AuthService } from '../../services/auth.service';
     MatSlideToggleModule,
     MatTooltipModule,
     MatTabsModule,
+    MatPaginatorModule,
     CreateLocationDialogComponent
   ],
   templateUrl: './buyers.component.html',
@@ -59,7 +61,17 @@ export class BuyersComponent implements OnInit {
   selectedIntegrationSettings: IntegrationSettings | null = null;
   selectedAutoOrderSettings: AutoOrderSettings | null = null;
   isEditingSettings = false;
-  
+
+  // Pagination properties
+  pageSize = 10;
+  pageSizeOptions: number[] = [10, 25, 50, 100];
+  currentPage = 0;
+  totalItems = 0;
+  totalPages = 0;
+
+  // Search property
+  searchTerm: string = '';
+
   constructor(
     private locationService: LocationService,
     private integrationService: IntegrationSettingsService,
@@ -76,9 +88,19 @@ export class BuyersComponent implements OnInit {
 
   loadLocations(): void {
     this.isLoading = true;
-    this.locationService.getAllLocations().subscribe({
-      next: (locations) => {
-        this.locations = locations;
+
+    this.locationService.getPaginatedLocations(
+      this.currentPage,
+      this.pageSize,
+      'name,asc',
+      this.searchTerm
+    ).subscribe({
+      next: (response) => {
+        this.locations = response.content;
+        this.totalItems = response.totalElements;
+        this.totalPages = response.totalPages;
+        this.isLoading = false;
+
         this.loadAllIntegrationSettings();
         this.loadAllAutoOrderSettings();
       },
@@ -90,44 +112,54 @@ export class BuyersComponent implements OnInit {
     });
   }
 
-  // Function to open the create location dialog
+  handlePageEvent(event: PageEvent): void {
+    this.currentPage = event.pageIndex;
+    this.pageSize = event.pageSize;
+    this.loadLocations();
+  }
+
+  onSearch(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.searchTerm = value;
+    this.currentPage = 0; // Reset to first page when searching
+    this.loadLocations();
+  }
+
   openCreateLocationDialog(): void {
     const dialogRef = this.dialog.open(CreateLocationDialogComponent);
-    
+
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
         this.createNewLocation(result);
+        this.currentPage = 0; // Go back to first page to see the new location
+        this.loadLocations();
       }
     });
   }
 
-  // Function to create a new location and add the current user to it
   createNewLocation(newLocationData: Partial<Location>): void {
     this.isLoading = true;
-    
-    // Add the company ID to the location data
+
     const companyId = this.companiesService.getSelectedCompanyId();
     newLocationData.companyId = companyId!;
-    
+
     this.locationService.createLocation(newLocationData as Location).subscribe({
       next: (createdLocation) => {
         console.log('Location created successfully:', createdLocation);
-        
-        // Get the current user ID
+
         const userId = this.authService.getUserId();
         console.log("userId: ", userId);
-        
+
         if (userId) {
-          // Add the current user to the location
           this.locationService.addUsersToLocation(createdLocation.id!, [userId]).subscribe({
             next: () => {
               this.snackBar.open('Location created and user added successfully', 'Close', { duration: 3000 });
-              this.loadLocations(); // Reload locations to include the new one
+              this.loadLocations();
             },
             error: (error) => {
               console.error('Error adding user to location:', error);
               this.snackBar.open('Location created but failed to add user', 'Close', { duration: 3000 });
-              this.loadLocations(); // Still reload locations to show the new one
+              this.loadLocations();
               this.isLoading = false;
             }
           });
@@ -146,39 +178,43 @@ export class BuyersComponent implements OnInit {
   }
 
   loadAllIntegrationSettings(): void {
-    const requests = this.locations.map(location => 
-      this.integrationService.getIntegrationSettings(location.id!)
-        .subscribe({
-          next: (settings) => {
-            this.integrationSettingsMap.set(location.id!, settings);
-          },
-          error: (error) => {
-            if (error.status !== 404) {
-              console.error(`Error loading integration settings for location ${location.id}:`, error);
-            }
-          }
-        })
-    );
-    
-    // Mark loading as complete after a short delay to ensure UI is updated
-    setTimeout(() => {
-      this.isLoading = false;
-    }, 500);
+    // Use only the locations we have on the current page
+    for (const location of this.locations) {
+      this.loadIntegrationSettings(location.id!);
+    }
   }
 
   loadAllAutoOrderSettings(): void {
-    this.locations.forEach(location => {
-      this.autoOrderService.getAutoOrderSettings(location.id!)
-        .subscribe({
-          next: (settings) => {
-            this.autoOrderSettingsMap.set(location.id!, settings);
-          },
-          error: (error) => {
-            // The service already handles 404 errors by returning default settings
-            console.error(`Error loading auto order settings for location ${location.id}:`, error);
+    // Use only the locations we have on the current page
+    for (const location of this.locations) {
+      this.loadAutoOrderSettings(location.id!);
+    }
+  }
+
+  loadIntegrationSettings(locationId: number): void {
+    this.integrationService.getIntegrationSettings(locationId)
+      .subscribe({
+        next: (settings) => {
+          this.integrationSettingsMap.set(locationId, settings);
+        },
+        error: (error) => {
+          if (error.status !== 404) {
+            console.error(`Error loading integration settings for location ${locationId}:`, error);
           }
-        });
-    });
+        }
+      });
+  }
+
+  loadAutoOrderSettings(locationId: number): void {
+    this.autoOrderService.getAutoOrderSettings(locationId)
+      .subscribe({
+        next: (settings) => {
+          this.autoOrderSettingsMap.set(locationId, settings);
+        },
+        error: (error) => {
+          console.error(`Error loading auto order settings for location ${locationId}:`, error);
+        }
+      });
   }
 
   editLocationSettings(location: Location): void {
@@ -189,13 +225,11 @@ export class BuyersComponent implements OnInit {
 
   loadLocationSettings(locationId: number): void {
     this.isLoading = true;
-    
-    // Load integration settings
+
     const existingIntegrationSettings = this.integrationSettingsMap.get(locationId);
     if (existingIntegrationSettings) {
       this.selectedIntegrationSettings = { ...existingIntegrationSettings };
     } else {
-      // Create new settings object if none exists
       this.selectedIntegrationSettings = {
         locationId: locationId,
         posApiUrl: '',
@@ -204,8 +238,7 @@ export class BuyersComponent implements OnInit {
         dailySyncEnabled: false
       };
     }
-    
-    // Load auto order settings
+
     this.autoOrderService.getAutoOrderSettings(locationId).subscribe({
       next: (settings) => {
         this.selectedAutoOrderSettings = settings;
@@ -213,11 +246,10 @@ export class BuyersComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading auto order settings:', error);
-        // Create default settings if there was an error
         this.selectedAutoOrderSettings = {
           locationId: locationId,
           enabled: false,
-          frequencySeconds: 86400, // Default to daily (24 hours)
+          frequencySeconds: 86400,
           autoOrderComment: 'System suggest order'
         };
         this.isLoading = false;
@@ -234,7 +266,7 @@ export class BuyersComponent implements OnInit {
 
   saveIntegrationSettings(): void {
     if (!this.selectedIntegrationSettings) return;
-    
+
     this.isLoading = true;
     this.integrationService.updateIntegrationSettings(this.selectedIntegrationSettings).subscribe({
       next: (updatedSettings) => {
@@ -252,7 +284,7 @@ export class BuyersComponent implements OnInit {
 
   saveAutoOrderSettings(): void {
     if (!this.selectedAutoOrderSettings) return;
-    
+
     this.isLoading = true;
     this.autoOrderService.updateAutoOrderSettings(this.selectedAutoOrderSettings).subscribe({
       next: (updatedSettings) => {
@@ -291,7 +323,7 @@ export class BuyersComponent implements OnInit {
   getIntegrationStatus(locationId: number): string {
     const settings = this.integrationSettingsMap.get(locationId);
     if (!settings) return 'Not Configured';
-    
+
     if (settings.frequentSyncEnabled || settings.dailySyncEnabled) {
       return 'Active';
     } else {
@@ -302,7 +334,7 @@ export class BuyersComponent implements OnInit {
   getAutoOrderStatus(locationId: number): string {
     const settings = this.autoOrderSettingsMap.get(locationId);
     if (!settings) return 'Not Configured';
-    
+
     return settings.enabled ? 'Active' : 'Disabled';
   }
 

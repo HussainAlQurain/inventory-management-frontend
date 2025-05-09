@@ -7,6 +7,18 @@
     </button>
   </div>
   
+  <!-- Search bar -->
+  <div class="search-container">
+    <mat-form-field appearance="outline">
+      <mat-label>Search Locations</mat-label>
+      <input matInput [ngModel]="searchTerm" (input)="onSearch($event)" placeholder="Search by name">
+      <button *ngIf="searchTerm" matSuffix mat-icon-button aria-label="Clear" (click)="searchTerm=''; onSearch($event)">
+        <mat-icon>close</mat-icon>
+      </button>
+      <mat-icon matPrefix>search</mat-icon>
+    </mat-form-field>
+  </div>
+  
   <!-- Loading spinner -->
   <div *ngIf="isLoading" class="loading-container">
     <mat-spinner diameter="40"></mat-spinner>
@@ -72,6 +84,22 @@
       <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
       <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
     </table>
+    
+    <!-- No results message -->
+    <div *ngIf="locations.length === 0" class="no-data-message">
+      <p>No locations found. {{ searchTerm ? 'Try a different search term.' : 'Create a location to get started.' }}</p>
+    </div>
+    
+    <!-- Paginator -->
+    <mat-paginator 
+      [pageSize]="pageSize"
+      [pageSizeOptions]="pageSizeOptions"
+      [length]="totalItems"
+      [pageIndex]="currentPage"
+      (page)="handlePageEvent($event)"
+      showFirstLastButtons
+      aria-label="Select page of locations">
+    </mat-paginator>
   </div>
 
   <!-- Settings edit form -->

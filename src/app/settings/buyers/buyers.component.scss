@@ -99,6 +99,15 @@
     }
   }
 
+  .search-container {
+    margin-bottom: 20px;
+    max-width: 500px;
+
+    mat-form-field {
+      width: 100%;
+    }
+  }
+
   .settings-form-container {
     max-width: 800px;
     margin: 0 auto;
@@ -165,13 +174,20 @@
   }
 
   .no-data-message {
+    padding: 20px;
     max-width: 500px;
     margin: 40px auto;
     text-align: center;
+    font-style: italic;
+    color: rgba(0, 0, 0, 0.54);
 
     p {
       font-size: 16px;
       color: rgba(0, 0, 0, 0.6);
     }
+  }
+
+  .mat-paginator {
+    border-top: 1px solid rgba(0, 0, 0, 0.12);
   }
 }
