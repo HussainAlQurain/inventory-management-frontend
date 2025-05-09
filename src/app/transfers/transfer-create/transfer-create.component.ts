@@ -23,6 +23,11 @@ import { InventoryItem } from '../../models/InventoryItem';
 import { SubRecipe } from '../../models/SubRecipe';
 import { UnitOfMeasure } from '../../models/UnitOfMeasure';
 import { Transfer, TransferLine } from '../../models/Transfer';
+import { InventoryItemListDTO } from '../../models/InventoryItemListDTO';
+import { SubRecipesService } from '../../services/sub-recipes.service';
+import { PaginatedSubRecipeResponse } from '../../models/PaginatedSubRecipeResponse';
+import { PaginatedResponse } from '../../models/paginated-response';
+import { SubRecipeListDTO } from '../../models/SubRecipeListDTO';
 
 // Define TransferRequest interface locally to avoid import issues
 interface TransferRequest {
@@ -64,23 +69,35 @@ export class TransferCreateComponent implements OnInit, OnDestroy {
   loading = false;
   submitting = false;
   error = '';
-  
+
   // Locations with search functionality
   fromLocationSearchTerm = '';
   toLocationSearchTerm = '';
   fromLocations: Location[] = [];
   toLocations: Location[] = [];
-  
+
   // Subjects for debounced location search - made public for template access
   public fromLocationSearchSubject = new Subject<string>();
   public toLocationSearchSubject = new Subject<string>();
   private destroy$ = new Subject<void>();
-  
-  inventoryItems: InventoryItem[] = [];
-  subRecipes: SubRecipe[] = [];
+
+  inventoryItems: InventoryItemListDTO[] = [];
+
+  subRecipes: SubRecipeListDTO[] = [];
   unitOfMeasures: UnitOfMeasure[] = [];
-  
   filteredItems: ItemOption[] = [];
+
+  // Add pagination and search properties
+  itemSearchTerm: string = '';
+  inventoryPage: number = 0;
+  inventoryPageSize: number = 20;
+  inventoryTotal: number = 0;
+  inventoryLoading: boolean = false;
+
+  subRecipePage: number = 0;
+  subRecipePageSize: number = 20;
+  subRecipeTotal: number = 0;
+  subRecipeLoading: boolean = false;
 
   constructor(
     private fb: FormBuilder,
@@ -88,6 +105,7 @@ export class TransferCreateComponent implements OnInit, OnDestroy {
     private locationService: LocationService,
     private inventoryItemsService: InventoryItemsService,
     private subRecipeService: SubRecipeService,
+    private subRecipesService: SubRecipesService,
     private uomService: UomService,
     private snackBar: MatSnackBar,
     private router: Router
@@ -97,7 +115,7 @@ export class TransferCreateComponent implements OnInit, OnDestroy {
       toLocationId: ['', [Validators.required]],
       lines: this.fb.array([])
     });
-    
+
     // Setup debounced search for locations
     this.fromLocationSearchSubject.pipe(
       debounceTime(300),
@@ -106,7 +124,7 @@ export class TransferCreateComponent implements OnInit, OnDestroy {
     ).subscribe(searchTerm => {
       this.loadFromLocationsWithSearch(searchTerm);
     });
-    
+
     this.toLocationSearchSubject.pipe(
       debounceTime(300),
       distinctUntilChanged(),
@@ -119,42 +137,27 @@ export class TransferCreateComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.loading = true;
     
-    // Load all necessary data except locations (which will be loaded on demand)
-    forkJoin({
-      inventoryItems: this.inventoryItemsService.getInventoryItemsByCompany(),
-      subRecipes: this.subRecipeService.getSubRecipes(),
-      uoms: this.uomService.getAllUoms()
-    }).subscribe({
-      next: (results) => {
-        this.inventoryItems = results.inventoryItems;
-        this.subRecipes = results.subRecipes.filter(sr => sr.type === 'PREPARATION'); // Only prep type
-        this.unitOfMeasures = results.uoms;
+    // Only load UOMs initially as they're a smaller dataset
+    this.uomService.getAllUoms().subscribe({
+      next: (uoms) => {
+        this.unitOfMeasures = uoms;
         
         // Initialize both location search dropdowns
         this.loadFromLocationsWithSearch('');
         this.loadToLocationsWithSearch('');
-        
-        // Update filtered items
-        this.updateFilteredItems();
         
         // Add initial line
         this.addLine();
         
         this.loading = false;
       },
-      error: (err) => {
-        console.error('Failed to load data:', err);
-        this.error = 'Failed to load data. Please try again later.';
+      error: (error) => {
+        console.error('Error loading UOMs:', error);
         this.loading = false;
       }
     });
-
-    // Listen for location changes to update filtered items
-    this.transferForm.get('fromLocationId')?.valueChanges.subscribe(() => {
-      this.updateFilteredItems();
-    });
   }
-  
+
   ngOnDestroy(): void {
     // Clean up subscriptions
     this.destroy$.next();
@@ -212,54 +215,214 @@ export class TransferCreateComponent implements OnInit, OnDestroy {
       });
   }
 
-  // Update filtered items based on selected fromLocation
-  updateFilteredItems() {
+  // Search inventory items with pagination
+  searchInventoryItems(searchTerm: string = ''): void {
+    this.inventoryLoading = true;
+    this.itemSearchTerm = searchTerm;
+    this.inventoryPage = 0;
+    
+    this.inventoryItemsService.getPaginatedInventoryItemsList(
+      this.inventoryPage,
+      this.inventoryPageSize,
+      'name,asc',
+      undefined,
+      searchTerm
+    ).subscribe({
+      next: (response: PaginatedResponse<InventoryItemListDTO>) => {
+        this.inventoryItems = response.content;
+        this.inventoryTotal = response.totalElements;
+        this.updateFilteredItems();
+        this.inventoryLoading = false;
+      },
+      error: (error: any) => {
+        console.error('Error searching inventory items:', error);
+        this.inventoryLoading = false;
+      }
+    });
+  }
+
+  // Search subrecipes with pagination
+  searchSubRecipes(searchTerm: string = ''): void {
+    this.subRecipeLoading = true;
+    this.itemSearchTerm = searchTerm;
+    this.subRecipePage = 0;
+    
+    this.subRecipesService.getPaginatedSubRecipesList(
+      this.subRecipePage,
+      this.subRecipePageSize,
+      'name',
+      'asc',
+      searchTerm,
+      undefined,
+      'PREPARATION'
+    ).subscribe({
+      next: (response: PaginatedSubRecipeResponse) => {
+        this.subRecipes = response.items;
+        this.subRecipeTotal = response.totalItems;
+        this.updateFilteredItems();
+        this.subRecipeLoading = false;
+      },
+      error: (error: any) => {
+        console.error('Error searching sub-recipes:', error);
+        this.subRecipeLoading = false;
+      }
+    });
+  }
+
+  loadMoreInventoryItems(): void {
+    if (this.inventoryLoading) return;
+    
+    this.inventoryLoading = true;
+    this.inventoryPage++;
+    
+    this.inventoryItemsService.getPaginatedInventoryItemsList(
+      this.inventoryPage,
+      this.inventoryPageSize,
+      'name,asc',
+      undefined,
+      this.itemSearchTerm
+    ).subscribe({
+      next: (response: PaginatedResponse<InventoryItemListDTO>) => {
+        // Append new items to existing array
+        this.inventoryItems = [...this.inventoryItems, ...response.content];
+        this.inventoryTotal = response.totalElements;
+        this.updateFilteredItems();
+        this.inventoryLoading = false;
+      },
+      error: (error: any) => {
+        console.error('Error loading more inventory items:', error);
+        this.inventoryLoading = false;
+        this.inventoryPage--; // Revert page increment on error
+      }
+    });
+  }
+
+  loadMoreSubRecipes(): void {
+    if (this.subRecipeLoading) return;
+    
+    this.subRecipeLoading = true;
+    this.subRecipePage++;
+    
+    this.subRecipesService.getPaginatedSubRecipesList(
+      this.subRecipePage,
+      this.subRecipePageSize,
+      'name',
+      'asc',
+      this.itemSearchTerm,
+      undefined,
+      'PREPARATION'
+    ).subscribe({
+      next: (response: PaginatedSubRecipeResponse) => {
+        this.subRecipes = [...this.subRecipes, ...response.items];
+        this.subRecipeTotal = response.totalItems;
+        this.updateFilteredItems();
+        this.subRecipeLoading = false;
+      },
+      error: (error: any) => {
+        console.error('Error loading more sub-recipes:', error);
+        this.subRecipeLoading = false;
+        this.subRecipePage--; // Revert page increment on error
+      }
+    });
+  }
+
+  // Handle search input changes
+  onItemSearch(event: Event): void {
+    event.stopPropagation();
+    const inputElement = event.target as HTMLInputElement;
+    const searchTerm = inputElement.value;
+    
+    // Get the selected item type
+    const currentLine = this.getCurrentLine();
+    if (!currentLine) return;
+    
+    const itemType = currentLine.get('itemType')?.value;
+    
+    if (itemType === 'inventory') {
+      this.searchInventoryItems(searchTerm);
+    } else if (itemType === 'subrecipe') {
+      this.searchSubRecipes(searchTerm);
+    }
+  }
+
+  // Update filtered items based on current search results
+  updateFilteredItems(): void {
     const fromLocationId = this.transferForm.get('fromLocationId')?.value;
     if (!fromLocationId) {
       this.filteredItems = [];
       return;
     }
 
-    // Here we would ideally filter items by what's available at the location
-    // For simplicity, we're just showing all items
     const inventoryOptions: ItemOption[] = this.inventoryItems.map(item => ({
       id: item.id!,
       name: item.name,
       type: 'inventory' as const,
-      uoms: item.inventoryUom ? [item.inventoryUom] : []
+      uoms: item.inventoryUomId ? [this.unitOfMeasures.find(u => u.id === item.inventoryUomId)!].filter(Boolean) : []
     }));
 
     const subRecipeOptions: ItemOption[] = this.subRecipes.map(recipe => ({
       id: recipe.id!,
       name: recipe.name,
       type: 'subrecipe' as const,
-      uoms: [] // We'd need proper UOM data for sub-recipes here
+      uoms: recipe.uomId ? [this.unitOfMeasures.find(u => u.id === recipe.uomId)!].filter(Boolean) : []
     }));
 
     this.filteredItems = [...inventoryOptions, ...subRecipeOptions];
+  }
+
+  // Helper method to get the current line being edited
+  getCurrentLine(): FormGroup | null {
+    if (!this.transferForm || !this.transferForm.get('lines')) return null;
+    
+    const lines = this.transferForm.get('lines') as FormArray;
+    if (lines.length === 0) return null;
+    
+    // Get the currently focused line or the first line
+    // You might want to track the active line index separately
+    return lines.at(0) as FormGroup;
   }
 
   // Get UOMs for a selected item
   getItemUoms(itemId: number, itemType: string): UnitOfMeasure[] {
     if (itemType === 'inventory') {
       const item = this.inventoryItems.find(i => i.id === itemId);
-      return item?.inventoryUom ? [item.inventoryUom] : this.unitOfMeasures;
+      if (item?.inventoryUomId) {
+        const uom = this.unitOfMeasures.find(u => u.id === item.inventoryUomId);
+        return uom ? [uom] : this.unitOfMeasures;
+      }
+      return this.unitOfMeasures;
     } else if (itemType === 'subrecipe') {
       const recipe = this.subRecipes.find(r => r.id === itemId);
-      // For sub-recipes, we'd need to return the appropriate UOMs
-      // For now, we'll just return all UOMs
+      if (recipe?.uomId) {
+        const uom = this.unitOfMeasures.find(u => u.id === recipe.uomId);
+        return uom ? [uom] : this.unitOfMeasures;
+      }
       return this.unitOfMeasures;
     }
     return [];
   }
 
   // When an item type is selected, reset the item and UOM
-  onItemTypeChange(index: number) {
-    const lineForm = this.lines.at(index) as FormGroup;
-    lineForm.patchValue({
-      itemId: '',
-      unitOfMeasureId: ''
-    });
+  onItemTypeChange(index: number): void {
+    const lines = this.transferForm.get('lines') as FormArray;
+    const line = lines.at(index) as FormGroup;
+    
+    // Reset the item and UOM when changing item type
+    line.get('itemId')?.setValue(null);
+    line.get('unitOfMeasureId')?.setValue(null);
+    
+    // Load the appropriate items based on the selected type
+    const itemType = line.get('itemType')?.value;
+    
+    if (itemType === 'inventory') {
+      // Clear any existing sub-recipes and load inventory items
+      this.subRecipes = [];
+      this.searchInventoryItems('');
+    } else if (itemType === 'subrecipe') {
+      // Clear any existing inventory items and load sub-recipes
+      this.inventoryItems = [];
+      this.searchSubRecipes('');
+    }
   }
 
   // When an item is selected, update available UOMs
@@ -267,7 +430,7 @@ export class TransferCreateComponent implements OnInit, OnDestroy {
     const lineForm = this.lines.at(index) as FormGroup;
     const itemId = lineForm.get('itemId')?.value;
     const itemType = lineForm.get('itemType')?.value;
-    
+
     if (itemId && itemType) {
       const uoms = this.getItemUoms(itemId, itemType);
       if (uoms.length > 0) {
@@ -285,7 +448,7 @@ export class TransferCreateComponent implements OnInit, OnDestroy {
       this.snackBar.open('From and To locations cannot be the same', 'Close', { duration: 3000 });
       return false;
     }
-    
+
     // Check if there are any lines
     if (this.lines.length === 0) {
       this.snackBar.open('You must add at least one item to transfer', 'Close', { duration: 3000 });

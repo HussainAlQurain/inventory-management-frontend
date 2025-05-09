@@ -116,9 +116,49 @@
                 <mat-form-field appearance="outline" class="form-field">
                   <mat-label>Item</mat-label>
                   <mat-select formControlName="itemId" required (selectionChange)="onItemChange(i)">
-                    <mat-option *ngFor="let item of filteredItems" [value]="item.id" 
-                               [disabled]="item.type !== line.get('itemType')?.value">
-                      {{ item.name }}
+                    <!-- Add search input at the top -->
+                    <mat-option disabled class="search-input-option">
+                      <div class="item-search-container" (click)="$event.stopPropagation()">
+                        <mat-form-field appearance="outline" class="item-search-field">
+                          <input matInput placeholder="Search items..." 
+                                 (input)="onItemSearch($event)" 
+                                 (click)="$event.stopPropagation()"
+                                 [ngModel]="itemSearchTerm">
+                          <button *ngIf="itemSearchTerm" matSuffix mat-icon-button 
+                                 (click)="itemSearchTerm=''; onItemSearch($event); $event.stopPropagation()">
+                            <mat-icon>close</mat-icon>
+                          </button>
+                        </mat-form-field>
+                      </div>
+                    </mat-option>
+                    
+                    <!-- Loading indicator -->
+                    <mat-option *ngIf="inventoryLoading || subRecipeLoading" disabled>
+                      <mat-spinner diameter="20"></mat-spinner> Loading...
+                    </mat-option>
+                    
+                    <!-- No results message -->
+                    <mat-option *ngIf="!inventoryLoading && !subRecipeLoading && filteredItems.length === 0" disabled>
+                      No items found. Try a different search term.
+                    </mat-option>
+                    
+                    <!-- Items list -->
+                    <mat-option *ngFor="let item of filteredItems" [value]="item.id">
+                      {{item.name}}
+                    </mat-option>
+                    
+                    <!-- Load more option for inventory items -->
+                    <mat-option *ngIf="!inventoryLoading && inventoryItems.length < inventoryTotal" disabled>
+                      <button mat-button color="primary" (click)="loadMoreInventoryItems(); $event.stopPropagation()">
+                        Load more inventory items
+                      </button>
+                    </mat-option>
+                    
+                    <!-- Load more option for sub-recipes -->
+                    <mat-option *ngIf="!subRecipeLoading && subRecipes.length < subRecipeTotal" disabled>
+                      <button mat-button color="primary" (click)="loadMoreSubRecipes(); $event.stopPropagation()">
+                        Load more sub-recipes
+                      </button>
                     </mat-option>
                   </mat-select>
                 </mat-form-field>
