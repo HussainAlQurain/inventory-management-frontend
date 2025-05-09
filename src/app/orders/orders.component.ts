@@ -22,7 +22,11 @@ import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { Router } from '@angular/router';
 
 import { OrderService } from '../services/order.service';
+import { SupplierService } from '../services/supplier.service'; // Ensure this is imported
+import { LocationService } from '../services/location.service'; // Ensure this is imported
 import { OrderSummary, OrderStatus } from '../models/OrderSummary';
+import { Supplier } from '../models/Supplier';
+import { Location } from '../models/Location';
 import { catchError, finalize } from 'rxjs/operators';
 import { of } from 'rxjs';
 
@@ -87,6 +91,11 @@ export class OrdersComponent implements OnInit, AfterViewInit {
   endDate: Date | null = null;
   selectedDateRange: string = '';
   
+  selectedSupplier: Supplier | null = null;
+  selectedLocation: Location | null = null;
+  availableSuppliers: Supplier[] = [];
+  availableLocations: Location[] = [];
+  
   // Status options
   orderStatuses: string[] = ['Draft', 'Pending', 'Sent', 'Partially Received', 'Received', 'Cancelled'];
   
@@ -104,8 +113,18 @@ export class OrdersComponent implements OnInit, AfterViewInit {
   // Filters panel visibility
   showFilters = false;
 
+  // Pagination and sorting properties
+  totalItems = 0;
+  isServerSide = true;
+  currentPage = 0;
+  pageSize = 10;
+  sortField = 'creationDate';
+  sortDirection = 'desc';
+
   constructor(
     private orderService: OrderService,
+    private supplierService: SupplierService, // Make sure this is injected
+    private locationService: LocationService, // Make sure this is injected
     private snackBar: MatSnackBar,
     private datePipe: DatePipe,
     private dialog: MatDialog,
@@ -114,26 +133,33 @@ export class OrdersComponent implements OnInit, AfterViewInit {
 
   ngOnInit(): void {
     this.setupDateRanges();
-    this.loadOrders();
+    this.loadSuppliers();
+    this.loadLocations();
+    this.loadPaginatedOrders();
   }
 
   ngAfterViewInit() {
     this.dataSource.paginator = this.paginator;
     this.dataSource.sort = this.sort;
     
-    // Configure sorting accessor
-    this.dataSource.sortingDataAccessor = (item: OrderSummary, property: string) => {
-      switch(property) {
-        case 'sentDate': return this.getSortableDate(item.sentDate);
-        case 'deliveryDate': return this.getSortableDate(item.deliveryDate);
-        case 'total': return item.total || 0;
-        default: 
-          const value = item[property as keyof OrderSummary];
-          return value !== undefined && value !== null ? 
-            (typeof value === 'string' || typeof value === 'number' ? value : String(value)) : 
-            '';
-      }
-    };
+    // Listen for paginator events
+    this.paginator.page.subscribe(() => {
+      this.currentPage = this.paginator.pageIndex;
+      this.pageSize = this.paginator.pageSize;
+      this.loadPaginatedOrders();
+    });
+    
+    // Listen for sort events
+    this.sort.sortChange.subscribe(() => {
+      this.sortField = this.sort.active;
+      this.sortDirection = this.sort.direction;
+      this.paginator.pageIndex = 0; // Reset to first page when sorting changes
+      this.currentPage = 0;
+      this.loadPaginatedOrders();
+    });
+    
+    // Initial load
+    this.loadPaginatedOrders();
   }
 
   private getSortableDate(dateStr?: string): number {
@@ -184,22 +210,15 @@ export class OrdersComponent implements OnInit, AfterViewInit {
   }
 
   confirmCustomDateRange(): void {
-    if (!this.startDate || !this.endDate) {
-      this.snackBar.open('Please select both start and end dates', 'Close', {
-        duration: 3000
-      });
-      return;
+    this.selectedDateRange = 'Custom';
+    
+    // Reset pagination to first page
+    if (this.paginator) {
+      this.paginator.pageIndex = 0;
+      this.currentPage = 0;
     }
     
-    if (this.endDate < this.startDate) {
-      this.snackBar.open('End date cannot be before start date', 'Close', {
-        duration: 3000
-      });
-      return;
-    }
-    
-    this.selectedDateRange = 'Custom Range';
-    this.loadOrders();
+    this.loadPaginatedOrders();
     this.showFilters = false;
   }
 
@@ -207,19 +226,51 @@ export class OrdersComponent implements OnInit, AfterViewInit {
     this.startDate = null;
     this.endDate = null;
     this.selectedDateRange = '';
-    this.loadOrders();
+    
+    // Reset pagination to first page
+    if (this.paginator) {
+      this.paginator.pageIndex = 0;
+      this.currentPage = 0;
+    }
+    
+    this.loadPaginatedOrders();
+  }
+
+  clearAllFilters(): void {
+    this.orderNumberFilter = '';
+    this.supplierNameFilter = '';
+    this.locationNameFilter = '';
+    this.statusFilter = '';
+    this.startDate = null;
+    this.endDate = null;
+    this.selectedDateRange = '';
+    this.selectedSupplier = null;
+    this.selectedLocation = null;
+    
+    // Reset pagination to first page
+    if (this.paginator) {
+      this.paginator.pageIndex = 0;
+      this.currentPage = 0;
+    }
+    
+    this.loadPaginatedOrders();
   }
 
   loadOrders(): void {
+    // Reset to first page when filters change
+    if (this.paginator) {
+      this.paginator.pageIndex = 0;
+      this.currentPage = 0;
+    }
+    
+    this.loadPaginatedOrders();
+  }
+
+  loadPaginatedOrders(): void {
     this.isLoading = true;
     this.loadingError = null;
     
-    // Reset pagination when filters change
-    if (this.paginator) {
-      this.paginator.firstPage();
-    }
-    
-    // Format dates for API using DatePipe
+    // Format dates for API
     let formattedStartDate: string | undefined = undefined;
     let formattedEndDate: string | undefined = undefined;
     
@@ -231,50 +282,102 @@ export class OrdersComponent implements OnInit, AfterViewInit {
       formattedEndDate = this.datePipe.transform(this.endDate, 'yyyy-MM-dd') || undefined;
     }
     
-    this.orderService.getPurchaseOrders(formattedStartDate, formattedEndDate)
-      .pipe(
-        catchError(err => {
-          console.error('Error loading orders:', err);
-          this.loadingError = 'Failed to load orders. Please try again.';
-          return of([]);
-        }),
-        finalize(() => {
-          this.isLoading = false;
-        })
-      )
-      .subscribe(orders => {
-        // Apply additional client-side filters
-        let filteredOrders = orders;
-        
-        if (this.orderNumberFilter) {
-          filteredOrders = filteredOrders.filter(o => 
-            o.orderNumber.toLowerCase().includes(this.orderNumberFilter.toLowerCase()));
-        }
-        
-        if (this.supplierNameFilter) {
-          filteredOrders = filteredOrders.filter(o => 
-            o.supplierName.toLowerCase().includes(this.supplierNameFilter.toLowerCase()));
-        }
-        
-        if (this.locationNameFilter) {
-          filteredOrders = filteredOrders.filter(o => 
-            o.buyerLocationName.toLowerCase().includes(this.locationNameFilter.toLowerCase()));
-        }
-        
-        if (this.statusFilter) {
-          filteredOrders = filteredOrders.filter(o => 
-            o.status.toLowerCase() === this.statusFilter.toLowerCase());
-        }
-        
-        this.dataSource.data = filteredOrders;
-        
-        // If no records and we have a filter applied, show a specific message
-        if (filteredOrders.length === 0 && this.hasAnyFilter()) {
-          this.snackBar.open('No orders found matching the filters', 'Close', {
-            duration: 3000
-          });
+    // Determine supplier, location, and status filters
+    const supplierIdFilter = this.selectedSupplier?.id;
+    const locationIdFilter = this.selectedLocation?.id;
+    const statusFilter = this.statusFilter ? this.statusFilter.toUpperCase() : undefined;
+    
+    // Create sort string (field,direction)
+    const sortString = this.sortField && this.sortDirection 
+      ? `${this.sortField},${this.sortDirection}`
+      : undefined;
+    
+    this.orderService.getPaginatedPurchaseOrders(
+      this.currentPage,
+      this.pageSize,
+      sortString,
+      formattedStartDate,
+      formattedEndDate,
+      supplierIdFilter,
+      locationIdFilter,
+      statusFilter
+    ).pipe(
+      finalize(() => {
+        this.isLoading = false;
+      }),
+      catchError(err => {
+        console.error('Error loading orders:', err);
+        this.loadingError = 'Failed to load orders. Please try again.';
+        return of({
+          content: [],
+          totalElements: 0,
+          totalPages: 0,
+          currentPage: 0,
+          pageSize: this.pageSize,
+          hasNext: false,
+          hasPrevious: false
+        });
+      })
+    ).subscribe(response => {
+      // Update data source with paginated content
+      this.dataSource.data = response.content;
+      
+      // Update paginator values
+      this.totalItems = response.totalElements;
+      
+      // Apply additional client-side filtering for order number, supplier name, location name
+      // (if these filters are not already handled by the server)
+      if (this.orderNumberFilter || this.supplierNameFilter || this.locationNameFilter) {
+        this.applyClientSideFilters();
+      }
+    });
+  }
+
+  loadSuppliers(searchTerm: string = ''): void {
+    this.supplierService.getPaginatedSuppliers(0, 100, 'name,asc', searchTerm)
+      .subscribe({
+        next: (response) => {
+          this.availableSuppliers = response.content;
+        },
+        error: (err) => {
+          console.error('Error loading suppliers', err);
         }
       });
+  }
+
+  loadLocations(searchTerm: string = ''): void {
+    this.locationService.getPaginatedLocations(0, 100, 'name,asc', searchTerm)
+      .subscribe({
+        next: (response) => {
+          this.availableLocations = response.content;
+        },
+        error: (err) => {
+          console.error('Error loading locations', err);
+        }
+      });
+  }
+
+  applyClientSideFilters(): void {
+    if (this.orderNumberFilter || this.supplierNameFilter || this.locationNameFilter) {
+      let filteredData = [...this.dataSource.data];
+      
+      if (this.orderNumberFilter) {
+        filteredData = filteredData.filter(o => 
+          o.orderNumber.toLowerCase().includes(this.orderNumberFilter.toLowerCase()));
+      }
+      
+      if (this.supplierNameFilter) {
+        filteredData = filteredData.filter(o => 
+          o.supplierName.toLowerCase().includes(this.supplierNameFilter.toLowerCase()));
+      }
+      
+      if (this.locationNameFilter) {
+        filteredData = filteredData.filter(o => 
+          o.buyerLocationName.toLowerCase().includes(this.locationNameFilter.toLowerCase()));
+      }
+      
+      this.dataSource.data = filteredData;
+    }
   }
 
   hasAnyFilter(): boolean {
@@ -285,17 +388,6 @@ export class OrdersComponent implements OnInit, AfterViewInit {
       this.statusFilter || 
       this.selectedDateRange
     );
-  }
-
-  clearAllFilters(): void {
-    this.orderNumberFilter = '';
-    this.supplierNameFilter = '';
-    this.locationNameFilter = '';
-    this.statusFilter = '';
-    this.startDate = null;
-    this.endDate = null;
-    this.selectedDateRange = '';
-    this.loadOrders();
   }
 
   // Toggle the filters panel visibility
@@ -388,5 +480,23 @@ export class OrdersComponent implements OnInit, AfterViewInit {
     this.snackBar.open('Check pending orders functionality will be implemented in the next phase', 'Close', {
       duration: 3000
     });
+  }
+
+  // When selecting a supplier
+  onSupplierSelected(): void {
+    if (this.selectedSupplier && this.selectedSupplier.id) {
+      // Do something with the supplier ID
+      console.log('Selected supplier ID:', this.selectedSupplier.id);
+      this.loadOrders();
+    }
+  }
+
+  // When selecting a location
+  onLocationSelected(): void {
+    if (this.selectedLocation && this.selectedLocation.id) {
+      // Do something with the location ID
+      console.log('Selected location ID:', this.selectedLocation.id);
+      this.loadOrders();
+    }
   }
 }

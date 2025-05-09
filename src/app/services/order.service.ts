@@ -82,17 +82,17 @@ export class OrderService {
   getPurchaseOrders(startDate?: string, endDate?: string): Observable<OrderSummary[]> {
     const companyId = this.companiesService.getSelectedCompanyId() || 1;
     let params = new HttpParams();
-    
+
     if (startDate) {
       params = params.set('startDate', startDate);
     }
-    
+
     if (endDate) {
       params = params.set('endDate', endDate);
     }
-    
+
     return this.http.get<OrderSummary[]>(
-      `${this.apiUrl}/companies/${companyId}/purchase-orders`, 
+      `${this.apiUrl}/companies/${companyId}/purchase-orders`,
       { params }
     );
   }
@@ -125,7 +125,7 @@ export class OrderService {
   createPurchaseOrder(order: Partial<OrderSummary>): Observable<OrderSummary> {
     const companyId = this.companiesService.getSelectedCompanyId() || 1;
     return this.http.post<OrderSummary>(
-      `${this.apiUrl}/companies/${companyId}/purchase-orders`, 
+      `${this.apiUrl}/companies/${companyId}/purchase-orders`,
       order
     );
   }
@@ -160,7 +160,7 @@ export class OrderService {
   updatePurchaseOrder(orderId: number, order: Partial<OrderSummary>): Observable<OrderSummary> {
     const companyId = this.companiesService.getSelectedCompanyId() || 1;
     return this.http.put<OrderSummary>(
-      `${this.apiUrl}/companies/${companyId}/purchase-orders/${orderId}`, 
+      `${this.apiUrl}/companies/${companyId}/purchase-orders/${orderId}`,
       order
     );
   }
@@ -174,7 +174,7 @@ export class OrderService {
   updateOrderStatus(orderId: number, status: string): Observable<OrderSummary> {
     const companyId = this.companiesService.getSelectedCompanyId() || 1;
     return this.http.patch<OrderSummary>(
-      `${this.apiUrl}/companies/${companyId}/purchase-orders/${orderId}/status`, 
+      `${this.apiUrl}/companies/${companyId}/purchase-orders/${orderId}/status`,
       { status }
     );
   }
@@ -187,12 +187,12 @@ export class OrderService {
    */
   sendOrder(orderId: number, comments?: string): Observable<OrderDetail> {
     const companyId = this.companiesService.getSelectedCompanyId() || 1;
-    
+
     let params = new HttpParams();
     if (comments) {
       params = params.set('comments', comments);
     }
-    
+
     return this.http.patch<OrderDetail>(
       `${this.apiUrl}/companies/${companyId}/purchase-orders/${orderId}/send`,
       null, // No body needed for this PATCH request
@@ -217,10 +217,10 @@ export class OrderService {
    */
   receiveOrder(orderId: number, items: OrderItemReceipt[], updateOptionPrice: boolean = false): Observable<OrderDetail> {
     const companyId = this.companiesService.getSelectedCompanyId() || 1;
-    
+
     let params = new HttpParams();
     params = params.set('updateOptionPrice', updateOptionPrice.toString());
-    
+
     return this.http.patch<OrderDetail>(
       `${this.apiUrl}/companies/${companyId}/purchase-orders/${orderId}/receive`,
       items,
@@ -245,7 +245,7 @@ export class OrderService {
   editPurchaseOrder(orderId: number, editRequest: EditOrderRequest): Observable<OrderDetail> {
     const companyId = this.companiesService.getSelectedCompanyId() || 1;
     return this.http.patch<OrderDetail>(
-      `${this.apiUrl}/companies/${companyId}/purchase-orders/${orderId}`, 
+      `${this.apiUrl}/companies/${companyId}/purchase-orders/${orderId}`,
       editRequest
     ).pipe(
       map(response => {
@@ -268,9 +268,9 @@ export class OrderService {
    * @returns Observable of paginated AvailableInventoryItem response
    */
   getAvailableItems(
-    supplierId: number, 
-    locationId: number, 
-    page: number = 0, 
+    supplierId: number,
+    locationId: number,
+    page: number = 0,
     size: number = 10,
     search: string = ''
   ): Observable<PaginatedResponse<AvailableInventoryItem>> {
@@ -281,13 +281,13 @@ export class OrderService {
       .set('page', String(page))
       .set('size', String(size))
       .set('search', search);
-      
+
     return this.http.get<PaginatedResponse<AvailableInventoryItem>>(
       `${this.apiUrl}/companies/${companyId}/purchase-orders/available-items`,
       { params }
     );
   }
-  
+
   /**
    * @deprecated Use getAvailableItems with pagination instead
    * Get available inventory items for adding to an order
@@ -316,6 +316,37 @@ export class OrderService {
     const companyId = this.companiesService.getSelectedCompanyId() || 1;
     return this.http.delete(
       `${this.apiUrl}/companies/${companyId}/purchase-orders/${orderId}`
+    );
+  }
+
+  /**
+ * Get paginated purchase orders with advanced filtering
+ */
+  getPaginatedPurchaseOrders(
+    page: number = 0,
+    size: number = 10,
+    sort?: string,
+    startDate?: string,
+    endDate?: string,
+    supplierId?: number,
+    locationId?: number,
+    status?: string
+  ): Observable<PaginatedResponse<OrderSummary>> {
+    const companyId = this.companiesService.getSelectedCompanyId() || 1;
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString());
+
+    if (sort) params = params.set('sort', sort);
+    if (startDate) params = params.set('startDate', startDate);
+    if (endDate) params = params.set('endDate', endDate);
+    if (supplierId) params = params.set('supplierId', supplierId.toString());
+    if (locationId) params = params.set('locationId', locationId.toString());
+    if (status) params = params.set('status', status);
+
+    return this.http.get<PaginatedResponse<OrderSummary>>(
+      `${this.apiUrl}/companies/${companyId}/purchase-orders/paginated`,
+      { params }
     );
   }
 }

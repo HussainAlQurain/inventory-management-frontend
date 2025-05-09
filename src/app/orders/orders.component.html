@@ -115,6 +115,26 @@
               <mat-option *ngFor="let status of orderStatuses" [value]="status">{{ status }}</mat-option>
             </mat-select>
           </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Supplier</mat-label>
+            <mat-select [(ngModel)]="selectedSupplier" (selectionChange)="loadOrders()">
+              <mat-option [value]="null">All suppliers</mat-option>
+              <mat-option *ngFor="let supplier of availableSuppliers" [value]="supplier">
+                {{supplier.name}}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Location</mat-label>
+            <mat-select [(ngModel)]="selectedLocation" (selectionChange)="loadOrders()">
+              <mat-option [value]="null">All locations</mat-option>
+              <mat-option *ngFor="let location of availableLocations" [value]="location">
+                {{location.name}}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
         </div>
         <div class="filter-actions">
           <button mat-raised-button color="primary" (click)="loadOrders()">Apply Filters</button>
@@ -250,6 +270,9 @@
     
     <!-- Pagination -->
     <mat-paginator [pageSizeOptions]="[10, 25, 50, 100]" 
+                  [length]="totalItems"
+                  [pageSize]="pageSize"
+                  [pageIndex]="currentPage"
                   showFirstLastButtons 
                   aria-label="Select page of orders"
                   *ngIf="!isLoading && !loadingError && dataSource.data.length > 0">
