@@ -1,6 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,7 +11,8 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
-import { Observable, of, startWith, map, forkJoin } from 'rxjs';
+import { Observable, of, startWith, map, forkJoin, Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
 import { TransferService } from '../../services/transfer.service';
 import { LocationService } from '../../services/location.service';
 import { InventoryItemsService } from '../../services/inventory-items-service.service';
@@ -52,18 +53,29 @@ interface ItemOption {
     MatSelectModule,
     MatAutocompleteModule,
     MatProgressSpinnerModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    FormsModule
   ],
   templateUrl: './transfer-create.component.html',
   styleUrls: ['./transfer-create.component.scss']
 })
-export class TransferCreateComponent implements OnInit {
+export class TransferCreateComponent implements OnInit, OnDestroy {
   transferForm: FormGroup;
   loading = false;
   submitting = false;
   error = '';
   
-  locations: Location[] = [];
+  // Locations with search functionality
+  fromLocationSearchTerm = '';
+  toLocationSearchTerm = '';
+  fromLocations: Location[] = [];
+  toLocations: Location[] = [];
+  
+  // Subjects for debounced location search - made public for template access
+  public fromLocationSearchSubject = new Subject<string>();
+  public toLocationSearchSubject = new Subject<string>();
+  private destroy$ = new Subject<void>();
+  
   inventoryItems: InventoryItem[] = [];
   subRecipes: SubRecipe[] = [];
   unitOfMeasures: UnitOfMeasure[] = [];
@@ -85,23 +97,42 @@ export class TransferCreateComponent implements OnInit {
       toLocationId: ['', [Validators.required]],
       lines: this.fb.array([])
     });
+    
+    // Setup debounced search for locations
+    this.fromLocationSearchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      takeUntil(this.destroy$)
+    ).subscribe(searchTerm => {
+      this.loadFromLocationsWithSearch(searchTerm);
+    });
+    
+    this.toLocationSearchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      takeUntil(this.destroy$)
+    ).subscribe(searchTerm => {
+      this.loadToLocationsWithSearch(searchTerm);
+    });
   }
 
   ngOnInit(): void {
     this.loading = true;
     
-    // Load all necessary data
+    // Load all necessary data except locations (which will be loaded on demand)
     forkJoin({
-      locations: this.locationService.getAllLocations(),
       inventoryItems: this.inventoryItemsService.getInventoryItemsByCompany(),
       subRecipes: this.subRecipeService.getSubRecipes(),
       uoms: this.uomService.getAllUoms()
     }).subscribe({
       next: (results) => {
-        this.locations = results.locations;
         this.inventoryItems = results.inventoryItems;
         this.subRecipes = results.subRecipes.filter(sr => sr.type === 'PREPARATION'); // Only prep type
         this.unitOfMeasures = results.uoms;
+        
+        // Initialize both location search dropdowns
+        this.loadFromLocationsWithSearch('');
+        this.loadToLocationsWithSearch('');
         
         // Update filtered items
         this.updateFilteredItems();
@@ -122,6 +153,12 @@ export class TransferCreateComponent implements OnInit {
     this.transferForm.get('fromLocationId')?.valueChanges.subscribe(() => {
       this.updateFilteredItems();
     });
+  }
+  
+  ngOnDestroy(): void {
+    // Clean up subscriptions
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   // Form array getter for lines
@@ -144,6 +181,35 @@ export class TransferCreateComponent implements OnInit {
   // Remove a line from the transfer
   removeLine(index: number) {
     this.lines.removeAt(index);
+  }
+
+  // Location search functionality with debounce
+  onFromLocationSearchChange(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.fromLocationSearchTerm = value;
+    this.fromLocationSearchSubject.next(value);
+  }
+
+  onToLocationSearchChange(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.toLocationSearchTerm = value;
+    this.toLocationSearchSubject.next(value);
+  }
+
+  loadFromLocationsWithSearch(term: string): void {
+    this.locationService.getPaginatedLocations(0, 10, 'name,asc', term)
+      .subscribe({
+        next: res => this.fromLocations = res.content,
+        error: err => console.error('Failed to load from locations', err)
+      });
+  }
+
+  loadToLocationsWithSearch(term: string): void {
+    this.locationService.getPaginatedLocations(0, 10, 'name,asc', term)
+      .subscribe({
+        next: res => this.toLocations = res.content,
+        error: err => console.error('Failed to load to locations', err)
+      });
   }
 
   // Update filtered items based on selected fromLocation

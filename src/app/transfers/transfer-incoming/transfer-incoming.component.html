@@ -9,7 +9,7 @@
               placeholder="Search locations…"
               [matAutocomplete]="autoLocation"
               [(ngModel)]="locationSearchTerm"
-              (input)="onLocationSearchChange($event)" />
+              (keyup)="locationSearchSubject.next(locationSearchTerm)" />
 
       <mat-autocomplete #autoLocation="matAutocomplete"
                         (optionSelected)="onLocationChange()">

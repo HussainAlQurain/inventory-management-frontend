@@ -33,25 +33,47 @@
 
         <mat-card-content>
           <div class="form-row">
+            <!-- From Location with search -->
             <mat-form-field appearance="outline" class="form-field">
               <mat-label>From Location</mat-label>
-              <mat-select formControlName="fromLocationId" required>
-                <mat-option *ngFor="let location of locations" [value]="location.id">
+              <input matInput
+                     placeholder="Search locations…"
+                     [matAutocomplete]="fromLocationAuto"
+                     [(ngModel)]="fromLocationSearchTerm"
+                     [ngModelOptions]="{standalone: true}"
+                     (keyup)="fromLocationSearchSubject.next(fromLocationSearchTerm)" />
+              
+              <mat-autocomplete #fromLocationAuto="matAutocomplete">
+                <mat-option *ngFor="let location of fromLocations" 
+                           [value]="location.name"
+                           (click)="transferForm.get('fromLocationId')?.setValue(location.id)">
                   {{ location.name }}
                 </mat-option>
-              </mat-select>
+              </mat-autocomplete>
+              
               <mat-error *ngIf="transferForm.get('fromLocationId')?.hasError('required')">
                 From location is required
               </mat-error>
             </mat-form-field>
 
+            <!-- To Location with search -->
             <mat-form-field appearance="outline" class="form-field">
               <mat-label>To Location</mat-label>
-              <mat-select formControlName="toLocationId" required>
-                <mat-option *ngFor="let location of locations" [value]="location.id">
+              <input matInput
+                     placeholder="Search locations…"
+                     [matAutocomplete]="toLocationAuto"
+                     [(ngModel)]="toLocationSearchTerm"
+                     [ngModelOptions]="{standalone: true}"
+                     (keyup)="toLocationSearchSubject.next(toLocationSearchTerm)" />
+              
+              <mat-autocomplete #toLocationAuto="matAutocomplete">
+                <mat-option *ngFor="let location of toLocations" 
+                           [value]="location.name"
+                           (click)="transferForm.get('toLocationId')?.setValue(location.id)">
                   {{ location.name }}
                 </mat-option>
-              </mat-select>
+              </mat-autocomplete>
+              
               <mat-error *ngIf="transferForm.get('toLocationId')?.hasError('required')">
                 To location is required
               </mat-error>

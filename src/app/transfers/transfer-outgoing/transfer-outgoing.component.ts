@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
@@ -20,7 +20,8 @@ import { LocationService } from '../../services/location.service';
 import { TransferDetailsComponent } from '../transfer-details/transfer-details.component';
 import { CompaniesService } from '../../services/companies.service';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 
 @Component({
@@ -45,7 +46,7 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
   templateUrl: './transfer-outgoing.component.html',
   styleUrls: ['./transfer-outgoing.component.scss']
 })
-export class TransferOutgoingComponent implements OnInit {
+export class TransferOutgoingComponent implements OnInit, OnDestroy {
   displayedColumns: string[] = [
     'id', 'creationDate', 'toLocation', 'status', 'itemCount', 'actions'
   ];
@@ -69,6 +70,10 @@ export class TransferOutgoingComponent implements OnInit {
   locationSearchTerm = '';
   locations: Location[] = [];
   filteredLocations: Location[] = [];
+  
+  // Subjects for debounced search - made public for template access
+  public locationSearchSubject = new Subject<string>();
+  private destroy$ = new Subject<void>();
 
   /* ───── material helpers ───────────────────────────── */
   @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -81,7 +86,16 @@ export class TransferOutgoingComponent implements OnInit {
     private router: Router,
     private dialog: MatDialog,
     private snackBar: MatSnackBar
-  ) { }
+  ) { 
+    // Setup debounced search for locations
+    this.locationSearchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      takeUntil(this.destroy$)
+    ).subscribe(term => {
+      this.loadLocationsWithSearch(term);
+    });
+  }
 
   ngOnInit(): void {
     this.companyId = this.companiesService.getSelectedCompanyId();
@@ -94,6 +108,12 @@ export class TransferOutgoingComponent implements OnInit {
     /* preload first page of data & first 100 locations */
     this.loadOutgoingTransfers();
     this.loadLocationsWithSearch('');
+  }
+  
+  ngOnDestroy(): void {
+    // Clean up subscriptions
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   ngAfterViewInit(): void {
@@ -123,7 +143,7 @@ export class TransferOutgoingComponent implements OnInit {
   onLocationSearchChange(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
     this.locationSearchTerm = value;
-    this.loadLocationsWithSearch(value);
+    this.locationSearchSubject.next(value);
   }
   
   loadLocationsWithSearch(term: string): void {

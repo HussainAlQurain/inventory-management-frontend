@@ -11,14 +11,14 @@
       </mat-select>
     </mat-form-field>
 
-    <!-- Location filter with live search -->
+    <!-- ────────────── Location filter with live search ────────────── -->
     <mat-form-field appearance="outline" class="location-filter">
       <mat-label>Filter by Location</mat-label>
       <input  matInput
               placeholder="Search locations…"
               [matAutocomplete]="autoLocation"
               [(ngModel)]="locationSearchTerm"
-              (input)="onLocationSearchChange($event)" />
+              (keyup)="locationSearchSubject.next(locationSearchTerm)" />
 
       <mat-autocomplete #autoLocation="matAutocomplete"
                         (optionSelected)="onLocationChange()">
