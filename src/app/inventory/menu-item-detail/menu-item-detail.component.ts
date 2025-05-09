@@ -136,7 +136,7 @@ export class MenuItemDetailComponent implements OnInit, OnChanges {
     this.categoriesLoading = true;
     if (!term) term = '';
     
-    // Use the lightweight paginated endpoint
+    // Use the paginated endpoint with proper parameters
     return this.categoriesService.getPaginatedCategoryFilterOptions(0, 20, term).pipe(
       map(response => {
         this.categoriesLoading = false;
@@ -146,7 +146,7 @@ export class MenuItemDetailComponent implements OnInit, OnChanges {
           description: '' // FilterOptionDTO doesn't include description
         } as Category));
         
-        const exactMatch = response.content.some(c => c.name.toLowerCase() === term.toLowerCase());
+        const exactMatch = this.filteredCategories.some(c => c.name.toLowerCase() === term.toLowerCase());
         this.canCreateNewCategory = term.length > 0 && !exactMatch;
         return;
       }),

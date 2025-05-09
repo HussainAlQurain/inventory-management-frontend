@@ -2,11 +2,8 @@
   <div class="panel-header">
     <h2>{{ isEditMode ? 'Edit' : 'View' }} Menu Item</h2>
     <div class="header-actions">
-      <button *ngIf="!isEditMode" 
-              mat-button 
-              color="primary" 
-              (click)="toggleEditMode()"
-              matTooltip="Edit this menu item">
+      <button *ngIf="!isEditMode" mat-button color="primary" (click)="toggleEditMode()"
+        matTooltip="Edit this menu item">
         <mat-icon>edit</mat-icon> Edit
       </button>
       <button mat-icon-button (click)="onClose()" aria-label="Close panel" matTooltip="Close">
@@ -40,30 +37,19 @@
             </div>
 
             <!-- Category -->
+            <!-- Replace the category field with this simpler version -->
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Category</mat-label>
-              <input type="text" matInput [formControl]="categoryCtrl" [matAutocomplete]="autoCat" [disabled]="!isEditMode">
-              <mat-autocomplete #autoCat="matAutocomplete" (optionSelected)="onCategoryOptionSelected($event.option.value)">
-                <!-- Loading indicator -->
-                <mat-option *ngIf="categoriesLoading" disabled>
-                  <div style="display: flex; align-items: center;">
-                    <mat-spinner diameter="20" style="margin-right: 8px;"></mat-spinner>
-                    Loading categories...
-                  </div>
-                </mat-option>
-                
-                <!-- Existing categories -->
-                <mat-option *ngIf="!categoriesLoading && filteredCategories.length === 0" disabled>
-                  No matching categories
-                </mat-option>
-                
-                <mat-option *ngFor="let cat of filteredCategories" [value]="cat.name">
-                  {{ cat.name }}
-                </mat-option>
-                
-                <!-- Create new category option -->
+              <input type="text" matInput [formControl]="categoryCtrl" [matAutocomplete]="autoCat"
+                [disabled]="!isEditMode">
+              <mat-autocomplete #autoCat="matAutocomplete"
+                (optionSelected)="onCategoryOptionSelected($event.option.value)">
+                <mat-option *ngIf="categoriesLoading" disabled>Loading categories...</mat-option>
+                <mat-option *ngIf="!categoriesLoading && filteredCategories.length === 0" disabled>No matching
+                  categories</mat-option>
+                <mat-option *ngFor="let cat of filteredCategories" [value]="cat.name">{{ cat.name }}</mat-option>
                 <mat-option *ngIf="canCreateNewCategory && isEditMode" [value]="categoryCtrl.value">
-                  Create "<b>{{ categoryCtrl.value }}</b>" as new category
+                  Create "{{ categoryCtrl.value }}" as new category
                 </mat-option>
               </mat-autocomplete>
             </mat-form-field>
@@ -113,47 +99,44 @@
           <div class="form-section">
             <div class="section-header">
               <h3>Menu Item Components</h3>
-              <button *ngIf="isEditMode" mat-raised-button color="primary" (click)="addNewLine()" [disabled]="isEditingLine">
+              <button *ngIf="isEditMode" mat-raised-button color="primary" (click)="addNewLine()"
+                [disabled]="isEditingLine">
                 <mat-icon>add</mat-icon> Add Component
               </button>
             </div>
-            
-            <app-menu-item-line
-              *ngIf="isEditingLine"
-              [line]="currentLine"
-              [isEditMode]="true"
-              (save)="saveLine($event)"
+
+            <app-menu-item-line *ngIf="isEditingLine" [line]="currentLine" [isEditMode]="true" (save)="saveLine($event)"
               (cancel)="cancelLineEdit()">
             </app-menu-item-line>
-            
-            <table *ngIf="!isEditingLine && menuItem.menuItemLines && menuItem.menuItemLines.length > 0" 
-                  mat-table [dataSource]="menuItem.menuItemLines" class="lines-table">
+
+            <table *ngIf="!isEditingLine && menuItem.menuItemLines && menuItem.menuItemLines.length > 0" mat-table
+              [dataSource]="menuItem.menuItemLines" class="lines-table">
               <ng-container matColumnDef="item">
                 <th mat-header-cell *matHeaderCellDef>Item</th>
                 <td mat-cell *matCellDef="let line">
                   {{ line.inventoryItemName || line.subRecipeName || line.childMenuItemName || 'Unknown' }}
                 </td>
               </ng-container>
-              
+
               <ng-container matColumnDef="type">
                 <th mat-header-cell *matHeaderCellDef>Type</th>
                 <td mat-cell *matCellDef="let line">
-                  {{ line.inventoryItemId ? 'Inventory Item' : 
-                     (line.subRecipeId ? 'Sub-Recipe' : 
-                     (line.childMenuItemId ? 'Menu Item' : 'Unknown')) }}
+                  {{ line.inventoryItemId ? 'Inventory Item' :
+                  (line.subRecipeId ? 'Sub-Recipe' :
+                  (line.childMenuItemId ? 'Menu Item' : 'Unknown')) }}
                 </td>
               </ng-container>
-              
+
               <ng-container matColumnDef="quantity">
                 <th mat-header-cell *matHeaderCellDef>Quantity</th>
                 <td mat-cell *matCellDef="let line">{{ line.quantity }}</td>
               </ng-container>
-              
+
               <ng-container matColumnDef="wastage">
                 <th mat-header-cell *matHeaderCellDef>Wastage %</th>
                 <td mat-cell *matCellDef="let line">{{ line.wastagePercent }}%</td>
               </ng-container>
-              
+
               <ng-container matColumnDef="uom">
                 <th mat-header-cell *matHeaderCellDef>UOM</th>
                 <td mat-cell *matCellDef="let line">
@@ -165,29 +148,31 @@
                   </ng-template>
                 </td>
               </ng-container>
-              
+
               <ng-container matColumnDef="cost">
                 <th mat-header-cell *matHeaderCellDef class="text-right">Cost</th>
                 <td mat-cell *matCellDef="let line" class="text-right">{{ line.lineCost | currency }}</td>
               </ng-container>
-              
+
               <ng-container matColumnDef="actions">
                 <th mat-header-cell *matHeaderCellDef></th>
                 <td mat-cell *matCellDef="let line">
                   <button *ngIf="isEditMode" mat-icon-button color="primary" (click)="editLine(line)" matTooltip="Edit">
                     <mat-icon>edit</mat-icon>
                   </button>
-                  <button *ngIf="isEditMode" mat-icon-button color="warn" (click)="deleteLine(line)" matTooltip="Delete">
+                  <button *ngIf="isEditMode" mat-icon-button color="warn" (click)="deleteLine(line)"
+                    matTooltip="Delete">
                     <mat-icon>delete</mat-icon>
                   </button>
                 </td>
               </ng-container>
-              
+
               <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
               <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
             </table>
-            
-            <div *ngIf="!isEditingLine && (!menuItem.menuItemLines || menuItem.menuItemLines.length === 0)" class="no-lines">
+
+            <div *ngIf="!isEditingLine && (!menuItem.menuItemLines || menuItem.menuItemLines.length === 0)"
+              class="no-lines">
               <p>No components added to this menu item.</p>
               <button *ngIf="isEditMode" mat-raised-button color="primary" (click)="addNewLine()">
                 <mat-icon>add</mat-icon> Add First Component
@@ -205,11 +190,8 @@
 
   <div class="panel-footer">
     <button mat-button (click)="onClose()">Close</button>
-    <button *ngIf="isEditMode" 
-            mat-raised-button 
-            color="primary" 
-            [disabled]="menuItemForm.invalid" 
-            (click)="saveMenuItem()">
+    <button *ngIf="isEditMode" mat-raised-button color="primary" [disabled]="menuItemForm.invalid"
+      (click)="saveMenuItem()">
       Save Changes
     </button>
   </div>
