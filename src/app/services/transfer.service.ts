@@ -3,6 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Transfer, TransferLine, TransferRequest } from '../models/Transfer';
+import { PaginatedResponse } from '../models/paginated-response';
 
 @Injectable({
   providedIn: 'root'
@@ -10,7 +11,7 @@ import { Transfer, TransferLine, TransferRequest } from '../models/Transfer';
 export class TransferService {
   private baseUrl = `${environment.apiUrl}/transfers`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   // Create a new transfer request
   createTransfer(transfer: TransferRequest): Observable<Transfer> {
@@ -67,5 +68,74 @@ export class TransferService {
   // Complete a transfer
   completeTransfer(id: number): Observable<Transfer> {
     return this.http.post<Transfer>(`${this.baseUrl}/${id}/complete`, {});
+  }
+
+  // Add these methods to your TransferService class
+  getPaginatedOutgoingTransfers(
+    companyId: number,
+    page: number = 0,
+    size: number = 10,
+    search?: string,
+    sort: string = 'creationDate,desc',
+    locationId?: number
+  ): Observable<PaginatedResponse<Transfer>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString())
+      .set('sort', sort);
+
+    if (search) params = params.set('search', search);
+    if (locationId) params = params.set('locationId', locationId.toString());
+
+    return this.http.get<PaginatedResponse<Transfer>>(
+      `${this.baseUrl}/company/${companyId}/outgoing/paginated`,
+      { params }
+    );
+  }
+
+  getPaginatedIncomingTransfers(
+    companyId: number,
+    page: number = 0,
+    size: number = 10,
+    search?: string,
+    sort: string = 'creationDate,desc',
+    locationId?: number
+  ): Observable<PaginatedResponse<Transfer>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString())
+      .set('sort', sort);
+
+    if (search) params = params.set('search', search);
+    if (locationId) params = params.set('locationId', locationId.toString());
+
+    return this.http.get<PaginatedResponse<Transfer>>(
+      `${this.baseUrl}/company/${companyId}/incoming/paginated`,
+      { params }
+    );
+  }
+
+  getPaginatedCompletedTransfers(
+    companyId: number,
+    page: number = 0,
+    size: number = 10,
+    search?: string,
+    sort: string = 'completionDate,desc',
+    locationId?: number,
+    fromLocation: boolean = false
+  ): Observable<PaginatedResponse<Transfer>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString())
+      .set('sort', sort)
+      .set('fromLocation', fromLocation.toString());
+
+    if (search) params = params.set('search', search);
+    if (locationId) params = params.set('locationId', locationId.toString());
+
+    return this.http.get<PaginatedResponse<Transfer>>(
+      `${this.baseUrl}/company/${companyId}/completed/paginated`,
+      { params }
+    );
   }
 }

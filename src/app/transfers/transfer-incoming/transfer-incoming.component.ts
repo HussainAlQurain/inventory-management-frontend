@@ -1,9 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
-import { MatSortModule, Sort } from '@angular/material/sort';
-import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatSort, MatSortModule, Sort } from '@angular/material/sort';
+import { MatPaginator, MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -21,6 +21,7 @@ import { TransferDetailsComponent } from '../transfer-details/transfer-details.c
 import { CompaniesService } from '../../services/companies.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 
 @Component({
   selector: 'app-transfer-incoming',
@@ -38,7 +39,8 @@ import { Observable } from 'rxjs';
     MatSelectModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
-    MatDialogModule
+    MatDialogModule,
+    MatAutocompleteModule
   ],
   templateUrl: './transfer-incoming.component.html',
   styleUrls: ['./transfer-incoming.component.scss']
@@ -47,12 +49,28 @@ export class TransferIncomingComponent implements OnInit {
   displayedColumns: string[] = ['id', 'creationDate', 'fromLocation', 'status', 'itemCount', 'actions'];
   dataSource = new MatTableDataSource<Transfer>();
   
+  /* ───── request / UI state ─────────────────────────── */
   loading = false;
   error = '';
-  
-  locations: Location[] = [];
-  selectedLocation: number | null = null;
+
+  /* ───── filters & pagination ───────────────────────── */
   companyId: number | null = null;
+
+  searchTerm = '';           // text search
+  selectedLocation: number | null = null;
+
+  totalItems = 0;            // paginator
+  pageSize = 10;
+  currentPage = 0;
+
+  /* location drop-down (with live search) */
+  locationSearchTerm = '';
+  locations: Location[] = [];
+  filteredLocations: Location[] = [];
+
+  /* ───── material helpers ───────────────────────────── */
+  @ViewChild(MatPaginator) paginator!: MatPaginator;
+  @ViewChild(MatSort) sort!: MatSort;
   
   constructor(
     private transferService: TransferService,
@@ -64,37 +82,114 @@ export class TransferIncomingComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.loading = true;
-    
-    // Get company ID from companies service
     this.companyId = this.companiesService.getSelectedCompanyId();
     
-    if (this.companyId) {
-      // Load company-wide incoming transfers initially
-      this.loadCompanyIncomingTransfers();
-    } else {
+    if (!this.companyId) {
       this.error = 'Company ID not found';
-      this.loading = false;
+      return;
     }
-    
-    // Load locations for the filter dropdown
-    this.locationService.getAllLocations().subscribe({
-      next: (locations) => {
-        this.locations = locations;
+
+    /* preload first page of data & first 100 locations */
+    this.loadIncomingTransfers();
+    this.loadLocationsWithSearch('');
+  }
+
+  ngAfterViewInit(): void {
+    /* Only subscribe to paginator events if it's defined */
+    if (this.paginator) {
+      /* paginator events (page change or page-size change) */
+      this.paginator.page.subscribe((e: PageEvent) => {
+        this.currentPage = e.pageIndex;
+        this.pageSize = e.pageSize;
+        this.loadIncomingTransfers();
+      });
+    }
+
+    /* Only subscribe to sort events if it's defined */
+    if (this.sort) {
+      /* sort events */
+      this.sort.sortChange.subscribe(() => {
+        this.currentPage = 0;
+        if (this.paginator) {
+          this.paginator.pageIndex = 0;
+        }
+        this.loadIncomingTransfers();
+      });
+    }
+  }
+
+  onLocationSearchChange(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.locationSearchTerm = value;
+    this.loadLocationsWithSearch(value);
+  }
+  
+  loadLocationsWithSearch(term: string): void {
+    if (!this.companyId) return;
+  
+    this.locationService.getPaginatedLocations(
+        0, 20, 'name,asc', term)
+      .subscribe({
+        next : res => this.filteredLocations = res.content,
+        error: err => console.error('Failed to load locations', err)
+      });
+  }
+  
+  onLocationChange(): void {
+    this.currentPage = 0;
+    if (this.paginator) {
+      this.paginator.pageIndex = 0;
+    }
+    this.loadIncomingTransfers();
+  }
+
+  onSearchChange(): void {
+    this.currentPage = 0;
+    if (this.paginator) {
+      this.paginator.pageIndex = 0;
+    }
+    this.loadIncomingTransfers();
+  }
+
+  loadIncomingTransfers(): void {
+    if (!this.companyId) return;
+  
+    this.loading = true;
+  
+    /* build "field,dir" sort string if the user clicked a header */
+    let sortString = 'creationDate,desc';          // default
+    if (this.sort?.active && this.sort.direction) {
+      sortString = `${this.sort.active},${this.sort.direction}`;
+    }
+  
+    this.transferService.getPaginatedIncomingTransfers(
+        this.companyId,
+        this.currentPage,
+        this.pageSize,
+        this.searchTerm.trim() || undefined,
+        sortString,
+        this.selectedLocation || undefined
+    ).subscribe({
+      next : resp => {
+        this.dataSource.data = resp.content;
+        this.totalItems      = resp.totalElements;
+        this.loading         = false;
       },
-      error: (err: HttpErrorResponse) => {
-        console.error('Failed to load locations:', err);
+      error: err => {
+        console.error('Failed to load incoming transfers', err);
+        this.error   = 'Failed to load incoming transfers';
+        this.loading = false;
       }
     });
   }
-
+  
   loadCompanyIncomingTransfers(): void {
     if (!this.companyId) {
       this.error = 'Company ID not found';
       this.loading = false;
       return;
     }
-    
+
     this.loading = true;
     // Use type assertion to fix runtime error
     (this.transferService as any).getCompanyIncomingTransfers(this.companyId).subscribe({
@@ -124,14 +219,6 @@ export class TransferIncomingComponent implements OnInit {
         this.loading = false;
       }
     });
-  }
-
-  onLocationChange(): void {
-    if (this.selectedLocation) {
-      this.loadLocationIncomingTransfers(this.selectedLocation);
-    } else {
-      this.loadCompanyIncomingTransfers();
-    }
   }
 
   applyFilter(event: Event): void {

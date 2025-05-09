@@ -1,9 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
-import { MatSortModule, Sort } from '@angular/material/sort';
-import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatSort, MatSortModule, Sort } from '@angular/material/sort';
+import { MatPaginator, MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -21,6 +21,7 @@ import { TransferDetailsComponent } from '../transfer-details/transfer-details.c
 import { CompaniesService } from '../../services/companies.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 
 @Component({
   selector: 'app-transfer-outgoing',
@@ -38,22 +39,41 @@ import { Observable } from 'rxjs';
     MatSelectModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
-    MatDialogModule
+    MatDialogModule,
+    MatAutocompleteModule
   ],
   templateUrl: './transfer-outgoing.component.html',
   styleUrls: ['./transfer-outgoing.component.scss']
 })
 export class TransferOutgoingComponent implements OnInit {
-  displayedColumns: string[] = ['id', 'creationDate', 'toLocation', 'status', 'itemCount', 'actions'];
+  displayedColumns: string[] = [
+    'id', 'creationDate', 'toLocation', 'status', 'itemCount', 'actions'
+  ];
   dataSource = new MatTableDataSource<Transfer>();
-  
+
+  /* ───── request / UI state ─────────────────────────── */
   loading = false;
   error = '';
-  
-  locations: Location[] = [];
-  selectedLocation: number | null = null;
+
+  /* ───── filters & pagination ───────────────────────── */
   companyId: number | null = null;
-  
+
+  searchTerm = '';           // text search
+  selectedLocation: number | null = null;
+
+  totalItems = 0;            // paginator
+  pageSize = 10;
+  currentPage = 0;
+
+  /* location drop-down (with live search) */
+  locationSearchTerm = '';
+  locations: Location[] = [];
+  filteredLocations: Location[] = [];
+
+  /* ───── material helpers ───────────────────────────── */
+  @ViewChild(MatPaginator) paginator!: MatPaginator;
+  @ViewChild(MatSort) sort!: MatSort;
+
   constructor(
     private transferService: TransferService,
     private locationService: LocationService,
@@ -61,40 +81,117 @@ export class TransferOutgoingComponent implements OnInit {
     private router: Router,
     private dialog: MatDialog,
     private snackBar: MatSnackBar
-  ) {}
+  ) { }
 
   ngOnInit(): void {
-    this.loading = true;
-    
-    // Get company ID from companies service
     this.companyId = this.companiesService.getSelectedCompanyId();
-    
-    if (this.companyId) {
-      // Load company-wide outgoing transfers initially
-      this.loadCompanyOutgoingTransfers();
-    } else {
+
+    if (!this.companyId) {
       this.error = 'Company ID not found';
-      this.loading = false;
+      return;
     }
-    
-    // Load locations for the filter dropdown
-    this.locationService.getAllLocations().subscribe({
-      next: (locations) => {
-        this.locations = locations;
+
+    /* preload first page of data & first 100 locations */
+    this.loadOutgoingTransfers();
+    this.loadLocationsWithSearch('');
+  }
+
+  ngAfterViewInit(): void {
+    /* Only subscribe to paginator events if it's defined */
+    if (this.paginator) {
+      /* paginator events (page change or page-size change) */
+      this.paginator.page.subscribe((e: PageEvent) => {
+        this.currentPage = e.pageIndex;
+        this.pageSize = e.pageSize;
+        this.loadOutgoingTransfers();
+      });
+    }
+
+    /* Only subscribe to sort events if it's defined */
+    if (this.sort) {
+      /* sort events */
+      this.sort.sortChange.subscribe(() => {
+        this.currentPage = 0;
+        if (this.paginator) {
+          this.paginator.pageIndex = 0;
+        }
+        this.loadOutgoingTransfers();
+      });
+    }
+  }
+
+  onLocationSearchChange(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.locationSearchTerm = value;
+    this.loadLocationsWithSearch(value);
+  }
+  
+  loadLocationsWithSearch(term: string): void {
+    if (!this.companyId) return;
+  
+    this.locationService.getPaginatedLocations(
+        0, 20, 'name,asc', term)
+      .subscribe({
+        next : res => this.filteredLocations = res.content,
+        error: err => console.error('Failed to load locations', err)
+      });
+  }
+  
+  onLocationChange(): void {
+    this.currentPage = 0;
+    if (this.paginator) {
+      this.paginator.pageIndex = 0;
+    }
+    this.loadOutgoingTransfers();
+  }
+
+  onSearchChange(): void {
+    this.currentPage = 0;
+    if (this.paginator) {
+      this.paginator.pageIndex = 0;
+    }
+    this.loadOutgoingTransfers();
+  }
+
+  loadOutgoingTransfers(): void {
+    if (!this.companyId) return;
+  
+    this.loading = true;
+  
+    /* build "field,dir" sort string if the user clicked a header */
+    let sortString = 'creationDate,desc';          // default
+    if (this.sort?.active && this.sort.direction) {
+      sortString = `${this.sort.active},${this.sort.direction}`;
+    }
+  
+    this.transferService.getPaginatedOutgoingTransfers(
+        this.companyId,
+        this.currentPage,
+        this.pageSize,
+        this.searchTerm.trim() || undefined,
+        sortString,
+        this.selectedLocation || undefined
+    ).subscribe({
+      next : resp => {
+        this.dataSource.data = resp.content;
+        this.totalItems      = resp.totalElements;
+        this.loading         = false;
       },
-      error: (err: HttpErrorResponse) => {
-        console.error('Failed to load locations:', err);
+      error: err => {
+        console.error('Failed to load outgoing transfers', err);
+        this.error   = 'Failed to load outgoing transfers';
+        this.loading = false;
       }
     });
   }
-
+  
   loadCompanyOutgoingTransfers(): void {
     if (!this.companyId) {
       this.error = 'Company ID not found';
       this.loading = false;
       return;
     }
-    
+
     this.loading = true;
     // Use type assertion to fix runtime error
     (this.transferService as any).getCompanyOutgoingTransfers(this.companyId).subscribe({
@@ -126,14 +223,6 @@ export class TransferOutgoingComponent implements OnInit {
     });
   }
 
-  onLocationChange(): void {
-    if (this.selectedLocation) {
-      this.loadLocationOutgoingTransfers(this.selectedLocation);
-    } else {
-      this.loadCompanyOutgoingTransfers();
-    }
-  }
-
   applyFilter(event: Event): void {
     const filterValue = (event.target as HTMLInputElement).value;
     this.dataSource.filter = filterValue.trim().toLowerCase();
@@ -157,7 +246,7 @@ export class TransferOutgoingComponent implements OnInit {
 
   deleteTransfer(transfer: Transfer, event: Event): void {
     event.stopPropagation(); // Prevent row click event
-    
+
     if (confirm(`Are you sure you want to delete transfer #${transfer.id}?`)) {
       this.transferService.deleteTransfer(transfer.id!).subscribe({
         next: () => {
@@ -184,8 +273,8 @@ export class TransferOutgoingComponent implements OnInit {
 
   getStatusClass(status: string | undefined): string {
     if (!status) return '';
-    
-    switch(status.toLowerCase()) {
+
+    switch (status.toLowerCase()) {
       case 'pending': return 'status-pending';
       case 'completed': return 'status-completed';
       case 'cancelled': return 'status-cancelled';
