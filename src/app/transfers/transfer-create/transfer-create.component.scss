@@ -143,14 +143,82 @@
 
 .search-input-option {
   padding: 0;
+  background-color: white !important;
+  
+  &:hover {
+    background-color: white !important;
+  }
 }
 
 .item-search-container {
   padding: 8px;
   width: 100%;
+  
+  .item-search-field {
+    width: 100%;
+    margin: 0;
+    
+    ::ng-deep {
+      // Override disabled appearance
+      .mat-mdc-form-field-flex {
+        background-color: white;
+      }
+      
+      .mat-mdc-input-element {
+        color: rgba(0, 0, 0, 0.87); // Normal text color
+        cursor: text;
+        
+        &::placeholder {
+          color: rgba(0, 0, 0, 0.6); // Normal placeholder color
+        }
+      }
+      
+      // Ensure the outline shows properly
+      .mdc-notched-outline__leading,
+      .mdc-notched-outline__notch,
+      .mdc-notched-outline__trailing {
+        border-color: rgba(0, 0, 0, 0.38);
+      }
+    }
+  }
 }
 
-.item-search-field {
-  width: 100%;
-  margin: 0;
+.search-container {
+  padding: 0;
+  height: auto !important;
+  
+  .search-field {
+    width: 100%;
+    padding: 8px;
+    
+    ::ng-deep .mat-form-field-wrapper {
+      margin-bottom: -1.25em;
+    }
+    
+    input {
+      cursor: text !important;
+    }
+  }
+}
+
+.load-more-container {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+  height: auto !important;
+  
+  button {
+    width: 100%;
+  }
+}
+
+// Make items in dropdown more visible
+::ng-deep .mat-option {
+  &:hover:not(.mat-option-disabled) {
+    background: rgba(0, 0, 0, 0.04);
+  }
+  
+  &.mat-active {
+    background: rgba(0, 0, 0, 0.08);
+  }
 }

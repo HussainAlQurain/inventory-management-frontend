@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
@@ -99,6 +99,8 @@ export class TransferCreateComponent implements OnInit, OnDestroy {
   subRecipeTotal: number = 0;
   subRecipeLoading: boolean = false;
 
+  disableSearch: boolean = false;
+
   constructor(
     private fb: FormBuilder,
     private transferService: TransferService,
@@ -111,26 +113,24 @@ export class TransferCreateComponent implements OnInit, OnDestroy {
     private router: Router
   ) {
     this.transferForm = this.fb.group({
-      fromLocationId: ['', [Validators.required]],
-      toLocationId: ['', [Validators.required]],
+      fromLocationId: [null, [Validators.required]],  // Changed from '' to null
+      toLocationId: [null, [Validators.required]],    // Changed from '' to null
       lines: this.fb.array([])
     });
 
     // Setup debounced search for locations
     this.fromLocationSearchSubject.pipe(
       debounceTime(300),
-      distinctUntilChanged(),
-      takeUntil(this.destroy$)
-    ).subscribe(searchTerm => {
-      this.loadFromLocationsWithSearch(searchTerm);
+      distinctUntilChanged()
+    ).subscribe(term => {
+      this.loadFromLocationsWithSearch(term);
     });
 
     this.toLocationSearchSubject.pipe(
       debounceTime(300),
-      distinctUntilChanged(),
-      takeUntil(this.destroy$)
-    ).subscribe(searchTerm => {
-      this.loadToLocationsWithSearch(searchTerm);
+      distinctUntilChanged()
+    ).subscribe(term => {
+      this.loadToLocationsWithSearch(term);
     });
   }
 
@@ -173,6 +173,7 @@ export class TransferCreateComponent implements OnInit, OnDestroy {
   addLine() {
     const lineForm = this.fb.group({
       itemId: ['', [Validators.required]],
+      itemName: [''], // Add this field for autocomplete
       itemType: ['', [Validators.required]],
       quantity: [1, [Validators.required, Validators.min(0.001)]],
       unitOfMeasureId: ['', [Validators.required]]
@@ -217,6 +218,7 @@ export class TransferCreateComponent implements OnInit, OnDestroy {
 
   // Search inventory items with pagination
   searchInventoryItems(searchTerm: string = ''): void {
+    console.log('Searching inventory items with term:', searchTerm);
     this.inventoryLoading = true;
     this.itemSearchTerm = searchTerm;
     this.inventoryPage = 0;
@@ -270,6 +272,7 @@ export class TransferCreateComponent implements OnInit, OnDestroy {
   }
 
   loadMoreInventoryItems(): void {
+    console.log('Loading more inventory items...');
     if (this.inventoryLoading) return;
     
     this.inventoryLoading = true;
@@ -329,8 +332,7 @@ export class TransferCreateComponent implements OnInit, OnDestroy {
   // Handle search input changes
   onItemSearch(event: Event): void {
     event.stopPropagation();
-    const inputElement = event.target as HTMLInputElement;
-    const searchTerm = inputElement.value;
+    const searchTerm = (event.target as HTMLInputElement)?.value || '';
     
     // Get the selected item type
     const currentLine = this.getCurrentLine();
@@ -441,6 +443,24 @@ export class TransferCreateComponent implements OnInit, OnDestroy {
     }
   }
 
+  // Add this new method
+  onItemSelected(event: MatAutocompleteSelectedEvent, index: number): void {
+    const selectedItem = event.option.value as ItemOption;
+    const lineForm = this.lines.at(index) as FormGroup;
+    
+    lineForm.patchValue({
+      itemId: selectedItem.id,
+      itemType: selectedItem.type
+    });
+    
+    // Update UOM if available
+    if (selectedItem.uoms?.length > 0) {
+      lineForm.patchValue({
+        unitOfMeasureId: selectedItem.uoms[0].id
+      });
+    }
+  }
+
   // Validate the form before submitting
   validateForm(): boolean {
     // Check if locations are the same
@@ -511,18 +531,49 @@ export class TransferCreateComponent implements OnInit, OnDestroy {
     this.router.navigate(['/transfers']);
   }
 
-  // Get display name for an item
-  getItemDisplayName(itemId: number, itemType: string): string {
-    if (itemType === 'inventory') {
-      return this.inventoryItems.find(i => i.id === itemId)?.name || '';
-    } else if (itemType === 'subrecipe') {
-      return this.subRecipes.find(r => r.id === itemId)?.name || '';
+  // Update getItemDisplayName method
+  getItemDisplayName = (item: ItemOption | number | string | null): string => {
+    if (!item) return '';
+    
+    if (typeof item === 'object') {
+      return item.name;
     }
+    
+    // Handle case where itemId is passed
+    if (typeof item === 'number') {
+      const itemType = this.getCurrentLine()?.get('itemType')?.value;
+      if (itemType === 'inventory') {
+        return this.inventoryItems.find(i => i.id === item)?.name || '';
+      } else if (itemType === 'subrecipe') {
+        return this.subRecipes.find(r => r.id === item)?.name || '';
+      }
+    }
+    
     return '';
-  }
+  };
 
   // Get UOM name
   getUomName(uomId: number): string {
     return this.unitOfMeasures.find(u => u.id === uomId)?.name || '';
+  }
+
+  // Clear search and prevent event propagation
+  clearSearch(event: Event): void {
+    event.stopPropagation();
+    this.itemSearchTerm = '';
+    this.onItemSearch({ target: { value: '' } } as any);
+  }
+
+  // Handle keyboard events in search box
+  handleKeydown(event: KeyboardEvent): void {
+    // Prevent dropdown from closing on space
+    if (event.code === 'Space') {
+      event.stopPropagation();
+    }
+    
+    // Prevent these keys from triggering dropdown behavior
+    if (['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(event.code)) {
+      event.stopPropagation();
+    }
   }
 }
