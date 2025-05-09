@@ -9,6 +9,19 @@
     </div>
   </div>
 
+  <!-- Add search bar above the table -->
+  <div class="search-container">
+    <mat-form-field appearance="outline">
+      <mat-label>Search Users</mat-label>
+      <input matInput [ngModel]="searchTerm" (input)="onSearch($event)" placeholder="Search by name, email or username">
+      <button *ngIf="searchTerm" matSuffix mat-icon-button aria-label="Clear" 
+              (click)="clearSearch(); $event.stopPropagation()">
+        <mat-icon>close</mat-icon>
+      </button>
+      <mat-icon matPrefix>search</mat-icon>
+    </mat-form-field>
+  </div>
+
   <!-- Loading indicator -->
   <div *ngIf="isLoading" class="loading-container">
     <mat-spinner diameter="40"></mat-spinner>
@@ -99,10 +112,26 @@
       <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
     </table>
 
+    <!-- No results message -->
+    <div *ngIf="!isLoading && users.length === 0" class="no-data-message">
+      <p>No users found. {{ searchTerm ? 'Try a different search term.' : 'Create a user to get started.' }}</p>
+    </div>
+
     <!-- Empty state message -->
     <div *ngIf="users.length === 0" class="empty-state">
       <mat-icon>people</mat-icon>
       <p>No users found. Click "Add New User" to create a user.</p>
     </div>
   </div>
+
+  <!-- Add paginator at the bottom -->
+  <mat-paginator 
+    [pageSize]="pageSize"
+    [pageSizeOptions]="pageSizeOptions"
+    [length]="totalItems"
+    [pageIndex]="currentPage"
+    (page)="handlePageEvent($event)"
+    showFirstLastButtons
+    aria-label="Select page of users">
+  </mat-paginator>
 </div>

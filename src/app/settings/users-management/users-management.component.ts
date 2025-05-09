@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -14,9 +14,10 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatSelectModule } from '@angular/material/select';
-import { MatPaginatorModule } from '@angular/material/paginator';
+import { MatPaginatorModule, MatPaginator, PageEvent } from '@angular/material/paginator';
 import { MatSortModule } from '@angular/material/sort';
 import { MatMenuModule } from '@angular/material/menu';
+import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
 
 import { UserService } from '../../services/user.service';
 import { CompaniesService } from '../../services/companies.service';
@@ -29,36 +30,37 @@ import { UserFormDialogComponent } from './user-form-dialog/user-form-dialog.com
   imports: [
     CommonModule,
     FormsModule,
-    ReactiveFormsModule,
-    MatCardModule,
     MatTableModule,
-    MatIconModule,
-    MatButtonModule,
-    MatDialogModule,
-    MatProgressSpinnerModule,
-    MatSnackBarModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSlideToggleModule,
-    MatTooltipModule,
-    MatTabsModule,
-    MatSelectModule,
     MatPaginatorModule,
     MatSortModule,
-    MatMenuModule
+    MatButtonModule,
+    MatIconModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatProgressSpinnerModule,
+    MatCardModule,
+    MatMenuModule,     // Add this
+    MatTooltipModule,  // Add this
+    MatSelectModule,
+    MatDialogModule
   ],
   templateUrl: './users-management.component.html',
   styleUrls: ['./users-management.component.scss']
 })
-export class UsersManagementComponent implements OnInit {
+export class UsersManagementComponent implements OnInit, OnDestroy {
   users: User[] = [];
+  pageSize = 10;
+  pageSizeOptions: number[] = [10, 25, 50, 100];
+  currentPage = 0;
+  totalItems = 0;
+  searchTerm = '';
   isLoading = false;
   loadError = false;
   selectedCompanyId: number | null = null;
-  
+
   // For table display
   displayedColumns: string[] = ['username', 'name', 'email', 'role', 'status', 'actions'];
-  
+
   // Define available roles for dropdown
   availableRoles = [
     { value: UserRole.USER, label: 'User' },
@@ -68,15 +70,30 @@ export class UsersManagementComponent implements OnInit {
     // Usually SUPER_ADMIN and SYSTEM_ADMIN are not assignable through the UI
   ];
 
+  // For debounced search
+  public searchSubject = new Subject<string>();
+
+  // Add ViewChild for paginator
+  @ViewChild(MatPaginator) paginator!: MatPaginator;
+
   constructor(
     private userService: UserService,
     private companiesService: CompaniesService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar
-  ) {}
+  ) {
+    // Setup debounced search
+    this.searchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged()
+    ).subscribe(term => {
+      this.searchTerm = term;
+      this.currentPage = 0;
+      this.loadUsers();
+    });
+  }
 
   ngOnInit(): void {
-    // Get the selected company ID
     this.selectedCompanyId = this.companiesService.getSelectedCompanyId();
     if (this.selectedCompanyId) {
       this.loadUsers();
@@ -86,31 +103,61 @@ export class UsersManagementComponent implements OnInit {
     }
   }
 
+  ngOnDestroy(): void {
+    this.searchSubject.complete();
+  }
+
   loadUsers(): void {
-    if (!this.selectedCompanyId) return;
-    
     this.isLoading = true;
     this.loadError = false;
     
-    this.userService.getUsersByCompany(this.selectedCompanyId)
-      .subscribe({
-        next: (users) => {
-          this.users = users;
-          this.isLoading = false;
-        },
-        error: (error) => {
-          console.error('Error loading users:', error);
-          this.snackBar.open('Failed to load users. Please try again.', 'Close', { duration: 5000 });
-          this.isLoading = false;
-          this.loadError = true;
-        }
-      });
+    const companyId = this.companiesService.getSelectedCompanyId();
+    if (!companyId) {
+      this.loadError = true;
+      this.isLoading = false;
+      return;
+    }
+    
+    this.userService.getPaginatedUsersByCompany(
+      companyId,
+      this.currentPage,
+      this.pageSize,
+      'lastName,asc',
+      this.searchTerm
+    ).subscribe({
+      next: (response) => {
+        this.users = response.content;
+        this.totalItems = response.totalElements;
+        this.isLoading = false;
+      },
+      error: (error) => {
+        console.error('Error loading users:', error);
+        this.loadError = true;
+        this.isLoading = false;
+      }
+    });
+  }
+
+  handlePageEvent(event: PageEvent): void {
+    this.currentPage = event.pageIndex;
+    this.pageSize = event.pageSize;
+    this.loadUsers();
+  }
+
+  onSearch(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.searchSubject.next(value);
+  }
+
+  clearSearch(): void {
+    this.searchTerm = '';
+    this.searchSubject.next('');
   }
 
   openCreateUserDialog(): void {
     const dialogRef = this.dialog.open(UserFormDialogComponent, {
       width: '600px',
-      data: { 
+      data: {
         mode: 'create',
         availableRoles: this.availableRoles
       }
@@ -119,18 +166,32 @@ export class UsersManagementComponent implements OnInit {
     dialogRef.afterClosed().subscribe(result => {
       if (result && this.selectedCompanyId) {
         this.createUser(result);
+        this.currentPage = 0;
+        if (this.paginator) {
+          this.paginator.pageIndex = 0;
+        }
+        this.loadUsers();
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.currentPage = 0; // Reset to first page to see new user
+        if (this.paginator) {
+          this.paginator.pageIndex = 0;
+        }
+        this.loadUsers(); // Reload with pagination
       }
     });
   }
 
   createUser(userData: UserCreateDTO): void {
     if (!this.selectedCompanyId) return;
-    
+
     this.isLoading = true;
     this.userService.createUser(this.selectedCompanyId, userData)
       .subscribe({
         next: (newUser) => {
-          this.users.push(newUser);
           this.snackBar.open('User created successfully', 'Close', { duration: 3000 });
           this.isLoading = false;
         },
@@ -145,7 +206,7 @@ export class UsersManagementComponent implements OnInit {
   openEditUserDialog(user: User): void {
     const dialogRef = this.dialog.open(UserFormDialogComponent, {
       width: '600px',
-      data: { 
+      data: {
         mode: 'edit',
         user: user,
         availableRoles: this.availableRoles
@@ -181,16 +242,17 @@ export class UsersManagementComponent implements OnInit {
 
   toggleUserStatus(user: User): void {
     if (!user.id) return;
-    
+
     this.isLoading = true;
     const action = user.status === 'active' ? 'disable' : 'enable';
     const method = action === 'disable' ? this.userService.disableUser(user.id) : this.userService.enableUser(user.id);
-    
+
     method.subscribe({
       next: () => {
         user.status = action === 'disable' ? 'disabled' : 'active';
         this.snackBar.open(`User ${action}d successfully`, 'Close', { duration: 3000 });
         this.isLoading = false;
+        this.loadUsers(); // Reload current page
       },
       error: (error) => {
         console.error(`Error ${action}ing user:`, error);
@@ -202,7 +264,7 @@ export class UsersManagementComponent implements OnInit {
 
   changeUserRole(user: User, newRole: string): void {
     if (!user.id) return;
-    
+
     this.isLoading = true;
     this.userService.changeUserRole(user.id, newRole)
       .subscribe({
@@ -213,6 +275,7 @@ export class UsersManagementComponent implements OnInit {
           }
           this.snackBar.open('User role updated successfully', 'Close', { duration: 3000 });
           this.isLoading = false;
+          this.loadUsers(); // Reload current page
         },
         error: (error) => {
           console.error('Error changing user role:', error);

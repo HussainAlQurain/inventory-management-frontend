@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { User, UserCreateDTO, UserUpdateDTO } from '../models/user';
+import { PaginatedResponse } from '../models/paginated-response';
 
 @Injectable({
   providedIn: 'root'
@@ -45,5 +46,28 @@ export class UserService {
   // Change a user's role
   changeUserRole(userId: number, role: string): Observable<User> {
     return this.http.patch<User>(`${this.api}/users/${userId}/roles?role=${role}`, {});
+  }
+
+  // Get paginated users for a specific company
+  getPaginatedUsersByCompany(
+    companyId: number, 
+    page: number = 0, 
+    size: number = 10, 
+    sort: string = "lastName,asc", 
+    search?: string
+  ): Observable<PaginatedResponse<User>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString())
+      .set('sort', sort);
+      
+    if (search) {
+      params = params.set('search', search);
+    }
+    
+    return this.http.get<PaginatedResponse<User>>(
+      `${this.api}/users/companies/${companyId}/paginated`, 
+      { params }
+    );
   }
 }
