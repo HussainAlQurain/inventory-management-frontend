@@ -110,23 +110,6 @@ export class InventoryItemsService {
     );
   }
 
-  searchInventoryItems(name: string): Observable<InventoryItem[]> {
-    const companyId = this.companiesService.getSelectedCompanyId();
-    if (!companyId) {
-      return throwError(() => new Error('No company selected'));
-    }
-    
-    return this.http.get<InventoryItem[]>(`${this.baseUrl}/company/${companyId}`, {
-      params: {
-        search: name
-      }
-    }).pipe(
-      catchError(error => {
-        console.error('Error searching inventory items:', error);
-        return throwError(() => new Error('Error searching inventory items.'));
-      })
-    );
-  }
 
   //optimized inventory-items
   getPaginatedInventoryItemsList(

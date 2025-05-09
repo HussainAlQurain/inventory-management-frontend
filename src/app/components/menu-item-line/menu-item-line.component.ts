@@ -21,6 +21,10 @@ import { UomService } from '../../services/uom.service';
 import { SubRecipeService } from '../../services/sub-recipe.service';
 import { MenuItemsService } from '../../services/menu-items.service';
 
+import { InventoryItemListDTO } from '../../models/InventoryItemListDTO';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { catchError } from 'rxjs/operators';
+
 @Component({
   selector: 'app-menu-item-line',
   standalone: true,
@@ -33,7 +37,8 @@ import { MenuItemsService } from '../../services/menu-items.service';
     MatButtonModule,
     MatIconModule,
     MatAutocompleteModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatProgressSpinnerModule
   ],
   templateUrl: './menu-item-line.component.html',
   styleUrls: ['./menu-item-line.component.scss']
@@ -47,7 +52,6 @@ export class MenuItemLineComponent implements OnInit {
   lineForm: FormGroup;
   
   // For autocomplete and selection
-  filteredInventoryItems: InventoryItem[] = [];
   filteredSubRecipes: SubRecipe[] = [];
   filteredMenuItems: MenuItem[] = [];
   allUoms: UnitOfMeasure[] = [];
@@ -56,6 +60,15 @@ export class MenuItemLineComponent implements OnInit {
   inventoryItemCtrl = new FormControl<string>('', { nonNullable: true });
   subRecipeCtrl = new FormControl<string>('', { nonNullable: true });
   menuItemCtrl = new FormControl<string>('', { nonNullable: true });
+
+  // Inventory item pagination
+  inventoryItemsLoading = false;
+  inventoryItemsPage = 0;
+  inventoryItemsSize = 20;
+  inventoryItemsTotal = 0;
+  lastSearchTerm = '';
+  // Update the type to use DTO
+  filteredInventoryItems: InventoryItemListDTO[] = [];
   
   // Line type selection
   lineType: 'inventory' | 'subrecipe' | 'menuitem' = 'inventory';
@@ -130,15 +143,59 @@ export class MenuItemLineComponent implements OnInit {
       distinctUntilChanged(),
       switchMap(term => {
         // If we already have an object (after selection), don't trigger a new search
-        if (typeof term === 'object' && term !== null) return of([]);
-        if (!term || typeof term !== 'string' || term.length < 1) return of([]);
-        return this.inventoryItemsService.searchInventoryItems(term);
+        if (typeof term === 'object' && term !== null) return of({ content: [], totalElements: 0 });
+        if (!term || typeof term !== 'string' || term.length < 1) return of({ content: [], totalElements: 0 });
+        
+        this.inventoryItemsLoading = true;
+        this.inventoryItemsPage = 0; // Reset page when searching
+        this.lastSearchTerm = term;
+        
+        return this.inventoryItemsService.getPaginatedInventoryItemsList(
+          this.inventoryItemsPage,
+          this.inventoryItemsSize,
+          'name,asc',
+          undefined, // categoryId
+          term
+        ).pipe(
+          catchError(err => {
+            console.error('Error searching inventory items:', err);
+            this.inventoryItemsLoading = false;
+            return of({ content: [], totalElements: 0 });
+          })
+        );
       })
     ).subscribe({
-      next: (items) => {
-        this.filteredInventoryItems = items;
+      next: (response) => {
+        this.filteredInventoryItems = response.content;
+        this.inventoryItemsTotal = response.totalElements;
+        this.inventoryItemsLoading = false;
       },
       error: (err) => console.error('Error searching inventory items:', err)
+    });
+  }
+
+  loadMoreInventoryItems(): void {
+    if (this.inventoryItemsLoading) return;
+    
+    this.inventoryItemsPage++;
+    this.inventoryItemsLoading = true;
+    
+    this.inventoryItemsService.getPaginatedInventoryItemsList(
+      this.inventoryItemsPage,
+      this.inventoryItemsSize,
+      'name,asc',
+      undefined, // categoryId
+      this.lastSearchTerm
+    ).subscribe({
+      next: (response) => {
+        this.filteredInventoryItems = [...this.filteredInventoryItems, ...response.content];
+        this.inventoryItemsLoading = false;
+      },
+      error: (error) => {
+        console.error('Error loading more inventory items:', error);
+        this.inventoryItemsLoading = false;
+        this.inventoryItemsPage--; // Revert on error
+      }
     });
   }
 
@@ -262,22 +319,28 @@ export class MenuItemLineComponent implements OnInit {
     this.lineForm.get('lineCost')?.setValue(0);
   }
 
-  onInventoryItemSelected(item: InventoryItem): void {
+  onInventoryItemSelected(item: InventoryItemListDTO): void {
     if (!item) return;
     
     // Store the selected item ID
     this.lineForm.get('inventoryItemId')?.setValue(item.id);
     
-    // Set the UOM if not already set
-    if (!this.lineForm.get('unitOfMeasureId')?.value && item.inventoryUom?.id) {
-      this.lineForm.get('unitOfMeasureId')?.setValue(item.inventoryUom.id);
-    }
-    
     // Update the display control value with just the item name
     this.inventoryItemCtrl.setValue(item.name, { emitEvent: false });
     
-    // Calculate cost immediately
-    this.calculateInventoryItemCost(item);
+    // Fetch the full item to get UOM and price details
+    this.inventoryItemsService.getInventoryItemById(item.id).subscribe({
+      next: (fullItem) => {
+        // Set the UOM if not already set
+        if (!this.lineForm.get('unitOfMeasureId')?.value && fullItem.inventoryUom?.id) {
+          this.lineForm.get('unitOfMeasureId')?.setValue(fullItem.inventoryUom.id);
+        }
+        
+        // Calculate cost immediately
+        this.calculateInventoryItemCost(fullItem);
+      },
+      error: (err) => console.error('Error fetching full item details:', err)
+    });
   }
 
   onSubRecipeSelected(subRecipe: SubRecipe): void {
@@ -461,7 +524,7 @@ export class MenuItemLineComponent implements OnInit {
   }
   
   // Display functions for autocomplete
-  displayInventoryFn(item: InventoryItem | string): string {
+  displayInventoryFn(item: InventoryItemListDTO | string): string {
     if (typeof item === 'string') return item;
     return item && item.name ? item.name : '';
   }

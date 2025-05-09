@@ -5,10 +5,10 @@
       <div class="type-selector">
         <label>Line Type:</label>
         <div class="type-buttons">
-          <button type="button" mat-raised-button [color]="lineType === 'inventory' ? 'primary' : ''" 
-                  (click)="setLineType('inventory')">Inventory Item</button>
-          <button type="button" mat-raised-button [color]="lineType === 'subrecipe' ? 'primary' : ''" 
-                  (click)="setLineType('subrecipe')">Sub-Recipe</button>
+          <button type="button" mat-raised-button [color]="lineType === 'inventory' ? 'primary' : ''"
+            (click)="setLineType('inventory')">Inventory Item</button>
+          <button type="button" mat-raised-button [color]="lineType === 'subrecipe' ? 'primary' : ''"
+            (click)="setLineType('subrecipe')">Sub-Recipe</button>
         </div>
       </div>
     </div>
@@ -16,38 +16,47 @@
     <div class="form-row">
       <mat-form-field appearance="outline" class="form-field-large">
         <mat-label>{{ lineType === 'inventory' ? 'Inventory Item' : 'Sub-Recipe' }}</mat-label>
-        
+
         <!-- Inventory Item Autocomplete -->
-        <input *ngIf="lineType === 'inventory'" 
-              type="text" 
-              matInput 
-              [formControl]="inventoryItemCtrl" 
-              [matAutocomplete]="autoInventory"
-              placeholder="Search for inventory items...">
-        <mat-autocomplete #autoInventory="matAutocomplete" 
-                         [displayWith]="displayInventoryFn">
-          <mat-option *ngFor="let item of filteredInventoryItems" 
-                     [value]="item"
-                     (onSelectionChange)="$event.isUserInput && onInventoryItemSelected(item)">
+        <input *ngIf="lineType === 'inventory'" type="text" matInput [formControl]="inventoryItemCtrl"
+          [matAutocomplete]="autoInventory" placeholder="Search for inventory items...">
+        <mat-autocomplete #autoInventory="matAutocomplete" [displayWith]="displayInventoryFn">
+          <!-- Loading indicator -->
+          <mat-option *ngIf="inventoryItemsLoading" disabled>
+            <div style="display: flex; align-items: center;">
+              <mat-spinner diameter="20" style="margin-right: 8px;"></mat-spinner>
+              Loading items...
+            </div>
+          </mat-option>
+
+          <!-- Items list -->
+          <mat-option *ngFor="let item of filteredInventoryItems" [value]="item"
+            (onSelectionChange)="$event.isUserInput && onInventoryItemSelected(item)">
             {{ item.name }}
           </mat-option>
-          <mat-option *ngIf="filteredInventoryItems.length === 0 && (inventoryItemCtrl.value ?? '').length > 0">
+
+          <!-- Load more button -->
+          <mat-option *ngIf="filteredInventoryItems.length > 0 && filteredInventoryItems.length < inventoryItemsTotal"
+            disabled class="load-more-option">
+            <button mat-button color="primary" (click)="loadMoreInventoryItems(); $event.stopPropagation()">
+              Load more ({{ inventoryItemsTotal - filteredInventoryItems.length }} remaining)
+            </button>
+          </mat-option>
+
+          <!-- No results message -->
+          <mat-option
+            *ngIf="!inventoryItemsLoading && filteredInventoryItems.length === 0 && (inventoryItemCtrl.value ?? '').length > 0"
+            disabled>
             No matching inventory items found
           </mat-option>
         </mat-autocomplete>
-        
+
         <!-- Sub-Recipe Autocomplete -->
-        <input *ngIf="lineType === 'subrecipe'" 
-              type="text" 
-              matInput 
-              [formControl]="subRecipeCtrl" 
-              [matAutocomplete]="autoSubRecipe"
-              placeholder="Search for sub-recipes...">
-        <mat-autocomplete #autoSubRecipe="matAutocomplete" 
-                         [displayWith]="displaySubRecipeFn">
-          <mat-option *ngFor="let recipe of filteredSubRecipes" 
-                     [value]="recipe"
-                     (onSelectionChange)="$event.isUserInput && onSubRecipeSelected(recipe)">
+        <input *ngIf="lineType === 'subrecipe'" type="text" matInput [formControl]="subRecipeCtrl"
+          [matAutocomplete]="autoSubRecipe" placeholder="Search for sub-recipes...">
+        <mat-autocomplete #autoSubRecipe="matAutocomplete" [displayWith]="displaySubRecipeFn">
+          <mat-option *ngFor="let recipe of filteredSubRecipes" [value]="recipe"
+            (onSelectionChange)="$event.isUserInput && onSubRecipeSelected(recipe)">
             {{ recipe.name }}
           </mat-option>
           <mat-option *ngIf="filteredSubRecipes.length === 0 && (subRecipeCtrl.value ?? '').length > 0">
