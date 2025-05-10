@@ -305,4 +305,12 @@ export class TransferOutgoingComponent implements OnInit, OnDestroy {
   createTransfer(): void {
     this.router.navigate(['/transfers/create']);
   }
+
+  onPageChange(event: PageEvent): void {
+    console.log('Page changed:', event);
+    this.currentPage = event.pageIndex;
+    this.pageSize = event.pageSize;
+    // Call the appropriate load method for each component
+    this.loadOutgoingTransfers(); // or loadIncomingTransfers() or loadCompletedTransfers()
+  }
 }
