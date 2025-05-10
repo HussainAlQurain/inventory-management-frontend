@@ -273,6 +273,7 @@
                   [length]="totalItems"
                   [pageSize]="pageSize"
                   [pageIndex]="currentPage"
+                  (page)="onPageChange($event)"
                   showFirstLastButtons 
                   aria-label="Select page of orders"
                   *ngIf="!isLoading && !loadingError && dataSource.data.length > 0">

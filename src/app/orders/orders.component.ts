@@ -3,7 +3,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatSortModule, MatSort } from '@angular/material/sort';
-import { MatPaginatorModule, MatPaginator } from '@angular/material/paginator';
+import { MatPaginatorModule, MatPaginator, PageEvent } from '@angular/material/paginator';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -142,13 +142,6 @@ export class OrdersComponent implements OnInit, AfterViewInit {
     this.dataSource.paginator = this.paginator;
     this.dataSource.sort = this.sort;
     
-    // Listen for paginator events
-    this.paginator.page.subscribe(() => {
-      this.currentPage = this.paginator.pageIndex;
-      this.pageSize = this.paginator.pageSize;
-      this.loadPaginatedOrders();
-    });
-    
     // Listen for sort events
     this.sort.sortChange.subscribe(() => {
       this.sortField = this.sort.active;
@@ -257,12 +250,6 @@ export class OrdersComponent implements OnInit, AfterViewInit {
   }
 
   loadOrders(): void {
-    // Reset to first page when filters change
-    if (this.paginator) {
-      this.paginator.pageIndex = 0;
-      this.currentPage = 0;
-    }
-    
     this.loadPaginatedOrders();
   }
 
@@ -498,5 +485,12 @@ export class OrdersComponent implements OnInit, AfterViewInit {
       console.log('Selected location ID:', this.selectedLocation.id);
       this.loadOrders();
     }
+  }
+
+  onPageChange(event: PageEvent): void {
+    console.log('Page changed:', event);
+    this.currentPage = event.pageIndex;
+    this.pageSize = event.pageSize;
+    this.loadPaginatedOrders();
   }
 }
