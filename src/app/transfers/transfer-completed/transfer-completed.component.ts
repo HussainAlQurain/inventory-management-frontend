@@ -301,4 +301,11 @@ export class TransferCompletedComponent implements OnInit, OnDestroy {
   getTotalCost(transfer: Transfer): number {
     return transfer.lines?.reduce((total, line) => total + (line.totalCost || 0), 0) || 0;
   }
+  onPageChange(event: PageEvent): void {
+    console.log('Page changed:', event);
+    this.currentPage = event.pageIndex;
+    this.pageSize = event.pageSize;
+    // Call the appropriate load method for each component
+    this.loadCompletedTransfers(); // or loadIncomingTransfers() or loadCompletedTransfers()
+  }
 }

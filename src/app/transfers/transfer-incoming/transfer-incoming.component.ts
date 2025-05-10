@@ -282,4 +282,12 @@ export class TransferIncomingComponent implements OnInit, OnDestroy {
       default: return '';
     }
   }
+
+  onPageChange(event: PageEvent): void {
+    console.log('Page changed:', event);
+    this.currentPage = event.pageIndex;
+    this.pageSize = event.pageSize;
+    // Call the appropriate load method for each component
+    this.loadIncomingTransfers(); // or loadIncomingTransfers() or loadCompletedTransfers()
+  }
 }
